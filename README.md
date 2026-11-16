@@ -1,5 +1,7 @@
 # 🌙 Ngủ Cùng Nhau
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/nguyenanhtuan0502/ngu-cung-nhau)
+
 Game 2D nhiều người chơi: vào chung phòng, bật TV, mở nhạc, tắt đèn và cùng nhau đi ngủ.
 Chơi được trên điện thoại và máy tính (chỉ cần trình duyệt).
 
