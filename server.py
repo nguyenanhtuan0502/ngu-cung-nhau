@@ -1,9 +1,10 @@
 """Ngủ Cùng Nhau - server multiplayer (aiohttp + WebSocket).
 
-Mỗi mã phòng là một "căn nhà" gồm 2 phòng thông nhau bằng cửa:
+Mỗi mã phòng là một "căn nhà" gồm 3 khu thông nhau bằng cửa:
   - sleep: phòng ngủ (giường)
   - study: phòng học (bàn học + Pomodoro)
-Mỗi phòng có TV, nhạc, đèn, hẹn giờ riêng.
+  - park:  công viên (ghế đá, màn chiếu phim ngoài trời, ngày/đêm)
+Mỗi khu có TV, nhạc, đèn (công viên: ngày/đêm), hẹn giờ riêng.
 
 Chạy:  python server.py      rồi mở http://localhost:8080
 """
@@ -20,7 +21,11 @@ from aiohttp import WSMsgType, web
 ROOT = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(ROOT, "static")
 
-AREAS = ("sleep", "study")
+AREAS = ("sleep", "study", "park")
+# Cửa của mỗi khu: (khu đang đứng, khu bên kia) -> cửa nằm bên trái hay phải
+DOOR_SIDE = {("sleep", "study"): "right", ("sleep", "park"): "left",
+             ("study", "sleep"): "right", ("study", "park"): "left",
+             ("park", "sleep"): "left", ("park", "study"): "right"}
 BEDS = 6
 MAX_PLAYERS = 12
 TV_CHANNELS = 4
@@ -34,7 +39,7 @@ YT_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
 
 # World bounds (phải khớp với client)
 FLOOR = (16, 175, 344, 575)  # x1, y1, x2, y2
-DOOR_SPAWN = (318.0, 545.0)  # vị trí đứng ngay trong cửa khi sang phòng khác
+DOOR_SPAWN = {"right": (318.0, 545.0), "left": (42.0, 545.0)}  # đứng ngay trong cửa khi sang khu khác
 
 rooms = {}
 
@@ -287,11 +292,11 @@ async def ws_handler(request):
 
             elif t == "area":                      # đi qua cửa sang phòng kia
                 to = d.get("area")
-                if to not in AREAS or to == an:
+                if (an, to) not in DOOR_SIDE:
                     continue
                 free_bed(room, pid)
                 me["area"] = to
-                me["x"], me["y"] = DOOR_SPAWN
+                me["x"], me["y"] = DOOR_SPAWN[DOOR_SIDE[(to, an)]]
                 await broadcast(room, {"t": "area", "id": pid, "area": to, "x": me["x"], "y": me["y"]})
 
             elif t == "sleep":
