@@ -15,6 +15,11 @@ Rồi mở http://localhost:8080 (hoặc bấm đúp `run.bat`).
 Điện thoại dùng chung wifi: mở `http://<IP máy tính>:8080` (xem IP bằng `ipconfig`).
 Lần đầu Windows hỏi tường lửa thì bấm **Allow**.
 
+## Hai loại phòng
+- 🛏️ **Phòng ngủ**: giường, tắt đèn, ngủ cùng nhau
+- 📚 **Phòng học**: bàn học có đèn + laptop, Pomodoro chung cho cả phòng (25/5, 50/10…),
+  ghi "đang học gì", bảng xếp hạng thời gian ngồi học
+
 ## Cách chơi
 - Chạm sàn để đi, chạm giường để ngủ, chạm sàn lần nữa để dậy
 - Chạm TV / radio / công tắc đèn trên tường (hoặc dùng các nút bên dưới)

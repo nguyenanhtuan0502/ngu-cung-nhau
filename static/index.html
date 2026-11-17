@@ -40,7 +40,8 @@
   #hud button{width:54px;height:56px;border-radius:16px;background:rgba(24,20,52,.82);border:1px solid rgba(255,255,255,.12);
     font-size:21px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
     backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:transform .1s,background .2s}
-  #hud button span{font-size:10px;color:var(--muted)}
+  #hud button{padding:0}
+  #hud button span{font-size:10px;color:var(--muted);white-space:nowrap}
   #hud button:active{transform:scale(.92)}
   #hud button.on{background:rgba(255,210,122,.22);border-color:rgba(255,210,122,.55)}
   #hud button.on span{color:var(--accent)}
@@ -138,6 +139,22 @@
   #colors{display:flex;gap:8px;justify-content:space-between}
   #colors button{width:34px;height:34px;border-radius:50%;border:3px solid transparent}
   #colors button.sel{border-color:#fff;transform:scale(1.1)}
+  .newRow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .newRow .ghost{font-size:14px;padding:12px 6px}
+  /* Phòng học */
+  #pomoPill{position:fixed;right:10px;top:calc(46px + env(safe-area-inset-top));z-index:5;font-weight:700;font-variant-numeric:tabular-nums}
+  #pomoPill.focus{background:rgba(255,99,71,.28);border-color:rgba(255,120,100,.6)}
+  #pomoPill.break{background:rgba(94,242,168,.2);border-color:rgba(94,242,168,.55)}
+  #pomoPill.paused{opacity:.7}
+  body.wide #pomoPill{right:auto;left:calc(var(--roomx) - 132px);top:calc(8px + env(safe-area-inset-top))}
+  body.study:not(.wide) #together{top:calc(84px + env(safe-area-inset-top))}
+  .pomoBig{text-align:center;font-size:44px;font-weight:800;font-variant-numeric:tabular-nums;margin:0 0 2px}
+  .pomoSub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:12px}
+  .timers button.cur{border-color:var(--accent);background:rgba(255,210,122,.15)}
+  .board{display:flex;flex-direction:column;gap:4px;font-size:14px}
+  .board div{display:flex;justify-content:space-between;gap:8px;background:var(--panel2);padding:8px 12px;border-radius:10px}
+  .board small{color:var(--muted)}
+  .board b{color:var(--accent);font-variant-numeric:tabular-nums}
   #pets{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
   #pets button{background:rgba(255,255,255,.06);border:2px solid transparent;border-radius:14px;padding:8px 0 6px;font-size:24px;
     display:flex;flex-direction:column;align-items:center;gap:2px}
@@ -154,11 +171,12 @@
 <canvas id="c"></canvas>
 
 <div id="top" class="hidden">
-  <div class="pill">🏠 <b id="roomCode"></b> · 👥 <span id="count">1</span> · 😴 <span id="sleepCount">0</span></div>
+  <div class="pill">🏠 <b id="roomCode"></b> · 👥 <span id="count">1</span> · <span id="sleepIcon">😴</span> <span id="sleepCount">0</span></div>
   <button class="pill" id="shareBtn">🔗 Mời bạn</button>
 </div>
 <div id="log"></div>
-<div id="together" class="hidden">🌙 <span id="togetherText"></span> · <span id="togetherTime">00:00</span></div>
+<button id="pomoPill" class="pill hidden">🍅 25:00</button>
+<div id="together" class="hidden"><span id="togetherText"></span> · <span id="togetherTime">00:00</span></div>
 
 <div id="hud" class="hidden">
   <button data-a="sleep" id="sleepBtn">😴<span>Ngủ</span></button>
@@ -196,7 +214,7 @@
     <label>Mã phòng</label>
     <input id="roomInput" maxlength="8" placeholder="VD: MEOW" autocomplete="off">
     <button id="joinBtn" class="primary">Vào phòng</button>
-    <button id="newBtn" class="ghost">✨ Tạo phòng mới</button>
+    <div class="newRow"><button id="newBtn" class="ghost">🛏️ Tạo phòng ngủ</button><button id="newStudyBtn" class="ghost">📚 Tạo phòng học</button></div>
     <p id="lobbyErr"></p>
   </div>
 </div>
@@ -250,6 +268,8 @@ let tvSwitchAt = -10;
 let togetherSince = null;
 let taps = [], notes = [];
 let myPet = {type: "cat", name: ""};
+let roomKind = "sleep", wantKind = "sleep", pomo = null, lastPill = "";
+const study = () => roomKind === "study";
 const roomPet = {x: 300, y: 200, tx: 300, ty: 200, mode: "sit", bed: null, dir: -1, walking: false, jumpAt: -9, hearts: [], nameUntil: 0};
 let joined = false, wantReconnect = false;
 
@@ -267,7 +287,7 @@ function lighten(hex, amt) {
   const f = v => Math.round(v + (255 - v) * amt);
   return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
 }
-function bedSpot(b) { return {x: BEDS[b].x + BED_W / 2, y: BEDS[b].y + 62}; }
+function bedSpot(b) { return {x: BEDS[b].x + BED_W / 2, y: BEDS[b].y + (roomKind === "study" ? 80 : 62)}; }
 function bedOwner(b) { for (const p of players.values()) if (p.bed === b) return p; return null; }
 function me() { return players.get(myId); }
 function fmtTime(s) {
@@ -369,6 +389,15 @@ const Sound = {
   },
   mtof: m => 440 * Math.pow(2, (m - 69) / 12),
 
+  // Chuông Pomodoro
+  chime(phase) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime, ns = phase === "break" ? [76, 79, 84] : [84, 79, 76];
+    ns.forEach((n, i) => {
+      this.tone(this.master, this.mtof(n), t + i * .22, 1.6, "sine", .12, .005);
+      this.tone(this.master, this.mtof(n + 12), t + i * .22, .8, "sine", .03, .005);
+    });
+  },
   // Tiếng thú cưng
   petSound(type) {
     if (!this.ctx) return;
@@ -625,7 +654,7 @@ function ytLoad(slot, input) {
 function connect() {
   const url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
   ws = new WebSocket(url);
-  ws.onopen = () => send({t: "join", room: roomCode, name: myName, color: myColor, pet: myPet});
+  ws.onopen = () => send({t: "join", room: roomCode, name: myName, color: myColor, pet: myPet, kind: wantKind});
   ws.onmessage = e => handle(JSON.parse(e.data));
   ws.onclose = () => {
     if (!joined && !wantReconnect) { $("#lobbyErr").textContent = "Không kết nối được server 😢"; return; }
@@ -651,6 +680,9 @@ function handle(m) {
       players.clear();
       m.state.players.forEach(addPlayer);
       room.tv = m.state.tv; room.music = m.state.music; room.light = m.state.light;
+      roomKind = m.state.kind || "sleep"; pomo = m.state.pomo; lastPill = "";
+      document.body.classList.toggle("study", study());
+      $("#pomoPill").classList.toggle("hidden", !study());
       lightLevel = room.light ? 0 : 1;
       clockOff = m.state.now - Date.now() / 1000;
       media = m.state.media || {tv: null, music: null};
@@ -664,7 +696,7 @@ function handle(m) {
       $("#roomCode").textContent = roomCode;
       resize();
       syncMusic(); updateUI();
-      log(`Chào <b>${esc(myName)}</b>! Chạm vào giường để đi ngủ 🛏️`);
+      log(`Chào <b>${esc(myName)}</b>! ` + (study() ? "Chạm vào bàn để ngồi học 📚, bấm 🍅 để bật Pomodoro" : "Chạm vào giường để đi ngủ 🛏️"));
       if (players.size === 1) log(`🐾 Mèo <b>Mun</b> của phòng sẽ ở cùng bạn. Chạm để vuốt ve nhé!`);
       break;
     }
@@ -672,7 +704,8 @@ function handle(m) {
     case "leave": log(`<b>${esc(nameOf(m.id))}</b> đã rời phòng`); players.delete(m.id); updateUI(); break;
     case "move": {
       const p = players.get(m.id); if (!p) break;
-      if (p.bed != null) {          // thức dậy, bước ra khỏi giường
+      if (p.bed != null) {          // thức dậy / đứng dậy khỏi bàn
+        if (p.sat_at) { p.studied = (p.studied || 0) + serverNow() - p.sat_at; p.sat_at = null; }
         const s = bedSpot(p.bed);
         p.x = s.x; p.y = Math.min(FLOOR.y2, BEDS[p.bed].y + BED_H + 8);
         p.bed = null; p.lying = false;
@@ -682,6 +715,8 @@ function handle(m) {
     case "sleep": {
       const p = players.get(m.id); if (!p) break;
       if (p.lying && p.bed != null) { const s = bedSpot(p.bed); p.x = s.x; p.y = BEDS[p.bed].y + BED_H + 8; }
+      if (p.sat_at) p.studied = (p.studied || 0) + m.at - p.sat_at;
+      p.sat_at = study() ? m.at : null;
       p.bed = m.bed; p.lying = false;
       const s = bedSpot(m.bed); p.tx = s.x; p.ty = s.y;
       updateUI(); break;
@@ -699,6 +734,19 @@ function handle(m) {
       updateUI(); break;
     }
     case "roompet": setRoomPet(m.pet); break;
+    case "pomo": {
+      clockOff = m.now - Date.now() / 1000; pomo = m.pomo;
+      if (m.a === "switch") {
+        Sound.chime(pomo.phase);
+        const msg = pomo.phase === "break" ? `☕ Hết giờ học! Nghỉ ${pomo.brk} phút nào` : `📚 Hết giờ nghỉ, vào học thôi! (hiệp ${pomo.round})`;
+        toast(msg); log(msg);
+      } else {
+        log(`<b>${esc(m.by)}</b> ` + {start: "bắt đầu Pomodoro ▶", pause: "tạm dừng Pomodoro ⏸", reset: "đặt lại Pomodoro ↺",
+          set: `đổi Pomodoro thành ${pomo.focus}/${pomo.brk} phút`}[m.a]);
+      }
+      break;
+    }
+    case "status": { const p = players.get(m.id); if (p) p.status = m.text; break; }
     case "pat": {
       const now = performance.now() / 1000;
       let pet, type, name, owner = null;
@@ -750,7 +798,9 @@ function updateUI() {
   const sleeping = m && m.bed != null;
   $("#count").textContent = players.size;
   $("#sleepCount").textContent = [...players.values()].filter(p => p.bed != null).length;
-  $("#sleepBtn").innerHTML = sleeping ? "🌅<span>Dậy</span>" : "😴<span>Ngủ</span>";
+  const st = study();
+  $("#sleepIcon").textContent = st ? "📚" : "😴";
+  $("#sleepBtn").innerHTML = sleeping ? (st ? "🚶<span>Đứng dậy</span>" : "🌅<span>Dậy</span>") : (st ? "📚<span>Học</span>" : "😴<span>Ngủ</span>");
   $("#sleepBtn").classList.toggle("on", !!sleeping);
   $("#lightBtn").classList.toggle("on", room.light);
   $("#lightBtn").innerHTML = room.light ? "💡<span>Đèn</span>" : "🌑<span>Tắt đèn</span>";
@@ -828,6 +878,43 @@ function openEmotes() {
     `<div class="emojis">${EMOTES.map(e => `<button>${e}</button>`).join("")}</div>`,
     el => el.querySelectorAll("button").forEach(b => b.onclick = () => { send({t: "emote", e: b.textContent}); closeSheet(); }));
 }
+// ================== POMODORO ==================
+const pomoLeft = () => !pomo ? 0 : pomo.running ? Math.max(0, pomo.end - serverNow()) : pomo.left;
+const studiedOf = p => (p.studied || 0) + (p.sat_at ? Math.max(0, serverNow() - p.sat_at) : 0);
+function updatePill() {
+  if (!study() || !pomo) return;
+  const txt = `${pomo.phase === "focus" ? "🍅" : "☕"} ${fmtTime(pomoLeft())}${pomo.running ? "" : " ⏸"}`;
+  if (txt === lastPill) return;
+  lastPill = txt;
+  const el = $("#pomoPill"); el.textContent = txt;
+  el.className = `pill ${pomo.phase}${pomo.running ? "" : " paused"}`;
+}
+function openPomo() {
+  const mm = me();
+  const list = [...players.values()].sort((a, b) => studiedOf(b) - studiedOf(a));
+  const rows = list.map((p, i) => `<div><span>${i === 0 && studiedOf(p) >= 60 ? "👑 " : ""}${esc(p.name)}${p.status ? ` · <small>${esc(p.status)}</small>` : ""}</span><b>${fmtTime(studiedOf(p))}</b></div>`).join("");
+  openSheet("🍅 Pomodoro cả phòng",
+    `<div class="pomoBig">${fmtTime(pomoLeft())}</div>
+     <div class="pomoSub">${pomo.phase === "focus" ? "📚 Giờ tập trung" : "☕ Giờ nghỉ"} · hiệp ${pomo.round} · ${pomo.focus}/${pomo.brk} phút${pomo.running ? "" : " · đang dừng"}</div>
+     <div class="grid"><button class="opt" id="pStart">${pomo.running ? "⏸ Tạm dừng" : "▶ Bắt đầu"}</button><button class="opt" id="pReset">↺ Đặt lại</button></div>
+     <div class="sec">Thời lượng (phút học / phút nghỉ)</div>
+     <div class="timers">${[[25, 5], [50, 10], [45, 15], [15, 5]].map(([f, b]) => `<button data-f="${f}" data-b="${b}" class="${pomo.focus === f && pomo.brk === b ? "cur" : ""}">${f}/${b}</button>`).join("")}</div>
+     <div class="sec">Bạn đang học gì?</div>
+     <div class="ytrow"><input id="stIn" maxlength="20" placeholder="VD: Toán, IELTS, Code…" autocomplete="off"><button id="stGo" style="background:var(--accent2)">Lưu</button></div>
+     <div class="sec">⏱ Thời gian ngồi học</div>
+     <div class="board">${rows}</div>`,
+    el => {
+      el.querySelector("#stIn").value = (mm && mm.status) || "";
+      el.querySelector("#pStart").onclick = () => { Sound.ensure(); send({t: "pomo", a: pomo.running ? "pause" : "start"}); closeSheet(); };
+      el.querySelector("#pReset").onclick = () => { send({t: "pomo", a: "reset"}); closeSheet(); };
+      el.querySelectorAll("[data-f]").forEach(b => b.onclick = () => { send({t: "pomo", a: "set", focus: +b.dataset.f, brk: +b.dataset.b}); closeSheet(); });
+      const save = () => { send({t: "status", text: el.querySelector("#stIn").value.trim()}); closeSheet(); };
+      el.querySelector("#stGo").onclick = save;
+      el.querySelector("#stIn").onkeydown = e => { if (e.key === "Enter") save(); };
+    });
+}
+$("#pomoPill").onclick = () => { if (pomo) openPomo(); };
+
 function toggleSleep() {
   const m = me(); if (!m) return;
   if (m.bed != null) { send({t: "move", x: m.x, y: Math.min(FLOOR.y2, BEDS[m.bed].y + BED_H + 20)}); return; }
@@ -837,7 +924,7 @@ function toggleSleep() {
     const s = bedSpot(i), d = Math.hypot(s.x - m.x, s.y - m.y);
     if (d < bd) { bd = d; best = i; }
   });
-  if (best < 0) toast("Hết giường rồi! 😅"); else send({t: "sleep", bed: best});
+  if (best < 0) toast(study() ? "Hết bàn rồi! 😅" : "Hết giường rồi! 😅"); else send({t: "sleep", bed: best});
 }
 
 $("#hud").addEventListener("click", e => {
@@ -861,7 +948,7 @@ $("#chatInput").addEventListener("keydown", e => { if (e.key === "Enter") sendCh
 
 $("#shareBtn").onclick = async () => {
   const url = location.origin + "/?room=" + roomCode;
-  const text = `Vào phòng ${roomCode} ngủ cùng mình nè 🌙`;
+  const text = study() ? `Vào phòng ${roomCode} học cùng mình nè 📚` : `Vào phòng ${roomCode} ngủ cùng mình nè 🌙`;
   try {
     if (navigator.share) { await navigator.share({title: "Ngủ Cùng Nhau", text, url}); return; }
     await navigator.clipboard.writeText(url); toast("Đã copy link mời! 📋");
@@ -885,7 +972,7 @@ canvas.addEventListener("pointerdown", e => {
   for (let i = 0; i < BEDS.length; i++) {
     if (inRect(x, y, {...BEDS[i], w: BED_W, h: BED_H})) {
       const o = bedOwner(i);
-      if (o && o.id !== myId) { toast(`Giường của ${o.name} rồi 😴`); return; }
+      if (o && o.id !== myId) { toast(study() ? `Bàn của ${o.name} rồi 📚` : `Giường của ${o.name} rồi 😴`); return; }
       if (!o) { send({t: "sleep", bed: i}); return; }
       return; // giường của mình
     }
@@ -936,7 +1023,7 @@ const city = (() => { const r = srand(99); let x = 0, a = []; while (x < 1) { co
 
 function drawRoom(t) {
   // Wall
-  ctx.fillStyle = "#2c2656"; ctx.fillRect(-50, -400, W + 100, 565);
+  ctx.fillStyle = study() ? "#22404d" : "#2c2656"; ctx.fillRect(-50, -400, W + 100, 565);
   ctx.fillStyle = "rgba(255,255,255,.03)";
   for (let x = 0; x < W; x += 24) ctx.fillRect(x, -400, 12, 560);
   // Floor
@@ -948,7 +1035,7 @@ function drawRoom(t) {
   }
   ctx.fillStyle = "#1c1838"; ctx.fillRect(-50, 156, W + 100, 9);   // chân tường
   // Rug
-  ctx.fillStyle = "rgba(63,78,140,.55)"; rr(ctx, 70, 205, 220, 320, 40); ctx.fill();
+  ctx.fillStyle = study() ? "rgba(70,130,100,.45)" : "rgba(63,78,140,.55)"; rr(ctx, 70, 205, 220, 320, 40); ctx.fill();
   ctx.strokeStyle = "rgba(255,210,122,.25)"; ctx.lineWidth = 3; rr(ctx, 80, 215, 200, 300, 32); ctx.stroke();
 
   // Window + moon
@@ -1107,7 +1194,46 @@ function chCity(x, y, w, h, t) {
   }
 }
 
+function drawDesk(i, t) {
+  const b = BEDS[i], o = bedOwner(i), sit = o && o.lying, x = b.x, y = b.y;
+  ctx.fillStyle = "rgba(0,0,0,.25)"; rr(ctx, x + 6, y + 12, 100, 44, 6); ctx.fill();
+  ctx.fillStyle = "#8d5e3c"; rr(ctx, x + 3, y + 6, 104, 46, 6); ctx.fill();          // mặt bàn
+  ctx.fillStyle = "#b27d52"; rr(ctx, x + 3, y + 6, 104, 40, 6); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,.08)"; ctx.fillRect(x + 8, y + 10, 94, 2);
+  if (sit) { ctx.fillStyle = "rgba(255,210,122,.2)"; ctx.beginPath(); ctx.ellipse(x + 36, y + 30, 30, 15, 0, 0, 7); ctx.fill(); }
+  // đèn bàn
+  ctx.fillStyle = "#3a3a46"; ctx.beginPath(); ctx.arc(x + 15, y + 37, 6, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#3a3a46"; ctx.lineWidth = 2; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(x + 15, y + 35); ctx.lineTo(x + 12, y + 21); ctx.lineTo(x + 21, y + 14); ctx.stroke();
+  ctx.fillStyle = sit ? "#ffd27a" : "#5d5d72"; ctx.beginPath(); ctx.ellipse(x + 24, y + 17, 7, 4, .5, 0, 7); ctx.fill();
+  // laptop
+  ctx.fillStyle = "#c9ccd6"; rr(ctx, x + 38, y + 11, 36, 23, 3); ctx.fill();
+  ctx.fillStyle = sit ? "#2b4a7a" : "#3b3f4a"; rr(ctx, x + 41, y + 13, 30, 18, 2); ctx.fill();
+  if (sit) {
+    const cols = ["#7fdbff", "#ffd27a", "#b9f6ca", "#ffadc6"];
+    for (let k = 0; k < 4; k++) { ctx.fillStyle = cols[k]; ctx.fillRect(x + 44 + (k % 2) * 3, y + 16 + k * 3.5, 6 + ((k * 7 + i * 5 + Math.floor(t * 1.5)) % 14), 1.6); }
+  }
+  ctx.fillStyle = "#a9adb8"; rr(ctx, x + 36, y + 34, 40, 6, 2); ctx.fill();
+  // sách + cốc
+  ["#e76f51", "#2a9d8f", "#e9c46a"].forEach((c, k) => { ctx.fillStyle = c; ctx.fillRect(x + 82, y + 32 - k * 6, 19, 5); });
+  ctx.fillStyle = "#f4f1ea"; ctx.beginPath(); ctx.arc(x + 92, y + 14, 4.5, 0, 7); ctx.fill();
+  ctx.fillStyle = "#6b4226"; ctx.beginPath(); ctx.arc(x + 92, y + 14, 3, 0, 7); ctx.fill();
+  if (sit) {
+    ctx.strokeStyle = "rgba(255,255,255,.35)"; ctx.lineWidth = 1;
+    for (let k = 0; k < 2; k++) {
+      const ph = (t * .6 + k * .5) % 1; ctx.globalAlpha = Math.sin(ph * Math.PI);
+      ctx.beginPath(); ctx.moveTo(x + 90 + k * 3, y + 10 - ph * 10); ctx.quadraticCurveTo(x + 93 + k * 3, y + 6 - ph * 10, x + 90 + k * 3, y + 2 - ph * 10); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  // ghế + người ngồi (quay lưng lại, nhìn vào bàn)
+  ctx.fillStyle = "#4b3f72"; rr(ctx, x + 40, y + 58, 30, 24, 7); ctx.fill();
+  if (sit) drawPlayer({...o, x: x + 55, y: y + 80 + Math.sin(t * 2 + i) * .4, walking: false, up: true}, t);
+  ctx.fillStyle = "#5c4f8a"; rr(ctx, x + 37, y + 78, 36, 9, 4); ctx.fill();
+}
+
 function drawBed(i, t) {
+  if (study()) { drawDesk(i, t); return; }
   const b = BEDS[i], o = bedOwner(i), lying = o && o.lying;
   ctx.fillStyle = "rgba(0,0,0,.25)"; rr(ctx, b.x + 3, b.y + 5, BED_W, BED_H, 10); ctx.fill();
   ctx.fillStyle = "#efe6d2"; rr(ctx, b.x, b.y, BED_W, BED_H, 10); ctx.fill();
@@ -1139,7 +1265,11 @@ function darken(hex, amt) {
 }
 function setRoomPet(pt) {
   roomPet.mode = pt.mode; roomPet.bed = pt.bed;
-  if (pt.mode === "sleep" && pt.bed != null) { const b = BEDS[pt.bed]; roomPet.tx = b.x + 84; roomPet.ty = b.y + BED_H - 12; }
+  if (pt.mode === "sleep" && pt.bed != null) {
+    const b = BEDS[pt.bed];
+    if (study()) { roomPet.tx = b.x + 66; roomPet.ty = b.y + 46; }        // nằm trên bàn học
+    else { roomPet.tx = b.x + 84; roomPet.ty = b.y + BED_H - 12; }
+  }
   else { roomPet.tx = pt.x; roomPet.ty = pt.y; }
 }
 function movePet(o, tx, ty, speed, dt) {
@@ -1157,7 +1287,10 @@ function updatePets(dt) {
     const o = p.petObj; if (!o) continue;
     if (p.walking && Math.abs(p.tx - p.x) > 2) o.side = p.tx > p.x ? -1 : 1;   // đi phía sau chủ
     let tx, ty, sleep = false;
-    if (p.bed != null && p.lying) { const b = BEDS[p.bed]; tx = b.x + 26; ty = b.y + BED_H - 12; sleep = true; }
+    if (p.bed != null && p.lying) {
+      const b = BEDS[p.bed]; sleep = true;
+      if (study()) { tx = b.x + 20; ty = b.y + 86; } else { tx = b.x + 26; ty = b.y + BED_H - 12; }
+    }
     else { tx = p.x + o.side * 18; ty = p.y + 3; }
     const far = Math.hypot(tx - o.x, ty - o.y) > 40;
     const arrived = movePet(o, tx, ty, far ? SPEED * 1.25 : SPEED * 0.95, dt);
@@ -1298,6 +1431,8 @@ function drawDarkness(t) {
   hole(64, 84, 120, .55);                                         // ánh trăng
   if (room.tv.on) hole(184, 90, 260,.85 + Math.sin(t * 7) * .05 + Math.sin(t * 13) * .04);
   if (room.music.on) hole(310, 114, 55, .45);
+  if (study()) for (const p of players.values())                  // đèn bàn học
+    if (p.lying && p.bed != null) { const b = BEDS[p.bed]; hole(b.x + 32, b.y + 32, 75, .8); }
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(dark, 0, 0); ctx.restore();
   if (room.tv.on) {                                               // ánh màu TV
     const c = room.tv.ch >= 0 ? TV_CH[room.tv.ch].glow : "170,180,255", g = ctx.createRadialGradient(184, 90, 0, 184, 90, 280);
@@ -1372,8 +1507,8 @@ function frame() {
     let hx, hy;
     if (p.lying) {
       const b = BEDS[p.bed]; hx = b.x + BED_W / 2; hy = b.y + 6;
-      label(p.name, hx, b.y - 7, p.id === myId ? "#ffd27a" : "#fff");
-      for (let k = 0; k < 3; k++) {
+      label(p.name + (study() && p.status ? " · " + p.status : ""), hx, b.y - 7, p.id === myId ? "#ffd27a" : "#fff");
+      for (let k = 0; k < (study() ? 0 : 3); k++) {
         const ph = (t * .45 + k / 3 + p.bed * .13) % 1;
         ctx.font = `700 ${9 + ph * 8}px system-ui`; ctx.fillStyle = `rgba(200,210,255,${Math.sin(ph * Math.PI)})`;
         ctx.fillText("z", b.x + 80 + ph * 14 + Math.sin(ph * 6) * 3, b.y + 14 - ph * 30);
@@ -1395,7 +1530,7 @@ function frame() {
 
   // vignette khi mình đang ngủ
   const m = me();
-  if (m && m.lying) {
+  if (m && m.lying && !study()) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     const g = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, canvas.height * .25, canvas.width / 2, canvas.height / 2, canvas.height * .75);
     g.addColorStop(0, "rgba(0,0,10,0)"); g.addColorStop(1, `rgba(0,0,10,${.45 + Math.sin(t * .8) * .05})`);
@@ -1404,14 +1539,18 @@ function frame() {
 
   // banner ngủ cùng nhau
   if (joined) {
-    const all = [...players.values()], allSleep = all.length > 0 && all.every(p => p.lying) && !room.light;
+    const st = study(), all = [...players.values()];
+    const allSleep = all.length > 0 && all.every(p => p.lying) && (st || !room.light);
     if (allSleep) {
       if (togetherSince == null) togetherSince = t;
       $("#together").classList.remove("hidden");
-      $("#togetherText").textContent = all.length > 1 ? `Cả ${all.length} người đang ngủ cùng nhau` : "Đang ngủ ngon";
+      $("#togetherText").textContent = st
+        ? (all.length > 1 ? `📚 Cả ${all.length} người đang học cùng nhau` : "📚 Đang tập trung học")
+        : (all.length > 1 ? `🌙 Cả ${all.length} người đang ngủ cùng nhau` : "🌙 Đang ngủ ngon");
       $("#togetherTime").textContent = fmtTime(t - togetherSince);
     } else if (togetherSince != null) { togetherSince = null; $("#together").classList.add("hidden"); }
   }
+  updatePill();
   requestAnimationFrame(frame);
 }
 
@@ -1454,12 +1593,14 @@ function frame() {
     Sound.ensure();                // mở khoá âm thanh trong lúc người dùng bấm
     connect();
   };
-  $("#joinBtn").onclick = () => go($("#roomInput").value);
-  $("#newBtn").onclick = () => {
+  $("#joinBtn").onclick = () => { wantKind = "sleep"; go($("#roomInput").value); };
+  const newRoom = kind => {
     const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s = "";
     for (let i = 0; i < 5; i++) s += A[Math.random() * A.length | 0];
-    $("#roomInput").value = s; go(s);
+    wantKind = kind; $("#roomInput").value = s; go(s);
   };
+  $("#newBtn").onclick = () => newRoom("sleep");
+  $("#newStudyBtn").onclick = () => newRoom("study");
   $("#roomInput").addEventListener("keydown", e => { if (e.key === "Enter") $("#joinBtn").click(); });
 })();
 

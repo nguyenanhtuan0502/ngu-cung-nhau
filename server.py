@@ -32,8 +32,9 @@ FLOOR = (16, 175, 344, 575)  # x1, y1, x2, y2
 rooms = {}
 
 
-def new_room():
+def new_room(kind="sleep"):
     return {
+        "kind": kind,  # sleep = phòng ngủ, study = phòng học
         "players": {},
         "sockets": {},
         "beds": [None] * BEDS,
@@ -47,7 +48,38 @@ def new_room():
         # Mèo Mun của phòng: mode = walk | sit | sleep
         "pet": {"x": 300.0, "y": 200.0, "mode": "sit", "bed": None},
         "_pet_task": None,
+        # Pomodoro chung của phòng học
+        "pomo": {"phase": "focus", "running": False, "end": None, "left": 25 * 60,
+                 "focus": 25, "brk": 5, "round": 1},
+        "_pomo_task": None,
     }
+
+
+def cancel_pomo(room):
+    if room["_pomo_task"]:
+        room["_pomo_task"].cancel()
+    room["_pomo_task"] = None
+
+
+async def pomo_loop(room):
+    """Tự chuyển giữa giờ học và giờ nghỉ khi hết giờ."""
+    try:
+        while room["pomo"]["running"]:
+            await asyncio.sleep(max(0, room["pomo"]["end"] - time.time()))
+            p = room["pomo"]
+            if not p["running"]:
+                return
+            if p["phase"] == "focus":
+                p["phase"], dur = "break", p["brk"]
+            else:
+                p["phase"], dur = "focus", p["focus"]
+                p["round"] += 1
+            p["left"] = dur * 60
+            p["end"] = time.time() + p["left"]
+            await broadcast(room, {"t": "pomo", "pomo": p, "now": time.time(),
+                                   "by": "⏰", "a": "switch"})
+    except asyncio.CancelledError:
+        pass
 
 
 async def room_pet_loop(room):
@@ -105,6 +137,8 @@ async def tv_timer_task(room, delay):
 
 def public_state(room):
     return {
+        "kind": room["kind"],
+        "pomo": room["pomo"],
         "players": list(room["players"].values()),
         "beds": room["beds"],
         "tv": room["tv"],
@@ -147,8 +181,12 @@ def free_bed(room, pid):
     for i, owner in enumerate(beds):
         if owner == pid:
             beds[i] = None
-    if pid in room["players"]:
-        room["players"][pid]["bed"] = None
+    player = room["players"].get(pid)
+    if player:
+        player["bed"] = None
+        if player.get("sat_at"):           # cộng dồn thời gian ngồi học
+            player["studied"] += time.time() - player["sat_at"]
+            player["sat_at"] = None
 
 
 async def ws_handler(request):
@@ -176,7 +214,8 @@ async def ws_handler(request):
             if t == "join" and pid is None:
                 code = clean_code(d.get("room")) or "PHONG"
                 if code not in rooms:
-                    rooms[code] = new_room()
+                    kind = d.get("kind") if d.get("kind") in ("sleep", "study") else "sleep"
+                    rooms[code] = new_room(kind)
                     rooms[code]["_pet_task"] = asyncio.create_task(room_pet_loop(rooms[code]))
                 room = rooms[code]
                 if len(room["players"]) >= MAX_PLAYERS:
@@ -196,6 +235,9 @@ async def ws_handler(request):
                     "y": random.randint(535, 565),
                     "bed": None,
                     "pet": pet,
+                    "status": "",
+                    "studied": 0.0,
+                    "sat_at": None,
                 }
                 room["players"][pid] = player
                 room["sockets"][pid] = ws
@@ -225,12 +267,15 @@ async def ws_handler(request):
                 if not isinstance(b, int) or not 0 <= b < BEDS:
                     continue
                 if room["beds"][b] not in (None, pid):
-                    await ws.send_json({"t": "error", "msg": "Giường này có người rồi!"})
+                    await ws.send_json({"t": "error", "msg": "Chỗ này có người rồi!"})
                     continue
                 free_bed(room, pid)
                 room["beds"][b] = pid
                 me["bed"] = b
-                await broadcast(room, {"t": "sleep", "id": pid, "bed": b})
+                now = time.time()
+                if room["kind"] == "study":
+                    me["sat_at"] = now
+                await broadcast(room, {"t": "sleep", "id": pid, "bed": b, "at": now})
 
             elif t == "tv":
                 on = bool(d.get("on"))
@@ -308,6 +353,34 @@ async def ws_handler(request):
                     last_chat = now
                     await broadcast(room, {"t": "chat", "id": pid, "text": text})
 
+            elif t == "pomo":
+                a = d.get("a")
+                p = room["pomo"]
+                now = time.time()
+                if a == "start" and not p["running"]:
+                    cancel_pomo(room)
+                    p["running"], p["end"] = True, now + p["left"]
+                    room["_pomo_task"] = asyncio.create_task(pomo_loop(room))
+                elif a == "pause" and p["running"]:
+                    cancel_pomo(room)
+                    p.update(left=max(0.0, p["end"] - now), running=False, end=None)
+                elif a == "reset":
+                    cancel_pomo(room)
+                    p.update(phase="focus", running=False, end=None, left=p["focus"] * 60, round=1)
+                elif a == "set":
+                    f, b = d.get("focus"), d.get("brk")
+                    if f not in (15, 25, 45, 50) or b not in (5, 10, 15):
+                        continue
+                    cancel_pomo(room)
+                    p.update(focus=f, brk=b, phase="focus", running=False, end=None, left=f * 60, round=1)
+                else:
+                    continue
+                await broadcast(room, {"t": "pomo", "pomo": p, "now": now, "by": me["name"], "a": a})
+
+            elif t == "status":
+                me["status"] = clean_text(d.get("text"), 20)
+                await broadcast(room, {"t": "status", "id": pid, "text": me["status"]})
+
             elif t == "pat":
                 target = d.get("target")
                 now = time.monotonic()
@@ -333,6 +406,7 @@ async def ws_handler(request):
                 cancel_tv_timer(room)
                 if room["_pet_task"]:
                     room["_pet_task"].cancel()
+                cancel_pomo(room)
                 del rooms[code]
     return ws
 
