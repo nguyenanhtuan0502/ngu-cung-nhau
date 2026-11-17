@@ -214,7 +214,7 @@
     <label>Mã phòng</label>
     <input id="roomInput" maxlength="8" placeholder="VD: MEOW" autocomplete="off">
     <button id="joinBtn" class="primary">Vào phòng</button>
-    <div class="newRow"><button id="newBtn" class="ghost">🛏️ Tạo phòng ngủ</button><button id="newStudyBtn" class="ghost">📚 Tạo phòng học</button></div>
+    <div class="newRow"><button id="newBtn" class="ghost">🛏️ Nhà mới · vào phòng ngủ</button><button id="newStudyBtn" class="ghost">📚 Nhà mới · vào phòng học</button></div>
     <p id="lobbyErr"></p>
   </div>
 </div>
@@ -234,6 +234,8 @@ const TVR = {x: 114, y: 36, w: 140, h: 88};       // TV body
 const SCR = {x: 121, y: 43, w: 126, h: 74};       // TV screen
 const RADIO = {x: 286, y: 100, w: 48, h: 28};
 const SWITCH = {x: 264, y: 74, w: 13, h: 19};
+const DOOR = {x: 332, y: 513, w: 28, h: 62};          // cửa thông sang phòng bên cạnh
+const DOOR_SPOT = {x: 336, y: 546};
 const COLORS = ["#e76f51","#f4a261","#e9c46a","#2a9d8f","#4cc9f0","#7b2cbf","#f72585","#90be6d"];
 const TV_CH = [
   {name: "🔥 Lửa trại", glow: "255,138,61"},
@@ -269,8 +271,12 @@ let togetherSince = null;
 let taps = [], notes = [];
 let myPet = {type: "cat", name: ""};
 let roomKind = "sleep", wantKind = "sleep", pomo = null, lastPill = "";
+let areas = null, myArea = "sleep", pendingDoor = false;
+const AREA_NAME = {sleep: "🛏️ Phòng ngủ", study: "📚 Phòng học"};
+const otherArea = a => a === "sleep" ? "study" : "sleep";
+const here = () => [...players.values()].filter(p => p.area === myArea);
 const study = () => roomKind === "study";
-const roomPet = {x: 300, y: 200, tx: 300, ty: 200, mode: "sit", bed: null, dir: -1, walking: false, jumpAt: -9, hearts: [], nameUntil: 0};
+const roomPet = {x: 300, y: 200, tx: 300, ty: 200, mode: "sit", bed: null, area: "", dir: -1, walking: false, jumpAt: -9, hearts: [], nameUntil: 0};
 let joined = false, wantReconnect = false;
 
 // ================== HELPERS ==================
@@ -288,7 +294,7 @@ function lighten(hex, amt) {
   return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
 }
 function bedSpot(b) { return {x: BEDS[b].x + BED_W / 2, y: BEDS[b].y + (roomKind === "study" ? 80 : 62)}; }
-function bedOwner(b) { for (const p of players.values()) if (p.bed === b) return p; return null; }
+function bedOwner(b) { for (const p of players.values()) if (p.bed === b && p.area === myArea) return p; return null; }
 function me() { return players.get(myId); }
 function fmtTime(s) {
   s = Math.floor(s); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, ss = s % 60;
@@ -679,28 +685,34 @@ function handle(m) {
       myId = m.id; roomCode = m.room; joined = true; wantReconnect = false;
       players.clear();
       m.state.players.forEach(addPlayer);
-      room.tv = m.state.tv; room.music = m.state.music; room.light = m.state.light;
-      roomKind = m.state.kind || "sleep"; pomo = m.state.pomo; lastPill = "";
-      document.body.classList.toggle("study", study());
-      $("#pomoPill").classList.toggle("hidden", !study());
-      lightLevel = room.light ? 0 : 1;
       clockOff = m.state.now - Date.now() / 1000;
-      media = m.state.media || {tv: null, music: null};
-      tvTimerEnd = m.state.tvTimer || null;
+      areas = m.state.areas; pomo = m.state.pomo;
+      setArea(players.get(myId).area);
       if (m.state.pet) { setRoomPet(m.state.pet); roomPet.x = roomPet.tx; roomPet.y = roomPet.ty; }
       $("#volCtl").classList.remove("hidden");
-      applyMedia("tv"); applyMedia("music");
-      history.replaceState(null, "", "?room=" + roomCode);
       $("#lobby").classList.add("hidden");
       ["#top", "#hud"].forEach(s => $(s).classList.remove("hidden"));
       $("#roomCode").textContent = roomCode;
       resize();
-      syncMusic(); updateUI();
+      updateUI();
       log(`Chào <b>${esc(myName)}</b>! ` + (study() ? "Chạm vào bàn để ngồi học 📚, bấm 🍅 để bật Pomodoro" : "Chạm vào giường để đi ngủ 🛏️"));
+      log(`🚪 Cửa bên phải dẫn sang ${AREA_NAME[otherArea(myArea)]}`);
       if (players.size === 1) log(`🐾 Mèo <b>Mun</b> của phòng sẽ ở cùng bạn. Chạm để vuốt ve nhé!`);
       break;
     }
-    case "join": addPlayer(m.p); log(`<b>${esc(m.p.name)}</b> vừa vào phòng 👋`); updateUI(); break;
+    case "join": addPlayer(m.p); log(`<b>${esc(m.p.name)}</b> vừa vào nhà (${AREA_NAME[m.p.area]}) 👋`); updateUI(); break;
+    case "area": {
+      const p = players.get(m.id); if (!p) break;
+      if (p.sat_at) { p.studied = (p.studied || 0) + serverNow() - p.sat_at; p.sat_at = null; }
+      const from = p.area;
+      p.bed = null; p.lying = false; p.area = m.area;
+      p.x = p.tx = m.x; p.y = p.ty = m.y; p.walking = false;
+      if (p.petObj) { p.petObj.x = m.x + 10; p.petObj.y = m.y + 3; }
+      if (m.id === myId) { setArea(m.area); log(`🚪 Bạn đã sang ${AREA_NAME[m.area]}`); }
+      else if (m.area === myArea) log(`<b>${esc(p.name)}</b> vừa sang đây 🚪`);
+      else if (from === myArea) log(`<b>${esc(p.name)}</b> đã sang ${AREA_NAME[m.area]} 🚪`);
+      updateUI(); break;
+    }
     case "leave": log(`<b>${esc(nameOf(m.id))}</b> đã rời phòng`); players.delete(m.id); updateUI(); break;
     case "move": {
       const p = players.get(m.id); if (!p) break;
@@ -716,19 +728,23 @@ function handle(m) {
       const p = players.get(m.id); if (!p) break;
       if (p.lying && p.bed != null) { const s = bedSpot(p.bed); p.x = s.x; p.y = BEDS[p.bed].y + BED_H + 8; }
       if (p.sat_at) p.studied = (p.studied || 0) + m.at - p.sat_at;
-      p.sat_at = study() ? m.at : null;
+      p.sat_at = p.area === "study" ? m.at : null;
       p.bed = m.bed; p.lying = false;
       const s = bedSpot(m.bed); p.tx = s.x; p.ty = s.y;
       updateUI(); break;
     }
     case "media": {
       clockOff = m.now - Date.now() / 1000;
-      media[m.slot] = m.media;
-      const where = m.slot === "tv" ? "trên TV" : "trên radio";
+      const A = areas[m.area];
+      A.media[m.slot] = m.media;
       if (m.slot === "tv") {
-        if (m.a === "load") { room.tv = {on: true, ch: -1}; tvSwitchAt = performance.now() / 1000; }
-        if (m.a === "stop") room.tv.on = false;
-      } else if (m.a === "load") { room.music.on = false; syncMusic(); $("#ytMusic").classList.remove("mini"); }
+        if (m.a === "load") A.tv = {on: true, ch: -1};
+        if (m.a === "stop") { A.tv.on = false; A.tvTimer = null; }
+      } else if (m.a === "load") A.music.on = false;
+      if (m.area !== myArea) break;
+      if (m.slot === "tv") { tvSwitchAt = performance.now() / 1000; if (m.a === "stop") tvTimerEnd = null; }
+      else if (m.a === "load") { syncMusic(); $("#ytMusic").classList.remove("mini"); }
+      const where = m.slot === "tv" ? "trên TV" : "trên radio";
       applyMedia(m.slot);
       log(`<b>${esc(m.by)}</b> ${{load: "mở YouTube", pause: "tạm dừng YouTube", play: "tiếp tục YouTube", stop: "tắt YouTube"}[m.a]} ${where}`);
       updateUI(); break;
@@ -736,6 +752,7 @@ function handle(m) {
     case "roompet": setRoomPet(m.pet); break;
     case "pomo": {
       clockOff = m.now - Date.now() / 1000; pomo = m.pomo;
+      if (myArea !== "study") break;                 // không làm phiền người đang ngủ
       if (m.a === "switch") {
         Sound.chime(pomo.phase);
         const msg = pomo.phase === "break" ? `☕ Hết giờ học! Nghỉ ${pomo.brk} phút nào` : `📚 Hết giờ nghỉ, vào học thôi! (hiệp ${pomo.round})`;
@@ -755,6 +772,7 @@ function handle(m) {
         owner = players.get(m.target); if (!owner || !owner.petObj) break;
         pet = owner.petObj; type = owner.pet.type; name = owner.pet.name;
       }
+      if ((owner ? owner.area : roomPet.area) !== myArea) break;
       pet.jumpAt = now; pet.nameUntil = now + 2.5; pet.patBy = m.by;
       for (let i = 0; i < 3; i++) pet.hearts.push({t0: now + i * 0.15, dx: (Math.random() - .5) * 14});
       Sound.petSound(type);
@@ -762,28 +780,37 @@ function handle(m) {
     }
     case "tvtimer":
       if (m.now) clockOff = m.now - Date.now() / 1000;
+      areas[m.area].tvTimer = m.end;
+      if (m.area !== myArea) break;
       tvTimerEnd = m.end;
       if (m.end) log(`<b>${esc(m.by)}</b> hẹn tắt TV sau ${Math.round((m.end - m.now) / 60)} phút ⏰`);
       else if (!m.silent && m.by !== "⏰ Hẹn giờ") log(`<b>${esc(m.by)}</b> đã hủy hẹn giờ tắt TV`);
       break;
-    case "tv":
-      room.tv = m.tv; tvSwitchAt = performance.now() / 1000;
-      if (media.tv) { media.tv = null; applyMedia("tv"); }
+    case "tv": {
+      const A = areas[m.area];
+      A.tv = m.tv; A.media.tv = null;
+      if (m.area !== myArea) break;
+      tvSwitchAt = performance.now() / 1000; applyMedia("tv");
       log(m.tv.on ? `<b>${esc(m.by)}</b> mở TV: ${TV_CH[m.tv.ch].name}` : `<b>${esc(m.by)}</b> đã tắt TV`);
       updateUI(); break;
-    case "music":
-      room.music = m.music; syncMusic();
-      if (m.music.on && media.music) { media.music = null; applyMedia("music"); }
+    }
+    case "music": {
+      const A = areas[m.area];
+      A.music = m.music; if (m.music.on) A.media.music = null;
+      if (m.area !== myArea) break;
+      syncMusic(); applyMedia("music");
       log(m.music.on ? `<b>${esc(m.by)}</b> bật nhạc: ${TRACKS[m.music.track]}` : `<b>${esc(m.by)}</b> đã tắt nhạc`);
       updateUI(); break;
+    }
     case "light":
-      room.light = m.on;
+      areas[m.area].light = m.on;
+      if (m.area !== myArea) break;
       log(m.on ? `<b>${esc(m.by)}</b> bật đèn 💡` : `<b>${esc(m.by)}</b> tắt đèn… chúc ngủ ngon 🌙`);
       updateUI(); break;
     case "chat": {
       const p = players.get(m.id); if (!p) break;
       p.bubble = {text: m.text, until: performance.now() / 1000 + 6};
-      log(`<b>${esc(p.name)}:</b> ${esc(m.text)}`); break;
+      log(`<b>${esc(p.name)}${p.area !== myArea ? " (" + AREA_NAME[p.area].split(" ")[0] + ")" : ""}:</b> ${esc(m.text)}`); break;
     }
     case "emote": { const p = players.get(m.id); if (p) p.emote = {e: m.e, until: performance.now() / 1000 + 3, at: performance.now() / 1000}; break; }
     case "error":
@@ -792,12 +819,31 @@ function handle(m) {
   }
 }
 
+// ================== 2 PHÒNG THÔNG NHAU ==================
+function setArea(a) {
+  myArea = roomKind = wantKind = a;
+  const A = areas[a];
+  room = A; media = A.media; tvTimerEnd = A.tvTimer || null;
+  lightLevel = room.light ? 0 : 1; lastPill = ""; tvBig = false; pendingDoor = false;
+  document.body.classList.toggle("study", study());
+  $("#pomoPill").classList.toggle("hidden", !study());
+  history.replaceState(null, "", `?room=${roomCode}&area=${a}`);
+  syncMusic(); applyMedia("tv"); applyMedia("music");
+  updateUI();
+}
+function goDoor() {
+  const m = me(); if (!m) return;
+  pendingDoor = true;
+  taps.push({x: DOOR_SPOT.x, y: DOOR_SPOT.y, t: performance.now() / 1000});
+  send({t: "move", x: DOOR_SPOT.x, y: DOOR_SPOT.y});
+}
+
 // ================== UI ==================
 function updateUI() {
   const m = me();
   const sleeping = m && m.bed != null;
   $("#count").textContent = players.size;
-  $("#sleepCount").textContent = [...players.values()].filter(p => p.bed != null).length;
+  $("#sleepCount").textContent = here().filter(p => p.bed != null).length;
   const st = study();
   $("#sleepIcon").textContent = st ? "📚" : "😴";
   $("#sleepBtn").innerHTML = sleeping ? (st ? "🚶<span>Đứng dậy</span>" : "🌅<span>Dậy</span>") : (st ? "📚<span>Học</span>" : "😴<span>Ngủ</span>");
@@ -947,7 +993,7 @@ $("#chatSend").onclick = sendChat;
 $("#chatInput").addEventListener("keydown", e => { if (e.key === "Enter") sendChat(); if (e.key === "Escape") $("#chatBar").classList.add("hidden"); });
 
 $("#shareBtn").onclick = async () => {
-  const url = location.origin + "/?room=" + roomCode;
+  const url = `${location.origin}/?room=${roomCode}&area=${myArea}`;
   const text = study() ? `Vào phòng ${roomCode} học cùng mình nè 📚` : `Vào phòng ${roomCode} ngủ cùng mình nè 🌙`;
   try {
     if (navigator.share) { await navigator.share({title: "Ngủ Cùng Nhau", text, url}); return; }
@@ -963,9 +1009,11 @@ canvas.addEventListener("pointerdown", e => {
   if (!$("#chatBar").classList.contains("hidden")) { $("#chatBar").classList.add("hidden"); $("#chatInput").blur(); }
   const x = (e.clientX - ox) / scale, y = (e.clientY - oy) / scale;
   const m = me(); if (!m) return;
+  pendingDoor = false;
   const hitPet = o => Math.hypot(x - o.x, y - (o.y - 10)) < 16;    // vuốt ve thú cưng
-  for (const p of players.values()) if (p.petObj && hitPet(p.petObj)) { send({t: "pat", target: p.id}); return; }
-  if (hitPet(roomPet)) { send({t: "pat", target: "room"}); return; }
+  for (const p of here()) if (p.petObj && hitPet(p.petObj)) { send({t: "pat", target: p.id}); return; }
+  if (roomPet.area === myArea && hitPet(roomPet)) { send({t: "pat", target: "room"}); return; }
+  if (inRect(x, y, DOOR, 10)) { goDoor(); return; }
   if (inRect(x, y, SWITCH, 10)) { send({t: "light", on: !room.light}); return; }
   if (inRect(x, y, TVR, 4)) { openTV(); return; }
   if (inRect(x, y, RADIO, 8)) { openMusic(); return; }
@@ -1194,6 +1242,21 @@ function chCity(x, y, w, h, t) {
   }
 }
 
+function drawDoor(t) {
+  const {x, y, w, h} = DOOR, other = otherArea(myArea);
+  ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.fillRect(x - 4, y + 2, w + 4, h);
+  ctx.fillStyle = "#5a3d2b"; rr(ctx, x - 2, y - 3, w + 6, h + 6, 3); ctx.fill();            // khung cửa
+  const g = ctx.createLinearGradient(x, 0, x + w, 0);                                       // ánh sáng phòng bên kia
+  g.addColorStop(0, other === "study" ? "#2f5d6b" : "#3a3270"); g.addColorStop(1, other === "study" ? "#8fd3c7" : "#9b8cff");
+  ctx.fillStyle = g; ctx.fillRect(x + 2, y + 1, w - 2, h - 2);
+  ctx.fillStyle = "rgba(255,240,200," + (.12 + Math.sin(t * 2) * .05) + ")"; ctx.fillRect(x + 2, y + 1, w - 2, h - 2);
+  ctx.fillStyle = "#8a5a3c"; ctx.save(); ctx.translate(x + 2, y + 1);                       // cánh cửa mở hé
+  ctx.transform(1, -.35, 0, 1, 0, 0); ctx.fillRect(-14, 0, 14, h - 2);
+  ctx.fillStyle = "#c9a36b"; ctx.beginPath(); ctx.arc(-10, h / 2, 1.8, 0, 7); ctx.fill(); ctx.restore();
+  ctx.fillStyle = "rgba(255,255,255,.5)"; ctx.font = "14px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(other === "study" ? "📚" : "🛏️", x + w / 2 + 1, y + h / 2);
+}
+
 function drawDesk(i, t) {
   const b = BEDS[i], o = bedOwner(i), sit = o && o.lying, x = b.x, y = b.y;
   ctx.fillStyle = "rgba(0,0,0,.25)"; rr(ctx, x + 6, y + 12, 100, 44, 6); ctx.fill();
@@ -1264,10 +1327,13 @@ function darken(hex, amt) {
   return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
 }
 function setRoomPet(pt) {
+  const area = pt.area || "sleep";
+  if (roomPet.area && roomPet.area !== area) { roomPet.x = DOOR_SPOT.x - 14; roomPet.y = DOOR_SPOT.y; }  // đi qua cửa
+  roomPet.area = area;
   roomPet.mode = pt.mode; roomPet.bed = pt.bed;
   if (pt.mode === "sleep" && pt.bed != null) {
     const b = BEDS[pt.bed];
-    if (study()) { roomPet.tx = b.x + 66; roomPet.ty = b.y + 46; }        // nằm trên bàn học
+    if (area === "study") { roomPet.tx = b.x + 66; roomPet.ty = b.y + 46; }        // nằm trên bàn học
     else { roomPet.tx = b.x + 84; roomPet.ty = b.y + BED_H - 12; }
   }
   else { roomPet.tx = pt.x; roomPet.ty = pt.y; }
@@ -1431,7 +1497,7 @@ function drawDarkness(t) {
   hole(64, 84, 120, .55);                                         // ánh trăng
   if (room.tv.on) hole(184, 90, 260,.85 + Math.sin(t * 7) * .05 + Math.sin(t * 13) * .04);
   if (room.music.on) hole(310, 114, 55, .45);
-  if (study()) for (const p of players.values())                  // đèn bàn học
+  if (study()) for (const p of here())                            // đèn bàn học
     if (p.lying && p.bed != null) { const b = BEDS[p.bed]; hole(b.x + 32, b.y + 32, 75, .8); }
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(dark, 0, 0); ctx.restore();
   if (room.tv.on) {                                               // ánh màu TV
@@ -1459,6 +1525,10 @@ function frame() {
     }
   }
   updatePets(dt);
+  if (pendingDoor) {
+    const m = me();
+    if (m && !m.walking && Math.hypot(m.x - DOOR_SPOT.x, m.y - DOOR_SPOT.y) < 3) { pendingDoor = false; send({t: "area", area: otherArea(myArea)}); }
+  }
   const target = room.light ? 0 : 1;
   lightLevel += (target - lightLevel) * Math.min(1, dt * 2.5);
   if (room.music.on && (noteAcc += dt) > .7) {
@@ -1477,8 +1547,9 @@ function frame() {
   drawRoom(t);
   BEDS.forEach((_, i) => drawBed(i, t));
   taps.forEach(tp => { const a = (t - tp.t) / .6; ctx.strokeStyle = `rgba(255,210,122,${1 - a})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(tp.x, tp.y, 4 + a * 12, 2 + a * 5, 0, 0, 7); ctx.stroke(); });
+  drawDoor(t);
   const ents = [];                                                // vẽ theo thứ tự y
-  for (const p of players.values()) {
+  for (const p of here()) {
     if (!p.lying) ents.push({y: p.y, f: () => drawPlayer(p, t)});
     if (p.petObj) {
       const o = p.petObj, f = () => drawPet(p.pet.type, PETS[p.pet.type].color, o, t, p.id.charCodeAt(0));
@@ -1486,7 +1557,7 @@ function frame() {
     }
   }
   const rf = () => drawPet("room", ROOM_PET.color, roomPet, t, 7);
-  if (roomPet.sleeping) rf(); else ents.push({y: roomPet.y, f: rf});
+  if (roomPet.area === myArea) { if (roomPet.sleeping) rf(); else ents.push({y: roomPet.y, f: rf}); }
   ents.sort((a, b) => a.y - b.y).forEach(e => e.f());
 
   drawDarkness(t);
@@ -1500,10 +1571,11 @@ function frame() {
   ctx.font = "14px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   notes.forEach(n => { const a = (t - n.t) / 3; ctx.fillStyle = `rgba(255,210,122,${1 - a})`; ctx.fillText(n.s, n.x + Math.sin(a * 8) * 6, n.y - a * 50); });
 
-  for (const p of players.values()) if (p.petObj) petOverlay(p.petObj, p.pet.name, t);
-  petOverlay(roomPet, ROOM_PET.name, t);
+  for (const p of here()) if (p.petObj) petOverlay(p.petObj, p.pet.name, t);
+  if (roomPet.area === myArea) petOverlay(roomPet, ROOM_PET.name, t);
+  label(`${AREA_NAME[otherArea(myArea)]} →`, DOOR.x - 24, DOOR.y - 9, "#ffe2a8");
 
-  for (const p of players.values()) {
+  for (const p of here()) {
     let hx, hy;
     if (p.lying) {
       const b = BEDS[p.bed]; hx = b.x + BED_W / 2; hy = b.y + 6;
@@ -1539,7 +1611,7 @@ function frame() {
 
   // banner ngủ cùng nhau
   if (joined) {
-    const st = study(), all = [...players.values()];
+    const st = study(), all = here();
     const allSleep = all.length > 0 && all.every(p => p.lying) && (st || !room.light);
     if (allSleep) {
       if (togetherSince == null) togetherSince = t;
@@ -1593,7 +1665,7 @@ function frame() {
     Sound.ensure();                // mở khoá âm thanh trong lúc người dùng bấm
     connect();
   };
-  $("#joinBtn").onclick = () => { wantKind = "sleep"; go($("#roomInput").value); };
+  $("#joinBtn").onclick = () => { wantKind = params.get("area") === "study" ? "study" : "sleep"; go($("#roomInput").value); };
   const newRoom = kind => {
     const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s = "";
     for (let i = 0; i < 5; i++) s += A[Math.random() * A.length | 0];

@@ -1,5 +1,10 @@
 """Ngủ Cùng Nhau - server multiplayer (aiohttp + WebSocket).
 
+Mỗi mã phòng là một "căn nhà" gồm 2 phòng thông nhau bằng cửa:
+  - sleep: phòng ngủ (giường)
+  - study: phòng học (bàn học + Pomodoro)
+Mỗi phòng có TV, nhạc, đèn, hẹn giờ riêng.
+
 Chạy:  python server.py      rồi mở http://localhost:8080
 """
 import asyncio
@@ -15,6 +20,7 @@ from aiohttp import WSMsgType, web
 ROOT = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(ROOT, "static")
 
+AREAS = ("sleep", "study")
 BEDS = 6
 MAX_PLAYERS = 12
 TV_CHANNELS = 4
@@ -28,15 +34,13 @@ YT_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
 
 # World bounds (phải khớp với client)
 FLOOR = (16, 175, 344, 575)  # x1, y1, x2, y2
+DOOR_SPAWN = (318.0, 545.0)  # vị trí đứng ngay trong cửa khi sang phòng khác
 
 rooms = {}
 
 
-def new_room(kind="sleep"):
+def new_area():
     return {
-        "kind": kind,  # sleep = phòng ngủ, study = phòng học
-        "players": {},
-        "sockets": {},
         "beds": [None] * BEDS,
         "tv": {"on": False, "ch": 0},
         "music": {"on": False, "track": 0},
@@ -45,108 +49,35 @@ def new_room(kind="sleep"):
         "media": {"tv": None, "music": None},
         "tv_timer": None,   # thời điểm (time.time()) TV sẽ tự tắt
         "_task": None,
-        # Mèo Mun của phòng: mode = walk | sit | sleep
-        "pet": {"x": 300.0, "y": 200.0, "mode": "sit", "bed": None},
+    }
+
+
+def new_room():
+    return {
+        "players": {},
+        "sockets": {},
+        "areas": {a: new_area() for a in AREAS},
+        # Mèo Mun của nhà: mode = walk | sit | sleep
+        "pet": {"x": 300.0, "y": 200.0, "mode": "sit", "bed": None, "area": "sleep"},
         "_pet_task": None,
-        # Pomodoro chung của phòng học
+        # Pomodoro chung (hiện ở phòng học)
         "pomo": {"phase": "focus", "running": False, "end": None, "left": 25 * 60,
                  "focus": 25, "brk": 5, "round": 1},
         "_pomo_task": None,
     }
 
 
-def cancel_pomo(room):
-    if room["_pomo_task"]:
-        room["_pomo_task"].cancel()
-    room["_pomo_task"] = None
-
-
-async def pomo_loop(room):
-    """Tự chuyển giữa giờ học và giờ nghỉ khi hết giờ."""
-    try:
-        while room["pomo"]["running"]:
-            await asyncio.sleep(max(0, room["pomo"]["end"] - time.time()))
-            p = room["pomo"]
-            if not p["running"]:
-                return
-            if p["phase"] == "focus":
-                p["phase"], dur = "break", p["brk"]
-            else:
-                p["phase"], dur = "focus", p["focus"]
-                p["round"] += 1
-            p["left"] = dur * 60
-            p["end"] = time.time() + p["left"]
-            await broadcast(room, {"t": "pomo", "pomo": p, "now": time.time(),
-                                   "by": "⏰", "a": "switch"})
-    except asyncio.CancelledError:
-        pass
-
-
-async def room_pet_loop(room):
-    """Mèo Mun tự đi dạo, ngồi cạnh mọi người, và ngủ cùng khi cả phòng đã ngủ."""
-    try:
-        while True:
-            await asyncio.sleep(random.uniform(4, 9))
-            players = list(room["players"].values())
-            if not players:
-                continue
-            pet = room["pet"]
-            sleepers = [p for p in players if p["bed"] is not None]
-            if len(sleepers) == len(players):
-                beds = [p["bed"] for p in sleepers]
-                if pet["mode"] == "sleep" and pet["bed"] in beds:
-                    continue
-                pet.update(mode="sleep", bed=random.choice(beds))
-            else:
-                r = random.random()
-                if r < 0.5:
-                    p = random.choice([p for p in players if p["bed"] is None])
-                    x = p["x"] + random.choice([-1, 1]) * random.uniform(18, 30)
-                    y = p["y"] + random.uniform(-4, 10)
-                elif r < 0.85:
-                    x = random.uniform(FLOOR[0] + 10, FLOOR[2] - 10)
-                    y = random.uniform(FLOOR[1] + 10, FLOOR[3] - 10)
-                else:
-                    continue  # ngồi yên liếm lông
-                pet.update(x=round(clamp(x, FLOOR[0], FLOOR[2]), 1),
-                           y=round(clamp(y, FLOOR[1], FLOOR[3]), 1), mode="walk", bed=None)
-            await broadcast(room, {"t": "roompet", "pet": pet})
-    except asyncio.CancelledError:
-        pass
-
-
-def cancel_tv_timer(room):
-    if room["_task"]:
-        room["_task"].cancel()
-    room["_task"] = None
-    room["tv_timer"] = None
-
-
-async def tv_timer_task(room, delay):
-    try:
-        await asyncio.sleep(delay)
-    except asyncio.CancelledError:
-        return
-    room["_task"] = None
-    room["tv_timer"] = None
-    room["tv"]["on"] = False
-    room["media"]["tv"] = None
-    await broadcast(room, {"t": "tv", "tv": room["tv"], "by": "⏰ Hẹn giờ"})
-    await broadcast(room, {"t": "tvtimer", "end": None, "by": "⏰ Hẹn giờ"})
+def public_area(a):
+    return {"beds": a["beds"], "tv": a["tv"], "music": a["music"], "light": a["light"],
+            "media": a["media"], "tvTimer": a["tv_timer"]}
 
 
 def public_state(room):
     return {
-        "kind": room["kind"],
-        "pomo": room["pomo"],
         "players": list(room["players"].values()),
-        "beds": room["beds"],
-        "tv": room["tv"],
-        "music": room["music"],
-        "light": room["light"],
-        "media": room["media"],
-        "tvTimer": room["tv_timer"],
+        "areas": {k: public_area(v) for k, v in room["areas"].items()},
         "pet": room["pet"],
+        "pomo": room["pomo"],
         "now": time.time(),
     }
 
@@ -176,11 +107,100 @@ async def broadcast(room, msg, exclude=None):
             pass
 
 
+# ---------------- Pomodoro ----------------
+def cancel_pomo(room):
+    if room["_pomo_task"]:
+        room["_pomo_task"].cancel()
+    room["_pomo_task"] = None
+
+
+async def pomo_loop(room):
+    """Tự chuyển giữa giờ học và giờ nghỉ khi hết giờ."""
+    try:
+        while room["pomo"]["running"]:
+            await asyncio.sleep(max(0, room["pomo"]["end"] - time.time()))
+            p = room["pomo"]
+            if not p["running"]:
+                return
+            if p["phase"] == "focus":
+                p["phase"], dur = "break", p["brk"]
+            else:
+                p["phase"], dur = "focus", p["focus"]
+                p["round"] += 1
+            p["left"] = dur * 60
+            p["end"] = time.time() + p["left"]
+            await broadcast(room, {"t": "pomo", "pomo": p, "now": time.time(),
+                                   "by": "⏰", "a": "switch"})
+    except asyncio.CancelledError:
+        pass
+
+
+# ---------------- Mèo Mun ----------------
+async def room_pet_loop(room):
+    """Mèo Mun đi dạo giữa 2 phòng, ngồi cạnh mọi người, ngủ cùng khi cả nhà đã ngủ/ngồi học."""
+    try:
+        while True:
+            await asyncio.sleep(random.uniform(4, 9))
+            players = list(room["players"].values())
+            if not players:
+                continue
+            pet = room["pet"]
+            seated = [p for p in players if p["bed"] is not None]
+            if len(seated) == len(players):
+                spots = [(p["area"], p["bed"]) for p in seated]
+                if pet["mode"] == "sleep" and (pet["area"], pet["bed"]) in spots:
+                    continue
+                area, bed = random.choice(spots)
+                pet.update(mode="sleep", bed=bed, area=area)
+            else:
+                r = random.random()
+                if r < 0.5:
+                    p = random.choice([p for p in players if p["bed"] is None])
+                    x = p["x"] + random.choice([-1, 1]) * random.uniform(18, 30)
+                    y = p["y"] + random.uniform(-4, 10)
+                    area = p["area"]
+                elif r < 0.85:
+                    x = random.uniform(FLOOR[0] + 10, FLOOR[2] - 10)
+                    y = random.uniform(FLOOR[1] + 10, FLOOR[3] - 10)
+                    area = pet["area"]
+                else:
+                    continue  # ngồi yên liếm lông
+                pet.update(x=round(clamp(x, FLOOR[0], FLOOR[2]), 1),
+                           y=round(clamp(y, FLOOR[1], FLOOR[3]), 1),
+                           mode="walk", bed=None, area=area)
+            await broadcast(room, {"t": "roompet", "pet": pet})
+    except asyncio.CancelledError:
+        pass
+
+
+# ---------------- Hẹn giờ tắt TV ----------------
+def cancel_tv_timer(area):
+    if area["_task"]:
+        area["_task"].cancel()
+    area["_task"] = None
+    area["tv_timer"] = None
+
+
+async def tv_timer_task(room, area_name, delay):
+    try:
+        await asyncio.sleep(delay)
+    except asyncio.CancelledError:
+        return
+    a = room["areas"][area_name]
+    a["_task"] = None
+    a["tv_timer"] = None
+    a["tv"]["on"] = False
+    a["media"]["tv"] = None
+    await broadcast(room, {"t": "tv", "area": area_name, "tv": a["tv"], "by": "⏰ Hẹn giờ"})
+    await broadcast(room, {"t": "tvtimer", "area": area_name, "end": None, "by": "⏰ Hẹn giờ"})
+
+
 def free_bed(room, pid):
-    beds = room["beds"]
-    for i, owner in enumerate(beds):
-        if owner == pid:
-            beds[i] = None
+    for a in room["areas"].values():
+        beds = a["beds"]
+        for i, owner in enumerate(beds):
+            if owner == pid:
+                beds[i] = None
     player = room["players"].get(pid)
     if player:
         player["bed"] = None
@@ -214,8 +234,7 @@ async def ws_handler(request):
             if t == "join" and pid is None:
                 code = clean_code(d.get("room")) or "PHONG"
                 if code not in rooms:
-                    kind = d.get("kind") if d.get("kind") in ("sleep", "study") else "sleep"
-                    rooms[code] = new_room(kind)
+                    rooms[code] = new_room()
                     rooms[code]["_pet_task"] = asyncio.create_task(room_pet_loop(rooms[code]))
                 room = rooms[code]
                 if len(room["players"]) >= MAX_PLAYERS:
@@ -227,10 +246,12 @@ async def ws_handler(request):
                 pd = d.get("pet") if isinstance(d.get("pet"), dict) else {}
                 ptype = pd.get("type") if pd.get("type") in PET_TYPES else "none"
                 pet = {"type": ptype, "name": clean_text(pd.get("name"), 10) or PET_TYPES[ptype]}
+                start = d.get("area") or d.get("kind")
                 player = {
                     "id": pid,
                     "name": clean_text(d.get("name"), 14) or "Bạn",
                     "color": color,
+                    "area": start if start in AREAS else "sleep",
                     "x": random.randint(140, 220),
                     "y": random.randint(535, 565),
                     "bed": None,
@@ -251,6 +272,8 @@ async def ws_handler(request):
             me = room["players"].get(pid)
             if me is None:
                 continue
+            an = me["area"]
+            A = room["areas"][an]
 
             if t == "move":
                 try:
@@ -262,51 +285,61 @@ async def ws_handler(request):
                 me["x"], me["y"] = round(x, 1), round(y, 1)
                 await broadcast(room, {"t": "move", "id": pid, "x": me["x"], "y": me["y"]})
 
+            elif t == "area":                      # đi qua cửa sang phòng kia
+                to = d.get("area")
+                if to not in AREAS or to == an:
+                    continue
+                free_bed(room, pid)
+                me["area"] = to
+                me["x"], me["y"] = DOOR_SPAWN
+                await broadcast(room, {"t": "area", "id": pid, "area": to, "x": me["x"], "y": me["y"]})
+
             elif t == "sleep":
                 b = d.get("bed")
                 if not isinstance(b, int) or not 0 <= b < BEDS:
                     continue
-                if room["beds"][b] not in (None, pid):
+                if A["beds"][b] not in (None, pid):
                     await ws.send_json({"t": "error", "msg": "Chỗ này có người rồi!"})
                     continue
                 free_bed(room, pid)
-                room["beds"][b] = pid
+                A["beds"][b] = pid
                 me["bed"] = b
                 now = time.time()
-                if room["kind"] == "study":
+                if an == "study":
                     me["sat_at"] = now
                 await broadcast(room, {"t": "sleep", "id": pid, "bed": b, "at": now})
 
             elif t == "tv":
                 on = bool(d.get("on"))
-                ch = d.get("ch", room["tv"]["ch"])
+                ch = d.get("ch", A["tv"]["ch"])
                 if isinstance(ch, int) and 0 <= ch < TV_CHANNELS:
-                    room["tv"] = {"on": on, "ch": ch}
-                    room["media"]["tv"] = None
-                    await broadcast(room, {"t": "tv", "tv": room["tv"], "by": me["name"]})
-                    if not on and room["tv_timer"]:
-                        cancel_tv_timer(room)
-                        await broadcast(room, {"t": "tvtimer", "end": None, "by": me["name"], "silent": True})
+                    A["tv"] = {"on": on, "ch": ch}
+                    A["media"]["tv"] = None
+                    await broadcast(room, {"t": "tv", "area": an, "tv": A["tv"], "by": me["name"]})
+                    if not on and A["tv_timer"]:
+                        cancel_tv_timer(A)
+                        await broadcast(room, {"t": "tvtimer", "area": an, "end": None,
+                                               "by": me["name"], "silent": True})
 
             elif t == "tvtimer":
                 mins = d.get("min")
                 if not isinstance(mins, (int, float)) or not 0 <= mins <= 600:
                     continue
-                cancel_tv_timer(room)
-                if mins > 0 and room["tv"]["on"]:
-                    room["tv_timer"] = time.time() + mins * 60
-                    room["_task"] = asyncio.create_task(tv_timer_task(room, mins * 60))
-                await broadcast(room, {"t": "tvtimer", "end": room["tv_timer"],
+                cancel_tv_timer(A)
+                if mins > 0 and A["tv"]["on"]:
+                    A["tv_timer"] = time.time() + mins * 60
+                    A["_task"] = asyncio.create_task(tv_timer_task(room, an, mins * 60))
+                await broadcast(room, {"t": "tvtimer", "area": an, "end": A["tv_timer"],
                                        "now": time.time(), "by": me["name"]})
 
             elif t == "music":
                 on = bool(d.get("on"))
-                tr = d.get("track", room["music"]["track"])
+                tr = d.get("track", A["music"]["track"])
                 if isinstance(tr, int) and 0 <= tr < MUSIC_TRACKS:
-                    room["music"] = {"on": on, "track": tr}
+                    A["music"] = {"on": on, "track": tr}
                     if on:
-                        room["media"]["music"] = None
-                    await broadcast(room, {"t": "music", "music": room["music"], "by": me["name"]})
+                        A["media"]["music"] = None
+                    await broadcast(room, {"t": "music", "area": an, "music": A["music"], "by": me["name"]})
 
             elif t == "media":
                 slot = d.get("slot")
@@ -314,17 +347,17 @@ async def ws_handler(request):
                     continue
                 act = d.get("a")
                 now = time.time()
-                cur = room["media"][slot]
+                cur = A["media"][slot]
                 if act == "load":
                     vid = d.get("id")
                     if not isinstance(vid, str) or not YT_ID.match(vid):
                         await ws.send_json({"t": "error", "msg": "Link YouTube không hợp lệ"})
                         continue
-                    room["media"][slot] = {"id": vid, "pos": 0.0, "at": now, "paused": False}
+                    A["media"][slot] = {"id": vid, "pos": 0.0, "at": now, "paused": False}
                     if slot == "tv":
-                        room["tv"] = {"on": True, "ch": -1}
+                        A["tv"] = {"on": True, "ch": -1}
                     else:
-                        room["music"]["on"] = False
+                        A["music"]["on"] = False
                 elif act in ("pause", "play") and cur:
                     try:
                         pos = max(0.0, float(d.get("pos", 0)))
@@ -332,19 +365,18 @@ async def ws_handler(request):
                         continue
                     cur.update(pos=pos, at=now, paused=(act == "pause"))
                 elif act == "stop":
-                    room["media"][slot] = None
+                    A["media"][slot] = None
                     if slot == "tv":
-                        room["tv"]["on"] = False
-                        cancel_tv_timer(room)
+                        A["tv"]["on"] = False
+                        cancel_tv_timer(A)
                 else:
                     continue
-                await broadcast(room, {"t": "media", "slot": slot, "a": act,
-                                       "media": room["media"][slot], "now": now,
-                                       "by": me["name"]})
+                await broadcast(room, {"t": "media", "area": an, "slot": slot, "a": act,
+                                       "media": A["media"][slot], "now": now, "by": me["name"]})
 
             elif t == "light":
-                room["light"] = bool(d.get("on"))
-                await broadcast(room, {"t": "light", "on": room["light"], "by": me["name"]})
+                A["light"] = bool(d.get("on"))
+                await broadcast(room, {"t": "light", "area": an, "on": A["light"], "by": me["name"]})
 
             elif t == "chat":
                 now = time.monotonic()
@@ -403,7 +435,8 @@ async def ws_handler(request):
             if room["players"]:
                 await broadcast(room, {"t": "leave", "id": pid})
             elif rooms.get(code) is room:
-                cancel_tv_timer(room)
+                for a in room["areas"].values():
+                    cancel_tv_timer(a)
                 if room["_pet_task"]:
                     room["_pet_task"].cancel()
                 cancel_pomo(room)

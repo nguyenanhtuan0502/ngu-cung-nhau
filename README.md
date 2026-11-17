@@ -15,9 +15,11 @@ Rồi mở http://localhost:8080 (hoặc bấm đúp `run.bat`).
 Điện thoại dùng chung wifi: mở `http://<IP máy tính>:8080` (xem IP bằng `ipconfig`).
 Lần đầu Windows hỏi tường lửa thì bấm **Allow**.
 
-## Hai loại phòng
+## Một căn nhà, hai phòng thông nhau
+Mỗi mã phòng là một căn nhà có **🛏️ phòng ngủ** và **📚 phòng học**, đi qua **cửa ở góc phải dưới** để sang phòng kia.
+Mỗi phòng có TV, nhạc, đèn, hẹn giờ riêng (bên ngủ tắt đèn nghe mưa, bên học bật đèn nghe lofi).
 - 🛏️ **Phòng ngủ**: giường, tắt đèn, ngủ cùng nhau
-- 📚 **Phòng học**: bàn học có đèn + laptop, Pomodoro chung cho cả phòng (25/5, 50/10…),
+- 📚 **Phòng học**: bàn học có đèn + laptop, Pomodoro chung (25/5, 50/10…),
   ghi "đang học gì", bảng xếp hạng thời gian ngồi học
 
 ## Cách chơi
