@@ -3,7 +3,8 @@
 Mỗi mã phòng là một "thế giới" nhỏ, công viên ở trung tâm:
                  [Bắc] phòng học
   [Tây] phòng ngủ ── CÔNG VIÊN ── rạp phim [Đông]
-                 [Nam] cổng vào (người mới xuất hiện ở đây)
+     nông trại [TN] · hồ câu cá [Nam] · khu mua sắm [ĐN] ── nhà riêng
+                 cổng vào (người mới xuất hiện ở đây)
 Các khu không nối thẳng với nhau, muốn đi đâu cũng phải qua công viên.
 Mỗi khu có nhạc, đèn (công viên: ngày/đêm) riêng; TV chỉ dùng ở rạp phim.
 
@@ -22,8 +23,8 @@ from aiohttp import WSMsgType, web
 ROOT = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(ROOT, "static")
 
-AREAS = ("sleep", "study", "park", "cinema")
-SEATS = {"sleep": 8, "study": 6, "park": 4, "cinema": 6}
+AREAS = ("sleep", "study", "park", "cinema", "farm", "fishing", "mall", "home")
+SEATS = {"sleep": 8, "study": 6, "park": 4, "cinema": 6, "farm": 2, "fishing": 4, "mall": 3, "home": 2}
 # SPAWN[(khu đến, khu vừa rời)] = chỗ xuất hiện (ngay trong cánh cửa nối 2 khu)
 SPAWN = {
     ("park", "sleep"): (40.0, 356.0),    # lối Tây
@@ -32,6 +33,14 @@ SPAWN = {
     ("sleep", "park"): (180.0, 540.0),   # cửa đầu phòng ngủ
     ("study", "park"): (180.0, 540.0),   # cửa cuối lớp
     ("cinema", "park"): (44.0, 545.0),   # cửa sảnh rạp
+    ("park", "farm"): (40.0, 430.0),     # lối Tây Nam
+    ("park", "fishing"): (115.0, 540.0), # lối Nam (cạnh cổng)
+    ("park", "mall"): (316.0, 540.0),    # lối Đông Nam
+    ("farm", "park"): (180.0, 540.0),
+    ("fishing", "park"): (180.0, 540.0),
+    ("mall", "park"): (180.0, 540.0),
+    ("mall", "home"): (44.0, 545.0),     # cửa trái khu mua sắm
+    ("home", "mall"): (316.0, 545.0),
 }
 GATE = (180.0, 528.0)                    # cổng Nam của công viên
 MAX_PLAYERS = 12
@@ -43,6 +52,67 @@ COLORS = {"#e76f51", "#f4a261", "#e9c46a", "#2a9d8f", "#4cc9f0",
           "#7b2cbf", "#f72585", "#90be6d"}
 
 YT_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
+
+# Lọc từ cấm cơ bản trong chat (chỉ khớp nguyên từ, không ăn vào giữa từ khác)
+BAD_WORDS = ["đm", "dm", "đmm", "vcl", "vkl", "vl", "đéo", "địt", "đụ", "lồn", "cặc", "buồi",
+             "fuck", "shit", "bitch"]
+BAD_RE = re.compile(r"(?<!\w)(" + "|".join(map(re.escape, BAD_WORDS)) + r")(?!\w)", re.IGNORECASE)
+
+
+def filter_chat(s):
+    return BAD_RE.sub(lambda m: "*" * len(m.group(0)), s)
+
+
+def clean_level(v):
+    return v if isinstance(v, int) and 1 <= v <= 999 else 1
+
+
+# Trang phục: mỗi ô là mã món đồ (client tự vẽ theo data.js)
+OUTFIT_SLOTS = ("hair", "hairColor", "shirt", "hat", "glasses", "neck", "back")
+ITEM_ID = re.compile(r"^[a-z0-9_]{0,20}$")
+
+
+def clean_outfit(o):
+    if not isinstance(o, dict):
+        return {}
+    return {k: o[k] for k in OUTFIT_SLOTS if isinstance(o.get(k), str) and ITEM_ID.match(o[k])}
+
+
+def clean_pet(pd):
+    pd = pd if isinstance(pd, dict) else {}
+    ptype = pd.get("type") if pd.get("type") in PET_TYPES else "none"
+    return {"type": ptype, "name": clean_text(pd.get("name"), 10) or PET_TYPES[ptype]}
+
+
+# ---------------- Nhà riêng: nội thất lưu ra file theo mã phòng ----------------
+HOMES_FILE = os.path.join(ROOT, "homes.json")
+MAX_FURNITURE = 80
+try:
+    with open(HOMES_FILE, encoding="utf-8") as f:
+        HOMES = json.load(f)
+except (OSError, ValueError):
+    HOMES = {}
+_homes_task = None
+
+
+async def _save_homes_later():
+    global _homes_task
+    try:
+        await asyncio.sleep(2)
+        tmp = HOMES_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(HOMES, f, ensure_ascii=False)
+        os.replace(tmp, HOMES_FILE)
+    except OSError:
+        pass
+    finally:
+        _homes_task = None
+
+
+def save_homes():
+    global _homes_task
+    if _homes_task is None:
+        _homes_task = asyncio.create_task(_save_homes_later())
 
 # World bounds (phải khớp với client)
 FLOOR = (16, 175, 344, 575)  # x1, y1, x2, y2
@@ -63,8 +133,10 @@ def new_area(n):
     }
 
 
-def new_room():
+def new_room(code=""):
     return {
+        "code": code,
+        "home": list(HOMES.get(code, [])),
         "players": {},
         "sockets": {},
         "areas": {a: new_area(SEATS[a]) for a in AREAS},
@@ -89,6 +161,7 @@ def public_state(room):
         "areas": {k: public_area(v) for k, v in room["areas"].items()},
         "pet": room["pet"],
         "pomo": room["pomo"],
+        "home": room["home"],
         "now": time.time(),
     }
 
@@ -245,7 +318,7 @@ async def ws_handler(request):
             if t == "join" and pid is None:
                 code = clean_code(d.get("room")) or "PHONG"
                 if code not in rooms:
-                    rooms[code] = new_room()
+                    rooms[code] = new_room(code)
                     rooms[code]["_pet_task"] = asyncio.create_task(room_pet_loop(rooms[code]))
                 room = rooms[code]
                 if len(room["players"]) >= MAX_PLAYERS:
@@ -254,9 +327,7 @@ async def ws_handler(request):
                     continue
                 pid = uuid.uuid4().hex[:8]
                 color = d.get("color") if d.get("color") in COLORS else random.choice(list(COLORS))
-                pd = d.get("pet") if isinstance(d.get("pet"), dict) else {}
-                ptype = pd.get("type") if pd.get("type") in PET_TYPES else "none"
-                pet = {"type": ptype, "name": clean_text(pd.get("name"), 10) or PET_TYPES[ptype]}
+                pet = clean_pet(d.get("pet"))
                 start = d.get("area") or d.get("kind")
                 start = start if start in AREAS else "park"
                 if start == "park":
@@ -275,6 +346,8 @@ async def ws_handler(request):
                     "status": "",
                     "studied": 0.0,
                     "sat_at": None,
+                    "lv": clean_level(d.get("lv")),
+                    "outfit": clean_outfit(d.get("outfit")),
                 }
                 room["players"][pid] = player
                 room["sockets"][pid] = ws
@@ -396,7 +469,7 @@ async def ws_handler(request):
 
             elif t == "chat":
                 now = time.monotonic()
-                text = clean_text(d.get("text"), 80)
+                text = filter_chat(clean_text(d.get("text"), 60))
                 if text and now - last_chat > 0.7:
                     last_chat = now
                     await broadcast(room, {"t": "chat", "id": pid, "text": text})
@@ -428,6 +501,46 @@ async def ws_handler(request):
             elif t == "status":
                 me["status"] = clean_text(d.get("text"), 20)
                 await broadcast(room, {"t": "status", "id": pid, "text": me["status"]})
+
+            elif t == "lv":                        # cấp độ (client tự tính, lưu ở máy người chơi)
+                me["lv"] = clean_level(d.get("lv"))
+                await broadcast(room, {"t": "lv", "id": pid, "lv": me["lv"]})
+
+            elif t == "outfit":                    # thay đồ (tủ đồ)
+                me["outfit"] = clean_outfit(d.get("outfit"))
+                await broadcast(room, {"t": "outfit", "id": pid, "outfit": me["outfit"]})
+
+            elif t == "pet":                       # nhận nuôi thú cưng mới (tiệm thú cưng)
+                me["pet"] = clean_pet(d.get("pet"))
+                await broadcast(room, {"t": "pet", "id": pid, "pet": me["pet"]})
+
+            elif t == "furn" and an == "home":     # bày / lật / cất nội thất trong nhà riêng
+                a = d.get("a")
+                items = room["home"]
+                if a == "add":
+                    k = d.get("k")
+                    try:
+                        x = clamp(int(d.get("x")), 0, 360)
+                        y = clamp(int(d.get("y")), 170, 580)
+                    except (TypeError, ValueError):
+                        continue
+                    if not isinstance(k, str) or not ITEM_ID.match(k) or not k or len(items) >= MAX_FURNITURE:
+                        continue
+                    items.append({"i": uuid.uuid4().hex[:8], "k": k, "x": x, "y": y, "f": False, "by": me["name"]})
+                elif a in ("del", "flip"):
+                    it = next((it for it in items if it["i"] == d.get("i")), None)
+                    if not it:
+                        continue
+                    if a == "del":
+                        items.remove(it)
+                    else:
+                        it["f"] = not it["f"]
+                else:
+                    continue
+                items.sort(key=lambda it: it["y"])
+                HOMES[code] = items
+                save_homes()
+                await broadcast(room, {"t": "home", "items": items})
 
             elif t == "pat":
                 target = d.get("target")

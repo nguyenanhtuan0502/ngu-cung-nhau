@@ -167,6 +167,35 @@
   .ghost{width:100%;margin-top:8px;padding:12px;border-radius:14px;background:rgba(255,255,255,.07);font-size:15px}
   #lobbyErr{color:var(--danger);min-height:20px;font-size:13px}
   .stars-bg{position:fixed;inset:0;pointer-events:none}
+
+  /* Thanh cuộc sống: chỉ số, đồng hồ trong game, hoạt động của khu (life.js) */
+  #lifeBar{position:fixed;top:calc(46px + env(safe-area-inset-top));left:10px;right:10px;display:flex;gap:6px;z-index:5;pointer-events:none}
+  #lifeBar .pill{font-size:12px;padding:5px 10px}
+  #lifeStats{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+  #actPill{margin-left:auto;background:rgba(155,140,255,.25);border-color:rgba(155,140,255,.55)}
+  .mbar{display:inline-block;width:26px;height:6px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden;vertical-align:middle}
+  .mbar i{display:block;height:100%;border-radius:3px}
+  .statRow{display:grid;grid-template-columns:110px 1fr 56px;align-items:center;gap:8px;font-size:14px;padding:5px 2px}
+  .statRow .mbar{width:100%;height:9px}
+  .statRow b{text-align:right;color:var(--accent);font-variant-numeric:tabular-nums}
+  .opt small{display:block;font-size:11px;color:var(--muted);margin-top:3px}
+  .opt.poor{opacity:.5}
+  .opt.right{border-color:#5ef2a8;background:rgba(94,242,168,.2)}
+  .opt.wrong{border-color:var(--danger);background:rgba(255,122,138,.2)}
+  .quizText{font-size:16px;font-weight:700;margin:2px 2px 14px;line-height:1.4}
+  .wheelBig{font-size:72px;text-align:center;margin:8px 0}
+  .tabs{display:flex;gap:4px;overflow-x:auto;margin:10px 0;padding-bottom:2px}
+  .tabs button{flex:0 0 auto;background:var(--panel2);border-radius:12px;padding:6px 9px;font-size:16px;display:flex;flex-direction:column;align-items:center;border:1px solid transparent}
+  .tabs button span{font-size:10px;color:var(--muted)}
+  .tabs button.cur{border-color:var(--accent);background:rgba(255,210,122,.15)}
+  .mini{background:var(--accent);color:#2a1c00;font-weight:700;border-radius:10px;padding:6px 8px;font-size:12px}
+  .mini.ghostb{background:rgba(255,255,255,.1);color:var(--text);font-weight:500}
+  .del{background:none;font-size:13px;padding:0 0 0 6px;opacity:.7}
+  /* đẩy các thông báo xuống dưới thanh chỉ số */
+  #log,#together,#pomoPill{top:calc(84px + env(safe-area-inset-top))}
+  body.study:not(.wide) #together{top:calc(122px + env(safe-area-inset-top))}
+  body.wide #lifeBar{top:calc(8px + env(safe-area-inset-top));left:210px;right:calc(100vw - var(--roomx) + 10px)}
+  body.wide #pomoPill{top:calc(8px + env(safe-area-inset-top))}
 </style>
 </head>
 <body>
@@ -175,6 +204,12 @@
 <div id="top" class="hidden">
   <div class="pill">🏠 <b id="roomCode"></b> · 👥 <span id="count">1</span> · <span id="sleepIcon">😴</span> <span id="sleepCount">0</span></div>
   <div style="display:flex;gap:6px"><button class="pill" id="mapBtn">🗺️</button><button class="pill" id="shareBtn">🔗 Mời bạn</button></div>
+</div>
+<div id="lifeBar" class="hidden">
+  <button class="pill" id="lifeStats" title="Nhân vật & túi đồ"></button>
+  <button class="pill" id="clockPill" title="Giờ trong game"></button>
+  <button class="pill" id="wardPill" title="Tủ đồ">👗</button>
+  <button class="pill hidden" id="actPill"></button>
 </div>
 <div id="log"></div>
 <button id="pomoPill" class="pill hidden">🍅 25:00</button>
@@ -189,7 +224,7 @@
   <button data-a="chat">💬<span>Chat</span></button>
 </div>
 
-<div id="chatBar" class="hidden"><input id="chatInput" maxlength="80" placeholder="Nhắn gì đó…" enterkeyhint="send"><button id="chatSend">Gửi</button></div>
+<div id="chatBar" class="hidden"><input id="chatInput" maxlength="60" placeholder="Nhắn gì đó…" enterkeyhint="send"><button id="chatSend">Gửi</button></div>
 <div id="sheet" class="hidden"><div class="sheet-inner"><div class="sheet-title"></div><div class="sheet-body"></div></div></div>
 <div id="toast"></div>
 <div id="tvFrame" class="hidden"><div class="ythold" id="tvHold"></div><button id="tvShrink">✕ Thu nhỏ</button></div>
@@ -221,6 +256,8 @@
   </div>
 </div>
 
+<script src="/static/data.js"></script>
+<script src="/static/life.js"></script>
 <script>
 "use strict";
 // ================== CONSTANTS ==================
@@ -320,6 +357,8 @@ let areas = null, myArea = "park", pendingDoor = false, lastPet = null, routeTo 
 const AREA_NAME = {sleep: "🛏️ Ký túc xá", study: "📚 Phòng học", park: "🌳 Công viên", cinema: "🎬 Rạp phim"};
 const AREA_DIR = {sleep: "Tây", study: "Bắc", park: "Trung tâm", cinema: "Đông"};
 const cinema = () => myArea === "cinema";
+const OUTDOOR = new Set(["park", "farm", "fishing"]);           // khu ngoài trời: sáng/tối theo giờ game
+const outdoor = () => OUTDOOR.has(myArea);
 const park = () => myArea === "park";
 const here = () => [...players.values()].filter(p => p.area === myArea);
 const study = () => roomKind === "study";
@@ -344,7 +383,7 @@ function lighten(hex, amt) {
 const seatIn = (area, b) => LAYOUTS[area].beds[b];
 function bedSpot(b, area = myArea) {
   const L = LAYOUTS[area], s = L.beds[b];
-  return {x: s.x + L.bw / 2, y: s.y + ({study: 80, park: 66, cinema: 66, sleep: 56}[area])};
+  return {x: s.x + L.bw / 2, y: s.y + (L.sitY ?? {study: 80, park: 66, cinema: 66, sleep: 56}[area])};
 }
 const standUpY = (area, b) => Math.min(FLOOR.y2, seatIn(area, b).y + LAYOUTS[area].bh + 8);
 function bedOwner(b) { for (const p of players.values()) if (p.bed === b && p.area === myArea) return p; return null; }
@@ -729,12 +768,23 @@ function openTVOrGo() {
   if (cinema()) { openTV(); return; }
   travelTo("cinema");
 }
+function nextHop(from, to) {                   // khu kế tiếp trên đường ngắn nhất (tìm theo các cửa)
+  const prev = {[from]: null}, q = [from];
+  while (q.length) {
+    const a = q.shift();
+    if (a === to) break;
+    for (const d of AREA_DOORS[a] || []) if (!(d.to in prev)) { prev[d.to] = a; q.push(d.to); }
+  }
+  if (!(to in prev)) return null;
+  let cur = to; while (prev[cur] !== from) cur = prev[cur];
+  return cur;
+}
 function travelTo(area) {                      // đi tới khu bất kỳ (qua công viên nếu cần)
   if (area === myArea) { toast(`Bạn đang ở ${AREA_NAME[area]} rồi`); return; }
-  const direct = doorTo(myArea, area);
-  if (direct) { routeTo = null; toast(`🚶 Đang đi tới ${AREA_NAME[area]}…`); goDoor(direct); return; }
-  routeTo = area; toast(`🚶 Đi qua công viên tới ${AREA_NAME[area]}…`);
-  goDoor(doorTo(myArea, "park"));
+  const hop = nextHop(myArea, area); if (!hop) return;
+  routeTo = hop === area ? null : area;
+  toast(routeTo ? `🚶 Đi qua ${AREA_NAME[hop]} tới ${AREA_NAME[area]}…` : `🚶 Đang đi tới ${AREA_NAME[area]}…`);
+  goDoor(doorTo(myArea, hop));
 }
 function openMap() {
   const cell = (a, extra = "") => `<button class="opt mapcell ${a === myArea ? "active" : ""}" data-a="${a}" ${extra}>${AREA_NAME[a]}<small>${AREA_DIR[a]}${a === myArea ? " · bạn ở đây" : ""}</small></button>`;
@@ -742,7 +792,8 @@ function openMap() {
     `<div class="map">
        <div></div>${cell("study")}<div></div>
        ${cell("sleep")}${cell("park")}${cell("cinema")}
-       <div></div><div class="mapgate">🚪 Cổng vào<small>Nam</small></div><div></div>
+       ${cell("farm")}${cell("fishing")}${cell("mall")}
+       <div class="mapgate">🚪 Cổng vào<small>Nam công viên</small></div><div></div>${cell("home")}
      </div>
      <div class="vol" style="font-size:12px;margin-top:10px">Các khu không nối thẳng với nhau, muốn đi đâu cũng phải qua 🌳 công viên. Chạm một khu để tự đi tới đó.</div>`,
     el => el.querySelectorAll("[data-a]").forEach(b => b.onclick = () => { closeSheet(); travelTo(b.dataset.a); }));
@@ -779,7 +830,7 @@ function ytLoad(slot, input) {
 function connect() {
   const url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
   ws = new WebSocket(url);
-  ws.onopen = () => send({t: "join", room: roomCode, name: myName, color: myColor, pet: myPet, kind: wantKind});
+  ws.onopen = () => send({t: "join", room: roomCode, name: myName, color: myColor, pet: myPet, kind: wantKind, lv: Life.level(), outfit: Areas.outfit()});
   ws.onmessage = e => handle(JSON.parse(e.data));
   ws.onclose = () => {
     if (!joined && !wantReconnect) { $("#lobbyErr").textContent = "Không kết nối được server 😢"; return; }
@@ -806,6 +857,7 @@ function handle(m) {
       m.state.players.forEach(addPlayer);
       clockOff = m.state.now - Date.now() / 1000;
       areas = m.state.areas; pomo = m.state.pomo;
+      Areas.setHome(m.state.home);
       setArea(players.get(myId).area);
       if (m.state.pet) { setRoomPet(m.state.pet); roomPet.x = roomPet.tx; roomPet.y = roomPet.ty; }
       $("#volCtl").classList.remove("hidden");
@@ -816,9 +868,10 @@ function handle(m) {
       updateUI();
       log(`Chào <b>${esc(myName)}</b>! ` + {study: "Chạm vào bàn để ngồi học 📚, bấm 🍅 để bật Pomodoro",
         park: "Đây là công viên trung tâm 🌳. Bắc: phòng học · Tây: ký túc xá · Đông: rạp phim. Bấm 🗺️ để xem bản đồ", sleep: "Chạm vào giường để đi ngủ 🛏️",
-        cinema: "Chạm màn chiếu để chọn phim 🎬, chạm ghế để ngồi xem 🍿"}[myArea]);
+        cinema: "Chạm màn chiếu để chọn phim 🎬, chạm ghế để ngồi xem 🍿"}[myArea] || Areas.TXT[myArea].hello);
       if (!park()) log(`🚪 Cửa ra: ${doorsHere().map(d => AREA_NAME[d.to]).join(" · ")}`);
       if (players.size === 1) log(`🐾 Mèo <b>Mun</b> của phòng sẽ ở cùng bạn. Chạm để vuốt ve nhé!`);
+      Life.onJoin(); Areas.onJoin();
       break;
     }
     case "join": addPlayer(m.p); log(`<b>${esc(m.p.name)}</b> vừa vào nhà (${AREA_NAME[m.p.area]}) 👋`); updateUI(); break;
@@ -885,6 +938,15 @@ function handle(m) {
       break;
     }
     case "status": { const p = players.get(m.id); if (p) p.status = m.text; break; }
+    case "lv": { const p = players.get(m.id); if (p) p.lv = m.lv; break; }
+    case "outfit": { const p = players.get(m.id); if (p) p.outfit = m.outfit; break; }
+    case "home": Areas.setHome(m.items); break;
+    case "pet": {                                   // đổi thú cưng (tiệm thú cưng)
+      const p = players.get(m.id); if (!p) break;
+      p.pet = m.pet;
+      p.petObj = m.pet.type !== "none" && PETS[m.pet.type] ? {x: p.x - 18, y: p.y + 3, dir: 1, walking: false, sleeping: false, side: -1, jumpAt: -9, hearts: [], nameUntil: 0} : null;
+      break;
+    }
     case "pat": {
       const now = performance.now() / 1000;
       let pet, type, name, owner = null;
@@ -945,7 +1007,10 @@ function handle(m) {
 function setArea(a) {
   myArea = roomKind = wantKind = a;
   applyLayout(a);
-  if (routeTo && a === "park") { const r = routeTo; routeTo = null; setTimeout(() => { const d = doorTo("park", r); if (d) goDoor(d); }, 250); }
+  if (routeTo) {
+    const r = routeTo; routeTo = null;
+    if (r !== a) setTimeout(() => { const h = nextHop(a, r); if (h) { routeTo = h === r ? null : r; goDoor(doorTo(a, h)); } }, 250);
+  }
   if (lastPet) setRoomPet(lastPet);
   const A = areas[a];
   room = A; media = A.media; tvTimerEnd = A.tvTimer || null;
@@ -957,11 +1022,12 @@ function setArea(a) {
   $("#thTitle").textContent = cinema() ? "Màn chiếu đang tắt" : "Phim chỉ chiếu ở 🎬 Phòng chiếu phim";
   $("#thSub").textContent = cinema() ? "Chạm để bật phim hoặc mở YouTube" : "Chạm để đi sang đó";
   updateAmbience();
+  Life.onArea(a); Areas.onArea(a);
   updateUI();
 }
 function updateAmbience() {
   Sound.setNight(myArea === "sleep" && !room.light);
-  Sound.ambient(myArea === "sleep" ? "fire" : myArea === "park" ? (room.light ? "day" : "night") : null);
+  Sound.ambient(myArea === "sleep" ? "fire" : outdoor() ? (Life.isDay() ? "day" : "night") : null);
 }
 function goDoor(d) {
   const m = me(); if (!m) return;
@@ -977,12 +1043,12 @@ function updateUI() {
   $("#count").textContent = players.size;
   $("#sleepCount").textContent = here().filter(p => p.bed != null).length;
   const ar = myArea;
-  $("#sleepIcon").textContent = {sleep: "😴", study: "📚", park: "🪑", cinema: "🍿"}[ar];
+  $("#sleepIcon").textContent = {sleep: "😴", study: "📚", park: "🪑", cinema: "🍿"}[ar] || Areas.TXT[ar].icon;
   $("#sleepBtn").innerHTML = sleeping ? (ar === "sleep" ? "🌅<span>Dậy</span>" : "🚶<span>Đứng dậy</span>")
-    : {sleep: "😴<span>Ngủ</span>", study: "📚<span>Học</span>", park: "🪑<span>Ngồi</span>", cinema: "🍿<span>Ngồi xem</span>"}[ar];
+    : {sleep: "😴<span>Ngủ</span>", study: "📚<span>Học</span>", park: "🪑<span>Ngồi</span>", cinema: "🍿<span>Ngồi xem</span>"}[ar] || Areas.TXT[ar].sit;
   $("#sleepBtn").classList.toggle("on", !!sleeping);
-  $("#lightBtn").classList.toggle("on", room.light);
-  $("#lightBtn").innerHTML = park() ? (room.light ? "☀️<span>Ngày</span>" : "🌙<span>Đêm</span>")
+  $("#lightBtn").classList.toggle("on", outdoor() ? Life.isDay() : room.light);
+  $("#lightBtn").innerHTML = outdoor() ? Life.lightBtnHtml()
     : room.light ? "💡<span>Đèn</span>" : "🌑<span>Tắt đèn</span>";
   $("#tvBtn").innerHTML = cinema() ? "🎬<span>Chiếu phim</span>" : "🎬<span>Rạp phim</span>";
   $("#tvBtn").classList.toggle("on", room.tv.on);
@@ -1106,7 +1172,8 @@ function toggleSleep() {
     const s = bedSpot(i), d = Math.hypot(s.x - m.x, s.y - m.y);
     if (d < bd) { bd = d; best = i; }
   });
-  if (best < 0) toast({study: "Hết bàn rồi! 😅", park: "Hết ghế rồi! 😅", cinema: "Hết ghế rồi! 😅", sleep: "Hết giường rồi! 😅"}[myArea]); else send({t: "sleep", bed: best});
+  if (best < 0) toast({study: "Hết bàn rồi! 😅", park: "Hết ghế rồi! 😅", cinema: "Hết ghế rồi! 😅", sleep: "Hết giường rồi! 😅"}[myArea] || Areas.TXT[myArea].full);
+  else if (Life.canSit(best)) send({t: "sleep", bed: best});
 }
 
 $("#hud").addEventListener("click", e => {
@@ -1114,7 +1181,7 @@ $("#hud").addEventListener("click", e => {
   Sound.ensure();
   const a = b.dataset.a;
   if (a === "sleep") toggleSleep();
-  else if (a === "light") send({t: "light", on: !room.light});
+  else if (a === "light") { if (outdoor()) Life.openClock(); else send({t: "light", on: !room.light}); }   // công viên sáng/tối theo giờ game
   else if (a === "tv") openTVOrGo();
   else if (a === "music") openMusic();
   else if (a === "emote") openEmotes();
@@ -1131,7 +1198,7 @@ $("#chatInput").addEventListener("keydown", e => { if (e.key === "Enter") sendCh
 $("#shareBtn").onclick = async () => {
   const url = `${location.origin}/?room=${roomCode}&area=${myArea}`;
   const text = {study: `Vào phòng ${roomCode} học cùng mình nè 📚`, park: `Ra công viên ${roomCode} chơi với mình nè 🌳`,
-    cinema: `Vào phòng ${roomCode} xem phim cùng mình nè 🍿`, sleep: `Vào phòng ${roomCode} ngủ cùng mình nè 🌙`}[myArea];
+    cinema: `Vào phòng ${roomCode} xem phim cùng mình nè 🍿`, sleep: `Vào phòng ${roomCode} ngủ cùng mình nè 🌙`}[myArea] || `${Areas.TXT[myArea].share} (phòng ${roomCode})`;
   try {
     if (navigator.share) { await navigator.share({title: "Ngủ Cùng Nhau", text, url}); return; }
     await navigator.clipboard.writeText(url); toast("Đã copy link mời! 📋");
@@ -1152,19 +1219,20 @@ canvas.addEventListener("pointerdown", e => {
   if (roomPet.area === myArea && hitPet(roomPet)) { send({t: "pat", target: "room"}); return; }
   for (const d of doorsHere()) if (inRect(x, y, d, 10)) { goDoor(d); return; }
   if (park() && inRect(x, y, MAPBOARD, 6)) { openMap(); return; }
+  if (Areas.tap(x, y)) return;                                    // NPC, ô ruộng, cửa hàng, nội thất…
   if (cinema()) for (const it of LOBBY_ITEMS) if (inRect(x, y, it, 4)) { it.act(); return; }
-  if (inRect(x, y, SWITCH, 10)) { send({t: "light", on: !room.light}); return; }
+  if (inRect(x, y, SWITCH, 10)) { if (outdoor()) Life.openClock(); else send({t: "light", on: !room.light}); return; }
   if (TVR && inRect(x, y, TVR, 4)) { openTV(); return; }
-  if (inRect(x, y, RADIO, 8)) { openMusic(); return; }
+  if (inRect(x, y, RADIO, 8)) { if (park()) Life.openParkShop(); else openMusic(); return; }   // công viên: xe kem
   for (let i = 0; i < BEDS.length; i++) {
     if (inRect(x, y, {...BEDS[i], w: BED_W, h: BED_H})) {
       const o = bedOwner(i);
-      if (o && o.id !== myId) { toast({study: `Bàn của ${o.name} rồi 📚`, park: `Ghế của ${o.name} rồi 🪑`, cinema: `Ghế của ${o.name} rồi 🍿`, sleep: `Giường của ${o.name} rồi 😴`}[myArea]); return; }
-      if (!o) { send({t: "sleep", bed: i}); return; }
+      if (o && o.id !== myId) { toast({study: `Bàn của ${o.name} rồi 📚`, park: `Ghế của ${o.name} rồi 🪑`, cinema: `Ghế của ${o.name} rồi 🍿`, sleep: `Giường của ${o.name} rồi 😴`}[myArea] || `${Areas.TXT[myArea].taken} ${o.name} rồi`); return; }
+      if (!o) { if (Life.canSit(i)) send({t: "sleep", bed: i}); return; }
       return; // giường của mình
     }
   }
-  const tx = Math.max(FLOOR.x1, Math.min(FLOOR.x2, x)), ty = Math.max(FLOOR.y1, Math.min(FLOOR.y2, y));
+  const tx = Math.max(FLOOR.x1, Math.min(FLOOR.x2, x)), ty = Math.max(LAYOUT.minY || FLOOR.y1, Math.min(FLOOR.y2, y));   // hồ câu: không đi xuống nước
   taps.push({x: tx, y: ty, t: performance.now() / 1000});
   send({t: "move", x: tx, y: ty});
 });
@@ -1452,9 +1520,9 @@ function drawStudyRoom(t) {
 
 // ---- 🌳 công viên trung tâm ----
 function drawPark(t) {
-  const day = room.light, M = LAYOUT.moon;
+  const day = Life.isDay(), M = LAYOUT.moon;                       // ngày/đêm theo giờ trong game
   const g = ctx.createLinearGradient(0, -400, 0, 165);
-  if (day) { g.addColorStop(0, "#4aa3df"); g.addColorStop(1, "#bfe6f7"); } else { g.addColorStop(0, "#060a22"); g.addColorStop(1, "#27316b"); }
+  if (day) { const [c0, c1] = Life.skyColors(); g.addColorStop(0, c0); g.addColorStop(1, c1); } else { g.addColorStop(0, "#060a22"); g.addColorStop(1, "#27316b"); }
   ctx.fillStyle = g; ctx.fillRect(-50, -400, W + 100, 570);
   if (day) {
     ctx.fillStyle = "rgba(255,255,255,.92)";
@@ -1596,12 +1664,12 @@ const FILMS = [
 ];
 const PRIZES = ["🧸 gấu bông mèo", "🐰 thỏ trắng", "🐼 gấu trúc mini", "🦊 cáo nhỏ"];
 const LOBBY_ITEMS = [
-  {x: 20, y: 432, w: 40, h: 48, act: () => toast("🎟️ Máy bán vé: phim nào cũng miễn phí, cứ vào xem!")},
+  {x: 20, y: 432, w: 40, h: 48, act: () => Life.openTicket(null)},          // máy bán vé (life.js)
   {x: 92, y: 434, w: 22, h: 40, act: () => toast(`📄 Bạn lấy 1 tờ rơi phim "${FILMS[Math.random() * FILMS.length | 0].name}" làm kỷ niệm`)},
-  {x: 120, y: 452, w: 120, h: 50, act: () => { const f = ["muối", "caramel", "bơ", "trà xanh"][Math.random() * 4 | 0]; toast(`🍿 Bạn mua 1 bắp rang vị ${f} + nước combo`); send({t: "emote", e: "😂"}); }},
-  {x: 256, y: 432, w: 76, h: 50, act: () => toast("🛍️ Kệ đồ lưu niệm: móc khóa, standee, mô hình mini…")},
-  {x: 70, y: 500, w: 34, h: 46, act: () => toast(Math.random() < .35 ? `🎉 Gắp trúng ${PRIZES[Math.random() * PRIZES.length | 0]}!` : "😢 Gắp trượt rồi, thử lại nhé")},
-  {x: 248, y: 500, w: 34, h: 48, act: () => toast(["🍵 Bạn mua 1 chai trà xanh", "☕ Bạn mua 1 lon cà phê", "🥤 Bạn mua 1 lon nước ngọt"][Math.random() * 3 | 0])},
+  {x: 120, y: 452, w: 120, h: 50, act: () => Life.openPopcorn()},           // quầy bắp nước
+  {x: 256, y: 432, w: 76, h: 50, act: () => Life.openSouvenir()},           // kệ đồ lưu niệm
+  {x: 70, y: 500, w: 34, h: 46, act: () => Life.claw()},                    // máy gắp thú
+  {x: 248, y: 500, w: 34, h: 48, act: () => Life.openDrinks()},             // máy bán nước
 ];
 function drawCinema(t) {
   // phòng chiếu: tường bọc vải tối, thảm đỏ rượu họa tiết nhỏ
@@ -1707,7 +1775,8 @@ function drawCinemaFX(t) {                         // luồng sáng máy chiếu
 }
 
 function drawRoom(t) {
-  if (cinema()) drawCinema(t);
+  if (Areas.has(myArea)) Areas.draw(t);
+  else if (cinema()) drawCinema(t);
   else if (park()) drawPark(t);
   else if (study()) drawStudyRoom(t);
   else drawDorm(t);
@@ -1892,6 +1961,7 @@ function drawDesk(i, t) {
 }
 
 function drawBed(i, t) {
+  if (Areas.has(myArea)) { Areas.seat(i, t); return; }
   if (cinema()) { drawCinemaSeat(i, t); return; }
   if (park()) { drawBench(i, t); return; }
   if (study()) { drawDesk(i, t); return; }
@@ -1929,7 +1999,8 @@ function setRoomPet(pt) {
   lastPet = pt;
   const area = pt.area || "sleep";
   if (roomPet.area && roomPet.area !== area) {                                    // đi qua cửa
-    const d = doorTo(area, roomPet.area); roomPet.x = d.spot.x + (d.side === "right" ? -14 : 14); roomPet.y = d.spot.y;
+    const d = doorTo(area, roomPet.area);
+    if (d) { roomPet.x = d.spot.x + (d.side === "right" ? -14 : 14); roomPet.y = d.spot.y; }
   }
   roomPet.area = area;
   roomPet.mode = pt.mode; roomPet.bed = pt.bed;
@@ -2042,31 +2113,9 @@ function petOverlay(o, name, t) {
   }
 }
 
-function drawPlayer(p, t) {
-  const bob = p.walking ? Math.abs(Math.sin(t * 12)) * 2 : Math.sin(t * 2) * .4;
-  const x = p.x, y = p.y;
-  ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.beginPath(); ctx.ellipse(x, y, 10, 4, 0, 0, 7); ctx.fill();
-  if (p.walking) {                                       // chân
-    const s = Math.sin(t * 12) * 2.5; ctx.fillStyle = "#3b2f4a";
-    ctx.fillRect(x - 6, y - 5 + s * .3, 4, 5); ctx.fillRect(x + 2, y - 5 - s * .3, 4, 5);
-  }
-  ctx.fillStyle = p.color; rr(ctx, x - 10, y - 21 - bob, 20, 18, 7); ctx.fill();
-  ctx.fillStyle = lighten(p.color, .35); ctx.beginPath(); ctx.arc(x - 4, y - 12 - bob, 1.5, 0, 7); ctx.arc(x + 4, y - 15 - bob, 1.5, 0, 7); ctx.fill();
-  const hy = y - 30 - bob;
-  ctx.fillStyle = "#f5d0a9"; ctx.beginPath(); ctx.arc(x, hy, 10, 0, 7); ctx.fill();
-  ctx.fillStyle = "#3b2a20";
-  if (p.up) { ctx.beginPath(); ctx.arc(x, hy, 10.5, 0, 7); ctx.fill(); }
-  else {
-    ctx.beginPath(); ctx.arc(x, hy - 2, 10.5, Math.PI, 0); ctx.fill();
-    ctx.fillRect(x - 10.5, hy - 2, 3, 6); ctx.fillRect(x + 7.5, hy - 2, 3, 6);
-    ctx.fillStyle = "#2a1d16"; ctx.fillRect(x - 4.5, hy + 1, 2, 2.5); ctx.fillRect(x + 2.5, hy + 1, 2, 2.5);
-    ctx.fillStyle = "rgba(255,120,140,.35)"; ctx.beginPath(); ctx.arc(x - 6.5, hy + 5, 2, 0, 7); ctx.arc(x + 6.5, hy + 5, 2, 0, 7); ctx.fill();
-  }
-  // mũ ngủ
-  ctx.fillStyle = lighten(p.color, .15); ctx.beginPath(); ctx.moveTo(x - 9, hy - 6); ctx.quadraticCurveTo(x, hy - 20, x + 13, hy - 14); ctx.lineTo(x + 9, hy - 6); ctx.fill();
-  ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x + 13, hy - 14, 2.6, 0, 7); ctx.fill();
-}
+function drawPlayer(p, t) { Areas.drawAvatar(p, t); }        // avatar ghép lớp (areas.js)
 
+const nameTag = p => `Lv${p.lv || 1} ${p.name}`;          // tên + cấp độ trên đầu
 function label(text, x, y, color = "#fff") {
   ctx.font = "700 10px system-ui,-apple-system,Segoe UI,Roboto,sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.lineWidth = 3; ctx.strokeStyle = "rgba(10,8,25,.85)"; ctx.strokeText(text, x, y);
@@ -2103,6 +2152,7 @@ function drawDarkness(t) {
   if (room.tv.on && TVR) hole(tc.x, tc.y, 260,.85 + Math.sin(t * 7) * .05 + Math.sin(t * 13) * .04);
   if (room.music.on) hole(rc.x, rc.y, 55, .45);
   if (park()) LAMPS.forEach(l => hole(l.x, l.y - 30, 95, .75));    // đèn đường
+  Areas.holes(hole, t);
   if (myArea === "sleep") {                                         // lò sưởi + đèn ngủ từng giường
     hole(180, 140, 150, .9 + Math.sin(t * 8) * .04);
     BEDS.forEach(b => hole(b.x + 10, b.y - 18, 32, .6));
@@ -2140,7 +2190,7 @@ function frame() {
     const d = pendingDoor;
     if (m && !m.walking && Math.hypot(m.x - d.spot.x, m.y - d.spot.y) < 3) { pendingDoor = false; send({t: "area", area: d.to}); }
   }
-  const target = room.light ? 0 : 1;
+  const target = outdoor() ? Life.darkness() : room.light ? 0 : 1;   // công viên: tối dần theo giờ game
   lightLevel += (target - lightLevel) * Math.min(1, dt * 2.5);
   if (room.music.on && (noteAcc += dt) > .7) {
     noteAcc = 0; notes.push({x: RADIO.x + 24 + (Math.random() - .5) * 20, y: RADIO.y - 5, t, s: ["♪", "♫", "♩"][Math.random() * 3 | 0]});
@@ -2169,8 +2219,11 @@ function frame() {
   }
   const rf = () => drawPet("room", ROOM_PET.color, roomPet, t, 7);
   if (roomPet.area === myArea) { if (roomPet.sleeping) rf(); else ents.push({y: roomPet.y, f: rf}); }
+  Areas.ents(t, ents);                                            // NPC + nội thất nhà riêng
   ents.sort((a, b) => a.y - b.y).forEach(e => e.f());
 
+  Areas.over(t);                                                  // trang trí theo mùa
+  if (outdoor()) Life.drawTint(ctx);                                 // nắng sáng vàng nhạt / chiều cam hồng
   drawDarkness(t);
 
   // top layer: notes, names, zzz, bubbles, emotes
@@ -2190,7 +2243,7 @@ function frame() {
     const ly = d.custom && d.side !== "wall" ? d.y - 12 : d.y - 9;
     label(txt, Math.max(52, Math.min(W - 52, lx)), ly, "#ffe2a8");
   }
-  if (park() && lightLevel > .05) drawFireflies(t);
+  if (outdoor() && lightLevel > .05) drawFireflies(t);
   if (myArea === "sleep") drawFairyLights(t);
   if (cinema()) drawCinemaFX(t);
 
@@ -2198,7 +2251,7 @@ function frame() {
     let hx, hy;
     if (p.lying) {
       const b = BEDS[p.bed]; hx = b.x + BED_W / 2; hy = b.y + 6;
-      label(p.name + (study() && p.status ? " · " + p.status : ""), hx, b.y - 7, p.id === myId ? "#ffd27a" : "#fff");
+      label(nameTag(p) + (study() && p.status ? " · " + p.status : ""), hx, b.y - 7, p.id === myId ? "#ffd27a" : "#fff");
       for (let k = 0; k < (myArea === "sleep" ? 3 : 0); k++) {
         const ph = (t * .45 + k / 3 + p.bed * .13) % 1;
         ctx.font = `700 ${9 + ph * 8}px system-ui`; ctx.fillStyle = `rgba(200,210,255,${Math.sin(ph * Math.PI)})`;
@@ -2206,7 +2259,7 @@ function frame() {
       }
     } else {
       hx = p.x; hy = p.y - 48;
-      label(p.name, p.x, p.y - 51, p.id === myId ? "#ffd27a" : "#fff");
+      label(nameTag(p), p.x, p.y - 51, p.id === myId ? "#ffd27a" : "#fff");
     }
     if (p.emote && t < p.emote.until) {
       const a = Math.min(1, (t - p.emote.at) * 5);
@@ -2286,7 +2339,7 @@ function frame() {
     Sound.ensure();                // mở khoá âm thanh trong lúc người dùng bấm
     connect();
   };
-  $("#joinBtn").onclick = () => { wantKind = ["study", "sleep", "cinema"].includes(params.get("area")) ? params.get("area") : "park"; go($("#roomInput").value); };
+  $("#joinBtn").onclick = () => { wantKind = ["study", "sleep", "cinema", "farm", "fishing", "mall", "home"].includes(params.get("area")) ? params.get("area") : "park"; go($("#roomInput").value); };
   const newRoom = kind => {
     const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s = "";
     for (let i = 0; i < 5; i++) s += A[Math.random() * A.length | 0];
@@ -2296,6 +2349,10 @@ function frame() {
   $("#roomInput").addEventListener("keydown", e => { if (e.key === "Enter") $("#joinBtn").click(); });
 })();
 
+</script>
+<script src="/static/areas.js"></script>
+<script>
+// Chạy vòng vẽ sau khi mọi file (kể cả areas.js) đã nạp xong
 resize();
 requestAnimationFrame(frame);
 </script>

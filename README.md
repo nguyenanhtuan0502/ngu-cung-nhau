@@ -17,13 +17,28 @@ Lần đầu Windows hỏi tường lửa thì bấm **Allow**.
 
 ## Bản đồ thế giới (công viên ở trung tâm)
 ```
-                 [BẮC] 📚 Phòng học
-[TÂY] 🛏️ Ký túc xá ── 🌳 CÔNG VIÊN ── 🎬 Rạp phim [ĐÔNG]
-                 [NAM] 🚪 Cổng vào (người mới xuất hiện ở đây)
+                       📚 Phòng học
+ 🛏️ Ký túc xá ──── 🌳 CÔNG VIÊN ──── 🎬 Rạp phim
+         ┌──────────────┼──────────────┐
+   🌾 Nông trại    🎣 Hồ câu cá    🛍️ Khu mua sắm ── 🏠 Nhà riêng
+                  🚪 Cổng vào (người mới xuất hiện ở đây)
 ```
+- 🌾 **Nông trại**: 8 ô ruộng (cà rốt, cà chua, bắp, hướng dương, dưa hấu). Chạm ô đất để gieo → 💧 tưới →
+  chờ lớn (thời gian thật) → thu hoạch. Bán cho 🧑‍🌾 Bác Năm. Có nhà kho, cối xay gió, giếng, gà, bò
+- 🎣 **Hồ câu cá**: ngồi ghế đẩu bên bờ → 🎣 Câu cá → chọn mồi → thấy ❗ thì bấm KÉO thật nhanh.
+  9 loại (có cá koi, cá nóc, rùa vàng hiếm). Mua mồi + bán cá ở quầy cô Lan
+- 🛍️ **Khu mua sắm**: 5 cửa hàng (thời trang, phụ kiện, thú cưng, salon tóc, nội thất), mua vĩnh viễn hoặc
+  thuê theo ngày; quầy thu ngân bán 🎫 vé số
+- 🏠 **Nhà riêng** (cửa trái khu mua sắm): nhà chung của cả nhóm cùng mã phòng. 🛋️ Bày đồ nội thất,
+  lật/cất đồ; server lưu lại vào `homes.json` nên lần sau vào vẫn còn
+- 👗 **Tủ đồ**: tóc, màu tóc, áo, mũ, kính, phụ kiện cổ, cánh/lưng. Mọi người trong phòng đều thấy bạn mặc gì
+- 🧑 **NPC**: Cụ Ba và Bé Na đi dạo công viên, Cô Mai (phòng học), Anh Kenji (quầy bắp), Bác Năm, Cô Lan, Chị Thu.
+  Chạm vào để trò chuyện / mở quầy
+- 🎉 **Sự kiện theo mùa** (sửa trong `SEASONS` ở data.js): Tết, Trung thu, Halloween, mùa thu, Giáng sinh.
+  Thử nhanh: thêm `&season=xmas` vào link
 Các khu không nối thẳng với nhau, muốn đi đâu cũng phải qua công viên. Bấm 🗺️ để mở bản đồ và tự đi tới khu bất kỳ.
 - 🌳 **Công viên**: quảng trường có đài phun nước, 4 lối đi, ghế đá, hồ nhỏ, xe kem (phát nhạc),
-  cây anh đào, cổng vào có bảng bản đồ; chạm mặt trời/mặt trăng đổi ngày đêm (đêm có đom đóm)
+  cây anh đào, cổng vào có bảng bản đồ; trời sáng/chiều/tối theo giờ trong game (đêm có đom đóm)
 - 🛏️ **Ký túc xá**: 8 giường mỗi giường một họa tiết, thú bông, đèn ngủ nấm/trăng, rèm đầu giường,
   lò sưởi + ghế bành + bàn trà, cửa sổ có tuyết/mưa, dây đèn vàng; tắt đèn thì nhạc nhỏ và trầm dần,
   có tiếng lửa lách tách + đồng hồ tích tắc
@@ -45,6 +60,16 @@ Các khu không nối thẳng với nhau, muốn đi đâu cũng phải qua côn
   Chạm vào thú cưng để vuốt ve (thả tim + kêu meo/gâu)
 - Khi mọi người đều ngủ và đèn tắt sẽ hiện đồng hồ "ngủ cùng nhau"
 
+## Cuộc sống ảo: chỉ số, xu, giờ trong game
+- Thanh trên cùng: ⭐ cấp · 💰 xu · ⚡ năng lượng · 😊 vui vẻ · 📖 kiến thức. Chạm vào để xem chi tiết, túi đồ, đặt lại dữ liệu (gõ YES)
+- 🕐 Giờ trong game: 1 ngày = 24 phút thật, cả phòng chung một giờ. Công viên tự sáng/chiều/tối theo giờ
+- 😴 Ngủ ở ký túc xá hồi năng lượng · 📚 ngồi học tăng kiến thức, tốn năng lượng · 🍿 xem phim, 🍦 ăn kem tăng vui vẻ
+- 🌳 Công viên: chạm xe kem → mua kem/trà sữa/bắp nướng/bóng bay, 🎡 vòng quay may mắn (miễn phí 1 lần/ngày)
+- 📚 Phòng học: 📝 bài kiểm tra trắc nghiệm 5 câu, đúng được xu + kiến thức
+- 🎬 Rạp phim: mua vé mới ngồi ghế được; quầy bắp nước, máy bán nước, đồ lưu niệm, máy gắp thú đều dùng xu
+- 🎁 Mỗi ngày vào game +50 xu. Tiến trình lưu trên máy (localStorage), tên kèm cấp độ hiện trên đầu cho cả phòng
+- Chat tối đa 60 ký tự, server tự che từ cấm
+
 ## Đưa lên mạng (chơi với bạn ở xa)
 Deploy lên Render.com / Railway / Fly.io dưới dạng Python web service:
 - Build: `pip install -r requirements.txt`
@@ -53,3 +78,6 @@ Deploy lên Render.com / Railway / Fly.io dưới dạng Python web service:
 ## Cấu trúc
 - `server.py`: server WebSocket (phòng, giường, TV, nhạc, đèn, chat)
 - `static/index.html`: toàn bộ game (canvas + nhạc tạo bằng WebAudio, không cần file âm thanh)
+- `static/data.js`: dữ liệu (giá đồ, câu hỏi kiểm tra, vòng quay, tốc độ tăng/giảm chỉ số, giờ trong game)
+- `static/life.js`: hệ thống chỉ số, xu, giờ trong game, lưu game, rương đồ, kiểm tra, vé phim
+- `static/areas.js`: 4 khu mới, avatar ghép lớp, NPC, nông trại, câu cá, cửa hàng, tủ đồ, nhà riêng, sự kiện mùa
