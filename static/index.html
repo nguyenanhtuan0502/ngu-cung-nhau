@@ -139,8 +139,10 @@
   #colors{display:flex;gap:8px;justify-content:space-between}
   #colors button{width:34px;height:34px;border-radius:50%;border:3px solid transparent}
   #colors button.sel{border-color:#fff;transform:scale(1.1)}
-  .newRow{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-  .newRow .ghost{font-size:13px;padding:12px 4px;margin-top:0}
+  .map{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+  .map .opt,.mapgate{text-align:center;padding:12px 4px;font-size:13px;display:flex;flex-direction:column;gap:2px;align-items:center}
+  .map small,.mapgate small{font-size:10px;color:var(--muted)}
+  .mapgate{background:rgba(255,255,255,.04);border-radius:14px;border:1px dashed rgba(255,255,255,.15)}
   /* Phòng học */
   #pomoPill{position:fixed;right:10px;top:calc(46px + env(safe-area-inset-top));z-index:5;font-weight:700;font-variant-numeric:tabular-nums}
   #pomoPill.focus{background:rgba(255,99,71,.28);border-color:rgba(255,120,100,.6)}
@@ -172,7 +174,7 @@
 
 <div id="top" class="hidden">
   <div class="pill">🏠 <b id="roomCode"></b> · 👥 <span id="count">1</span> · <span id="sleepIcon">😴</span> <span id="sleepCount">0</span></div>
-  <button class="pill" id="shareBtn">🔗 Mời bạn</button>
+  <div style="display:flex;gap:6px"><button class="pill" id="mapBtn">🗺️</button><button class="pill" id="shareBtn">🔗 Mời bạn</button></div>
 </div>
 <div id="log"></div>
 <button id="pomoPill" class="pill hidden">🍅 25:00</button>
@@ -214,8 +216,7 @@
     <label>Mã phòng</label>
     <input id="roomInput" maxlength="8" placeholder="VD: MEOW" autocomplete="off">
     <button id="joinBtn" class="primary">Vào phòng</button>
-    <label>✨ Hoặc tạo nhà mới, bắt đầu ở:</label>
-    <div class="newRow"><button id="newBtn" class="ghost">🛏️ Phòng ngủ</button><button id="newStudyBtn" class="ghost">📚 Phòng học</button><button id="newParkBtn" class="ghost">🌳 Công viên</button><button id="newCinemaBtn" class="ghost">🎬 Rạp phim</button></div>
+    <button id="newBtn" class="ghost">✨ Tạo thế giới mới (bắt đầu ở cổng công viên)</button>
     <p id="lobbyErr"></p>
   </div>
 </div>
@@ -227,11 +228,12 @@ const W = 360, H = 640;
 const FLOOR = {x1: 16, y1: 175, x2: 344, y2: 575};
 // Mỗi khu một bố cục riêng: chỗ nằm/ngồi, TV, radio, công tắc, nguồn sáng trăng
 const LAYOUTS = {
-  sleep: {                                   // phòng ngủ: 6 giường 2 cột, cửa sổ trái, TV giữa
-    beds: [{x: 30, y: 185}, {x: 220, y: 185}, {x: 30, y: 300}, {x: 220, y: 300}, {x: 30, y: 415}, {x: 220, y: 415}],
-    bw: 110, bh: 95,
+  sleep: {                                   // ký túc xá ấm cúng: 8 giường 2 bên, lối đi giữa, lò sưởi
+    beds: [{x: 8, y: 196}, {x: 252, y: 196}, {x: 8, y: 280}, {x: 252, y: 280},
+           {x: 8, y: 364}, {x: 252, y: 364}, {x: 8, y: 448}, {x: 252, y: 448}],
+    bw: 100, bh: 62,
     tvr: null, scr: null,
-    radio: {x: 286, y: 100, w: 48, h: 28}, sw: {x: 254, y: 74, w: 13, h: 19}, moon: {x: 64, y: 84},
+    radio: {x: 296, y: 82, w: 48, h: 28}, sw: {x: 214, y: 540, w: 13, h: 19}, moon: {x: 60, y: 62},
   },
   study: {                                   // phòng học: lớp học 3 dãy x 2 hàng, giá sách trái, bảng/TV phải
     beds: [{x: 6, y: 192}, {x: 125, y: 192}, {x: 244, y: 192}, {x: 6, y: 318}, {x: 125, y: 318}, {x: 244, y: 318}],
@@ -239,17 +241,17 @@ const LAYOUTS = {
     tvr: null, scr: null,
     radio: {x: 302, y: 104, w: 48, h: 28}, sw: {x: 122, y: 74, w: 13, h: 19}, moon: null,
   },
-  park: {                                    // công viên: ghế đá rải rác quanh hồ, màn chiếu phải, picnic trái
-    beds: [{x: 180, y: 178}, {x: 16, y: 178}, {x: 222, y: 266}, {x: 180, y: 356}, {x: 18, y: 424}, {x: 214, y: 440}],
+  park: {                                    // công viên trung tâm: đài phun nước, 4 lối đi
+    beds: [{x: 30, y: 212}, {x: 220, y: 212}, {x: 30, y: 384}, {x: 220, y: 384}],
     bw: 110, bh: 80,
     tvr: null, scr: null,
-    radio: {x: 32, y: 100, w: 48, h: 28}, sw: {x: 136, y: 46, w: 32, h: 32}, moon: {x: 152, y: 62},
+    radio: {x: 268, y: 296, w: 58, h: 34}, sw: {x: 44, y: 44, w: 36, h: 36}, moon: {x: 62, y: 62},
   },
-  cinema: {                                  // phòng chiếu phim: màn lớn cả bức tường, 2 hàng ghế nhung
-    beds: [{x: 14, y: 236}, {x: 125, y: 236}, {x: 236, y: 236}, {x: 14, y: 344}, {x: 125, y: 344}, {x: 236, y: 344}],
+  cinema: {                                  // rạp kiểu Nhật: phòng chiếu phía trong, sảnh ngay sau cửa
+    beds: [{x: 14, y: 168}, {x: 125, y: 168}, {x: 236, y: 168}, {x: 14, y: 252}, {x: 125, y: 252}, {x: 236, y: 252}],
     bw: 110, bh: 80,
-    tvr: {x: 26, y: 20, w: 308, h: 140}, scr: {x: 32, y: 26, w: 296, h: 128},
-    radio: {x: 296, y: 446, w: 48, h: 28}, sw: {x: 341, y: 118, w: 13, h: 19}, moon: null,
+    tvr: {x: 30, y: 20, w: 300, h: 132}, scr: {x: 36, y: 26, w: 288, h: 120},
+    radio: {x: 300, y: 498, w: 44, h: 26}, sw: {x: 341, y: 112, w: 13, h: 19}, moon: null,
   },
 };
 let BED_W = 110, BED_H = 95, BEDS = LAYOUTS.sleep.beds;
@@ -264,14 +266,21 @@ const tvCenter = () => TVR ? {x: TVR.x + TVR.w / 2, y: TVR.y + TVR.h / 2} : {x: 
 const DOOR_R = {x: 332, y: 513, w: 28, h: 62, side: "right", spot: {x: 336, y: 546}};
 const DOOR_L = {x: 0, y: 513, w: 28, h: 62, side: "left", spot: {x: 24, y: 546}};
 const AREA_DOORS = {
-  sleep:  [{...DOOR_L, to: "park"}, {...DOOR_R, to: "study"}, {x: 156, y: 96, w: 56, h: 66, side: "wall", spot: {x: 184, y: 182}, to: "cinema"}],
-  study:  [{...DOOR_L, to: "park"}, {...DOOR_R, to: "sleep"}, {x: 256, y: 96, w: 40, h: 66, side: "wall", spot: {x: 276, y: 180}, to: "cinema"}],
-  park:   [{...DOOR_L, to: "sleep"}, {...DOOR_R, to: "study"}, {x: 254, y: 100, w: 40, h: 62, side: "wall", spot: {x: 274, y: 178}, to: "cinema"}],
-  cinema: [{...DOOR_L, to: "sleep"}, {...DOOR_R, to: "study"}, {x: 156, y: 538, w: 48, h: 37, side: "bottom", spot: {x: 180, y: 556}, to: "park"}],
+  park: [                                    // Bắc: phòng học · Tây: ký túc xá · Đông: phố rạp phim
+    {x: 162, y: 110, w: 36, h: 52, side: "wall", spot: {x: 180, y: 182}, to: "study", custom: true},
+    {x: 0, y: 318, w: 24, h: 76, side: "left", spot: {x: 22, y: 356}, to: "sleep", custom: true},
+    {x: 336, y: 318, w: 24, h: 76, side: "right", spot: {x: 338, y: 356}, to: "cinema", custom: true},
+  ],
+  sleep: [{x: 156, y: 538, w: 48, h: 37, side: "bottom", spot: {x: 180, y: 556}, to: "park"}],
+  study: [{x: 156, y: 538, w: 48, h: 37, side: "bottom", spot: {x: 180, y: 556}, to: "park"}],
+  cinema: [{...DOOR_L, to: "park"}],
 };
+const GATE = {x: 150, y: 520, w: 60, h: 55};                 // cổng Nam (người mới xuất hiện)
+const MAPBOARD = {x: 222, y: 498, w: 44, h: 34};             // bảng bản đồ cạnh cổng
 const doorsHere = () => AREA_DOORS[myArea];
 const doorTo = (from, to) => AREA_DOORS[from].find(d => d.to === to);
-const LAMPS = [{x: 166, y: 420}, {x: 204, y: 262}];        // đèn đường công viên
+const LAMPS = [{x: 150, y: 248}, {x: 212, y: 470}, {x: 92, y: 338}, {x: 270, y: 392}];   // đèn đường công viên
+const FOUNTAIN = {x: 180, y: 355, r: 60};
 const COLORS = ["#e76f51","#f4a261","#e9c46a","#2a9d8f","#4cc9f0","#7b2cbf","#f72585","#90be6d"];
 const TV_CH = [
   {name: "🔥 Lửa trại", glow: "255,138,61"},
@@ -306,9 +315,10 @@ let tvSwitchAt = -10;
 let togetherSince = null;
 let taps = [], notes = [];
 let myPet = {type: "cat", name: ""};
-let roomKind = "sleep", wantKind = "sleep", pomo = null, lastPill = "";
-let areas = null, myArea = "sleep", pendingDoor = false, lastPet = null;
-const AREA_NAME = {sleep: "🛏️ Phòng ngủ", study: "📚 Phòng học", park: "🌳 Công viên", cinema: "🎬 Phòng chiếu phim"};
+let roomKind = "park", wantKind = "park", pomo = null, lastPill = "";
+let areas = null, myArea = "park", pendingDoor = false, lastPet = null, routeTo = null;
+const AREA_NAME = {sleep: "🛏️ Ký túc xá", study: "📚 Phòng học", park: "🌳 Công viên", cinema: "🎬 Rạp phim"};
+const AREA_DIR = {sleep: "Tây", study: "Bắc", park: "Trung tâm", cinema: "Đông"};
 const cinema = () => myArea === "cinema";
 const park = () => myArea === "park";
 const here = () => [...players.values()].filter(p => p.area === myArea);
@@ -330,7 +340,13 @@ function lighten(hex, amt) {
   const f = v => Math.round(v + (255 - v) * amt);
   return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
 }
-function bedSpot(b) { return {x: BEDS[b].x + BED_W / 2, y: BEDS[b].y + ({study: 80, park: 66, cinema: 66}[roomKind] || 62)}; }
+// Vị trí chỗ nằm/ngồi theo bố cục của KHU chứa nó (không phải khu mình đang đứng)
+const seatIn = (area, b) => LAYOUTS[area].beds[b];
+function bedSpot(b, area = myArea) {
+  const L = LAYOUTS[area], s = L.beds[b];
+  return {x: s.x + L.bw / 2, y: s.y + ({study: 80, park: 66, cinema: 66, sleep: 40}[area])};
+}
+const standUpY = (area, b) => Math.min(FLOOR.y2, seatIn(area, b).y + LAYOUTS[area].bh + 8);
 function bedOwner(b) { for (const p of players.values()) if (p.bed === b && p.area === myArea) return p; return null; }
 function me() { return players.get(myId); }
 function fmtTime(s) {
@@ -362,6 +378,9 @@ const Sound = {
       this.ctx = new AC();
       this.master = this.ctx.createGain(); this.master.gain.value = this.vol;
       this.master.connect(this.ctx.destination);
+      this.mix = this.ctx.createGain(); this.lp = this.ctx.createBiquadFilter();     // "ru ngủ" khi tắt đèn
+      this.lp.type = "lowpass"; this.lp.frequency.value = 20000;
+      this.mix.connect(this.lp); this.lp.connect(this.master);
       const b = this.ctx.createBuffer(1, 1, 22050), s = this.ctx.createBufferSource(); // unlock iOS
       s.buffer = b; s.connect(this.ctx.destination); s.start(0);
       this.white = this.noise(2, false); this.brown = this.noise(4, true);
@@ -397,7 +416,7 @@ const Sound = {
     if (!this.ctx || this.current === track) return;
     this.stop();
     const c = this.ctx, bus = c.createGain();
-    bus.gain.value = 0; bus.gain.setTargetAtTime(1, c.currentTime, 0.6); bus.connect(this.master);
+    bus.gain.value = 0; bus.gain.setTargetAtTime(1, c.currentTime, 0.6); bus.connect(this.mix);
     this.bus = bus; this.current = track;
     [this.lullaby, this.lofi, this.rain, this.waves][track].call(this, c, bus);
   },
@@ -432,6 +451,45 @@ const Sound = {
   },
   mtof: m => 440 * Math.pow(2, (m - 69) / 12),
 
+  setNight(on) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.mix.gain.setTargetAtTime(on ? .5 : 1, t, 1.5);
+    this.lp.frequency.setTargetAtTime(on ? 1300 : 20000, t, 1.5);
+  },
+  ambTimers: [], ambSrcs: [], ambBus: null, ambKind: undefined,
+  ambient(kind) {                      // âm thanh nền: lửa lách tách + đồng hồ / chim hót / dế kêu
+    if (!this.ctx || kind === this.ambKind) return;
+    this.ambKind = kind;
+    this.ambTimers.forEach(clearInterval); this.ambTimers = [];
+    if (this.ambBus) { const b = this.ambBus, ss = this.ambSrcs, c = this.ctx; b.gain.setTargetAtTime(0, c.currentTime, .4); setTimeout(() => { ss.forEach(x => { try { x.stop(); } catch (e) {} }); b.disconnect(); }, 2000); }
+    this.ambBus = null; this.ambSrcs = [];
+    if (!kind) return;
+    const c = this.ctx, bus = c.createGain(); bus.gain.value = 0; bus.gain.setTargetAtTime(.7, c.currentTime, 1); bus.connect(this.master);
+    this.ambBus = bus;
+    let next = c.currentTime + .1, step = 0;
+    const each = (dur, fn) => { const tick = () => { if (next < c.currentTime) next = c.currentTime + .05; while (next < c.currentTime + 1) { fn(step, next); next += dur; step++; } }; tick(); this.ambTimers.push(setInterval(tick, 200)); };
+    if (kind === "fire") {
+      const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+      s.buffer = this.brown; s.loop = true; f.type = "lowpass"; f.frequency.value = 350; g.gain.value = .12;
+      s.connect(f); f.connect(g); g.connect(bus); s.start(); this.ambSrcs.push(s);
+      each(.06, (k, t) => {
+        if (Math.random() < .2) this.burst(bus, t, .02 + Math.random() * .04, .05 + Math.random() * .05, "bandpass", 1500 + Math.random() * 3000);
+        if (k % 17 === 0) this.tone(bus, 1900, t, .03, "square", .006, .001);       // tích tắc
+      });
+    } else if (kind === "day") {
+      each(.25, (k, t) => {
+        if (Math.random() < .07) for (let i = 0; i < 2 + (Math.random() * 3 | 0); i++) {
+          const o = c.createOscillator(), g = c.createGain(), t0 = t + i * .11, f0 = 2600 + Math.random() * 1400;
+          o.frequency.setValueAtTime(f0, t0); o.frequency.exponentialRampToValueAtTime(f0 * 1.4, t0 + .07);
+          g.gain.setValueAtTime(.0001, t0); g.gain.linearRampToValueAtTime(.025, t0 + .01); g.gain.exponentialRampToValueAtTime(.0001, t0 + .09);
+          o.connect(g); g.connect(bus); o.start(t0); o.stop(t0 + .1);
+        }
+      });
+    } else if (kind === "night") {
+      each(.5, (k, t) => { if (Math.random() < .55) for (let i = 0; i < 3; i++) this.tone(bus, 4400, t + i * .06, .04, "sine", .012, .004); });
+    }
+  },
   // Chuông Pomodoro
   chime(phase) {
     if (!this.ctx) return;
@@ -669,9 +727,27 @@ function placeTheater() {
 $("#theater").onclick = () => { if (joined) openTVOrGo(); };
 function openTVOrGo() {
   if (cinema()) { openTV(); return; }
-  toast("🎬 Đang đi sang phòng chiếu phim…");
-  goDoor(doorTo(myArea, "cinema"));
+  travelTo("cinema");
 }
+function travelTo(area) {                      // đi tới khu bất kỳ (qua công viên nếu cần)
+  if (area === myArea) { toast(`Bạn đang ở ${AREA_NAME[area]} rồi`); return; }
+  const direct = doorTo(myArea, area);
+  if (direct) { routeTo = null; toast(`🚶 Đang đi tới ${AREA_NAME[area]}…`); goDoor(direct); return; }
+  routeTo = area; toast(`🚶 Đi qua công viên tới ${AREA_NAME[area]}…`);
+  goDoor(doorTo(myArea, "park"));
+}
+function openMap() {
+  const cell = (a, extra = "") => `<button class="opt mapcell ${a === myArea ? "active" : ""}" data-a="${a}" ${extra}>${AREA_NAME[a]}<small>${AREA_DIR[a]}${a === myArea ? " · bạn ở đây" : ""}</small></button>`;
+  openSheet("🗺️ Bản đồ",
+    `<div class="map">
+       <div></div>${cell("study")}<div></div>
+       ${cell("sleep")}${cell("park")}${cell("cinema")}
+       <div></div><div class="mapgate">🚪 Cổng vào<small>Nam</small></div><div></div>
+     </div>
+     <div class="vol" style="font-size:12px;margin-top:10px">Các khu không nối thẳng với nhau, muốn đi đâu cũng phải qua 🌳 công viên. Chạm một khu để tự đi tới đó.</div>`,
+    el => el.querySelectorAll("[data-a]").forEach(b => b.onclick = () => { closeSheet(); travelTo(b.dataset.a); }));
+}
+$("#mapBtn").onclick = () => { if (joined) openMap(); };
 $("#tvShrink").onclick = () => { tvBig = false; placeTV(); };
 $("#ytMusic").onclick = () => $("#ytMusic").classList.toggle("mini");
 function ytToggle(slot) {
@@ -717,7 +793,7 @@ function addPlayer(d) {
   const p = {...d, tx: d.x, ty: d.y, lying: false, walking: false, up: false, bubble: null, emote: null};
   if (p.pet && p.pet.type !== "none" && PETS[p.pet.type])
     p.petObj = {x: p.x - 18, y: p.y + 3, dir: 1, walking: false, sleeping: false, side: -1, jumpAt: -9, hearts: [], nameUntil: 0};
-  if (p.bed != null) { const s = bedSpot(p.bed); p.x = p.tx = s.x; p.y = p.ty = s.y; p.lying = true; }
+  if (p.bed != null && seatIn(p.area, p.bed)) { const s = bedSpot(p.bed, p.area); p.x = p.tx = s.x; p.y = p.ty = s.y; p.lying = true; }
   players.set(p.id, p);
   return p;
 }
@@ -739,9 +815,9 @@ function handle(m) {
       resize();
       updateUI();
       log(`Chào <b>${esc(myName)}</b>! ` + {study: "Chạm vào bàn để ngồi học 📚, bấm 🍅 để bật Pomodoro",
-        park: "Chạm ghế để ngồi ngắm cảnh 🌳, bấm ☀️/🌙 để đổi ngày đêm", sleep: "Chạm vào giường để đi ngủ 🛏️",
+        park: "Đây là công viên trung tâm 🌳. Bắc: phòng học · Tây: ký túc xá · Đông: rạp phim. Bấm 🗺️ để xem bản đồ", sleep: "Chạm vào giường để đi ngủ 🛏️",
         cinema: "Chạm màn chiếu để chọn phim 🎬, chạm ghế để ngồi xem 🍿"}[myArea]);
-      log(`🚪 Cửa đi: ${doorsHere().map(d => AREA_NAME[d.to]).join(" · ")}`);
+      if (!park()) log(`🚪 Cửa ra: ${doorsHere().map(d => AREA_NAME[d.to]).join(" · ")}`);
       if (players.size === 1) log(`🐾 Mèo <b>Mun</b> của phòng sẽ ở cùng bạn. Chạm để vuốt ve nhé!`);
       break;
     }
@@ -763,19 +839,19 @@ function handle(m) {
       const p = players.get(m.id); if (!p) break;
       if (p.bed != null) {          // thức dậy / đứng dậy khỏi bàn
         if (p.sat_at) { p.studied = (p.studied || 0) + serverNow() - p.sat_at; p.sat_at = null; }
-        const s = bedSpot(p.bed);
-        p.x = s.x; p.y = Math.min(FLOOR.y2, BEDS[p.bed].y + BED_H + 8);
+        const s = bedSpot(p.bed, p.area);
+        p.x = s.x; p.y = standUpY(p.area, p.bed);
         p.bed = null; p.lying = false;
       }
       p.tx = m.x; p.ty = m.y; updateUI(); break;
     }
     case "sleep": {
       const p = players.get(m.id); if (!p) break;
-      if (p.lying && p.bed != null) { const s = bedSpot(p.bed); p.x = s.x; p.y = BEDS[p.bed].y + BED_H + 8; }
+      if (p.lying && p.bed != null) { const s = bedSpot(p.bed, p.area); p.x = s.x; p.y = standUpY(p.area, p.bed); }
       if (p.sat_at) p.studied = (p.studied || 0) + m.at - p.sat_at;
       p.sat_at = p.area === "study" ? m.at : null;
       p.bed = m.bed; p.lying = false;
-      const s = bedSpot(m.bed); p.tx = s.x; p.ty = s.y;
+      const s = bedSpot(m.bed, p.area); p.tx = s.x; p.ty = s.y;
       updateUI(); break;
     }
     case "media": {
@@ -852,7 +928,7 @@ function handle(m) {
       if (m.area !== myArea) break;
       log(park() ? `<b>${esc(m.by)}</b> chuyển sang ${m.on ? "ban ngày ☀️" : "ban đêm 🌙"}`
         : m.on ? `<b>${esc(m.by)}</b> bật đèn 💡` : `<b>${esc(m.by)}</b> tắt đèn… chúc ngủ ngon 🌙`);
-      updateUI(); break;
+      updateAmbience(); updateUI(); break;
     case "chat": {
       const p = players.get(m.id); if (!p) break;
       p.bubble = {text: m.text, until: performance.now() / 1000 + 6};
@@ -869,6 +945,7 @@ function handle(m) {
 function setArea(a) {
   myArea = roomKind = wantKind = a;
   applyLayout(a);
+  if (routeTo && a === "park") { const r = routeTo; routeTo = null; setTimeout(() => { const d = doorTo("park", r); if (d) goDoor(d); }, 250); }
   if (lastPet) setRoomPet(lastPet);
   const A = areas[a];
   room = A; media = A.media; tvTimerEnd = A.tvTimer || null;
@@ -879,7 +956,12 @@ function setArea(a) {
   syncMusic(); applyMedia("tv"); applyMedia("music"); placeTV();
   $("#thTitle").textContent = cinema() ? "Màn chiếu đang tắt" : "Phim chỉ chiếu ở 🎬 Phòng chiếu phim";
   $("#thSub").textContent = cinema() ? "Chạm để bật phim hoặc mở YouTube" : "Chạm để đi sang đó";
+  updateAmbience();
   updateUI();
+}
+function updateAmbience() {
+  Sound.setNight(myArea === "sleep" && !room.light);
+  Sound.ambient(myArea === "sleep" ? "fire" : myArea === "park" ? (room.light ? "day" : "night") : null);
 }
 function goDoor(d) {
   const m = me(); if (!m) return;
@@ -947,6 +1029,7 @@ function openTV() {
       el.querySelectorAll("[data-i]").forEach(b => b.onclick = () => {
         const i = +b.dataset.i;
         send(i < 0 ? {t: "tv", on: false, ch: Math.max(0, room.tv.ch)} : {t: "tv", on: true, ch: i});
+      if (cinema()) send({t: "light", on: i < 0});                  // phim chiếu thì tắt đèn, hết phim bật đèn
         closeSheet();
       });
     });
@@ -1068,6 +1151,8 @@ canvas.addEventListener("pointerdown", e => {
   for (const p of here()) if (p.petObj && hitPet(p.petObj)) { send({t: "pat", target: p.id}); return; }
   if (roomPet.area === myArea && hitPet(roomPet)) { send({t: "pat", target: "room"}); return; }
   for (const d of doorsHere()) if (inRect(x, y, d, 10)) { goDoor(d); return; }
+  if (park() && inRect(x, y, MAPBOARD, 6)) { openMap(); return; }
+  if (cinema()) for (const it of LOBBY_ITEMS) if (inRect(x, y, it, 4)) { it.act(); return; }
   if (inRect(x, y, SWITCH, 10)) { send({t: "light", on: !room.light}); return; }
   if (TVR && inRect(x, y, TVR, 4)) { openTV(); return; }
   if (inRect(x, y, RADIO, 8)) { openMusic(); return; }
@@ -1180,36 +1265,154 @@ function drawTVSet(t) {
   ctx.fillStyle = room.tv.on ? "#5cf28a" : "#ff4d5e"; ctx.fillRect(TVR.x + TVR.w - 9, TVR.y + TVR.h - 5, 3, 2);
 }
 
-// ---- 🛏️ phòng ngủ ----
-function drawBedroom(t) {
-  drawWall("#2c2656");
-  drawWoodFloor("#6b4a3a", "#654535", "#6f4d3c");
-  ctx.fillStyle = "#1c1838"; ctx.fillRect(-50, 156, W + 100, 9);
-  ctx.fillStyle = "rgba(63,78,140,.55)"; rr(ctx, 70, 205, 220, 320, 40); ctx.fill();
-  ctx.strokeStyle = "rgba(255,210,122,.25)"; ctx.lineWidth = 3; rr(ctx, 80, 215, 200, 300, 32); ctx.stroke();
-  // cửa sổ + trăng
-  const wx = 16, wy = 44, ww = 82, wh = 78;
-  ctx.fillStyle = "#d9c7a5"; rr(ctx, wx - 5, wy - 5, ww + 10, wh + 10, 6); ctx.fill();
-  const g = ctx.createLinearGradient(0, wy, 0, wy + wh); g.addColorStop(0, "#0a0f2e"); g.addColorStop(1, "#28326a");
+// ---- 🛏️ ký túc xá ấm cúng ----
+const BED_STYLE = [
+  {c: "#f4a6b8", p: "stars"}, {c: "#a8d8ea", p: "clouds"}, {c: "#3d5a80", p: "moons"}, {c: "#c9a27e", p: "bears"},
+  {c: "#f6d186", p: "cats"}, {c: "#b8e0b2", p: "flowers"}, {c: "#cdb4db", p: "dots"}, {c: "#ffb4a2", p: "stripes"},
+];
+const PLUSH = ["#c68b59", "#f3f0ea", "#f4a261", "#9b8cff", "#ffd166", "#90be6d", "#ff8fab", "#8d99ae"];
+function patternAt(kind, x, y, w, h) {
+  ctx.save(); rr(ctx, x, y, w, h, 6); ctx.clip();
+  ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 2;
+  for (let yy = y + 8; yy < y + h; yy += 14) for (let xx = x + 6 + ((yy - y) / 14 % 2) * 7; xx < x + w; xx += 15) {
+    ctx.beginPath();
+    if (kind === "stars") { for (let k = 0; k < 5; k++) { const a = k * 2.513 - 1.57; ctx.lineTo(xx + Math.cos(a) * 3.5, yy + Math.sin(a) * 3.5); } ctx.fill(); }
+    else if (kind === "clouds") { ctx.arc(xx, yy, 2.6, 0, 7); ctx.arc(xx + 3.5, yy - 1, 3, 0, 7); ctx.arc(xx + 7, yy, 2.4, 0, 7); ctx.fill(); }
+    else if (kind === "moons") { ctx.fillStyle = "#ffe8a3"; ctx.arc(xx, yy, 3.5, 0, 7); ctx.fill(); ctx.fillStyle = BED_STYLE[2].c; ctx.beginPath(); ctx.arc(xx + 1.8, yy - 1, 3, 0, 7); ctx.fill(); ctx.fillStyle = "rgba(255,255,255,.55)"; }
+    else if (kind === "bears") { ctx.arc(xx, yy, 3, 0, 7); ctx.arc(xx - 2.6, yy - 2.6, 1.4, 0, 7); ctx.arc(xx + 2.6, yy - 2.6, 1.4, 0, 7); ctx.fill(); }
+    else if (kind === "cats") { ctx.arc(xx, yy, 3, 0, 7); ctx.moveTo(xx - 3, yy - 1); ctx.lineTo(xx - 2.5, yy - 5); ctx.lineTo(xx, yy - 2.5); ctx.lineTo(xx + 2.5, yy - 5); ctx.lineTo(xx + 3, yy - 1); ctx.fill(); }
+    else if (kind === "flowers") { for (let k = 0; k < 5; k++) { const a = k * 1.256; ctx.moveTo(xx, yy); ctx.arc(xx + Math.cos(a) * 2.4, yy + Math.sin(a) * 2.4, 1.6, 0, 7); } ctx.fill(); ctx.fillStyle = "#ffd166"; ctx.beginPath(); ctx.arc(xx, yy, 1.2, 0, 7); ctx.fill(); ctx.fillStyle = "rgba(255,255,255,.55)"; }
+    else if (kind === "dots") { ctx.arc(xx, yy, 2, 0, 7); ctx.fill(); }
+  }
+  if (kind === "stripes") for (let xx = x - h; xx < x + w; xx += 10) { ctx.beginPath(); ctx.moveTo(xx, y + h); ctx.lineTo(xx + h, y); ctx.stroke(); }
+  ctx.restore();
+}
+function drawCozyBed(i, t) {
+  const b = BEDS[i], o = bedOwner(i), lying = o && o.lying, st = BED_STYLE[i % 8], right = i % 2 === 1;
+  const x = b.x, y = b.y, w = BED_W, h = BED_H, br = lying ? Math.sin(t * 1.6 + i) * 1.2 : 0;
+  ctx.save();
+  if (right) { ctx.translate(2 * x + w, 0); ctx.scale(-1, 1); }             // gối luôn quay về phía tường
+  // tủ đầu giường + đèn ngủ nấm / mặt trăng + ly nước + sách
+  ctx.fillStyle = "#8a5a3c"; rr(ctx, x + 2, y - 18, 24, 15, 2); ctx.fill();
+  ctx.fillStyle = "#6b4226"; ctx.fillRect(x + 4, y - 11, 20, 1.5);
+  if (i % 2) { ctx.fillStyle = "#fff6c8"; ctx.beginPath(); ctx.arc(x + 9, y - 22, 4.5, 0, 7); ctx.fill(); ctx.fillStyle = "#8a5a3c"; ctx.beginPath(); ctx.arc(x + 11, y - 23, 3.6, 0, 7); ctx.fill(); }
+  else { ctx.fillStyle = "#f3e9dc"; ctx.fillRect(x + 8, y - 22, 3, 5); ctx.fillStyle = "#e63946"; ctx.beginPath(); ctx.arc(x + 9.5, y - 22, 5, Math.PI, 0); ctx.fill(); ctx.fillStyle = "#fff"; ctx.fillRect(x + 7, y - 25, 1.5, 1.5); ctx.fillRect(x + 11, y - 24, 1.5, 1.5); }
+  ctx.fillStyle = "rgba(160,210,255,.8)"; ctx.fillRect(x + 16, y - 23, 4, 6);
+  ctx.fillStyle = ["#2a9d8f", "#e76f51", "#457b9d"][i % 3]; ctx.fillRect(x + 14, y - 15, 9, 3);
+  // khung giường + nệm
+  ctx.fillStyle = "rgba(0,0,0,.25)"; rr(ctx, x + 3, y + 4, w, h, 7); ctx.fill();
+  ctx.fillStyle = "#7a5236"; rr(ctx, x, y, w, h, 7); ctx.fill();
+  ctx.fillStyle = "#5e3d27"; rr(ctx, x - 3, y - 2, 9, h + 4, 3); ctx.fill();              // đầu giường
+  ctx.fillStyle = "#f7f0e6"; rr(ctx, x + 5, y + 4, w - 9, h - 8, 6); ctx.fill();
+  ctx.fillStyle = "#ffffff"; rr(ctx, x + 9, y + h / 2 - 15, 20, 30, 8); ctx.fill();      // gối
+  ctx.strokeStyle = "#e9dfd2"; ctx.lineWidth = 1; ctx.stroke();
+  // chăn bông (đắp lên người khi đang ngủ, gấp gọn khi trống)
+  const bx = lying ? x + 26 : x + 54;
+  ctx.fillStyle = st.c; rr(ctx, bx, y + 5 - br * .5, x + w - 6 - bx, h - 10 + br, 7); ctx.fill();
+  patternAt(st.p, bx, y + 5 - br * .5, x + w - 6 - bx, h - 10 + br);
+  ctx.fillStyle = "rgba(255,255,255,.35)"; rr(ctx, bx, y + 5 - br * .5, 7, h - 10 + br, 4); ctx.fill();
+  if (lying) {                                                               // đầu người ngủ trên gối
+    const hx = x + 19, hy = y + h / 2;
+    ctx.fillStyle = "#f5d0a9"; ctx.beginPath(); ctx.arc(hx, hy, 9, 0, 7); ctx.fill();
+    ctx.fillStyle = "#3b2a20"; ctx.beginPath(); ctx.arc(hx - 2, hy, 9.5, Math.PI / 2, Math.PI * 1.5); ctx.fill();
+    ctx.strokeStyle = "#3b2a20"; ctx.lineWidth = 1.1;
+    ctx.beginPath(); ctx.arc(hx + 2, hy - 3.5, 1.8, -1.2, 1.2); ctx.stroke(); ctx.beginPath(); ctx.arc(hx + 2, hy + 3.5, 1.8, -1.2, 1.2); ctx.stroke();
+    ctx.fillStyle = "rgba(255,120,140,.35)"; ctx.beginPath(); ctx.arc(hx + 5, hy - 6, 1.8, 0, 7); ctx.arc(hx + 5, hy + 6, 1.8, 0, 7); ctx.fill();
+  }
+  // thú bông
+  const px = lying ? x + 16 : x + 40, py = lying ? y + 9 : y + h / 2;
+  ctx.fillStyle = PLUSH[i % 8]; ctx.beginPath(); ctx.arc(px, py, 5.5, 0, 7); ctx.arc(px - 4, py - 4.5, 2.3, 0, 7); ctx.arc(px + 4, py - 4.5, 2.3, 0, 7); ctx.fill();
+  ctx.fillStyle = "#2a1d16"; ctx.fillRect(px - 2.2, py - 1, 1.3, 1.3); ctx.fillRect(px + 1, py - 1, 1.3, 1.3);
+  // rèm mỏng ở đầu giường
+  ctx.fillStyle = "rgba(255,244,235,.42)"; rr(ctx, x + 2, y - 4, 7, h + 6, 3); ctx.fill();
+  ctx.fillStyle = "rgba(255,244,235,.25)"; ctx.fillRect(x + 4, y - 4, 1, h + 6);
+  ctx.restore();
+}
+function drawDorm(t) {
+  // tường: nửa trên kem hồng, nửa dưới ốp gỗ sáng
+  ctx.fillStyle = "#ecd2c4"; ctx.fillRect(-50, -400, W + 100, 502);
+  ctx.fillStyle = "#c58f5c"; ctx.fillRect(-50, 100, W + 100, 62);
+  ctx.fillStyle = "rgba(0,0,0,.08)"; for (let x = 0; x < W; x += 18) ctx.fillRect(x, 100, 1.5, 62);
+  ctx.fillStyle = "#8a5a3c"; ctx.fillRect(-50, 97, W + 100, 5);
+  ctx.fillStyle = "#6b4226"; ctx.fillRect(-50, 10, W + 100, 7);                               // xà gỗ trần
+  // sàn gỗ màu mật ong + thảm dài lối giữa + thảm tròn
+  drawWoodFloor("#c99055", "#c18849", "#cd9659");
+  ctx.fillStyle = "#7a5236"; ctx.fillRect(-50, 158, W + 100, 8);
+  ctx.fillStyle = "#c1694f"; rr(ctx, 124, 262, 112, 272, 12); ctx.fill();
+  ctx.strokeStyle = "#f3d9b1"; ctx.lineWidth = 3; rr(ctx, 130, 268, 100, 260, 9); ctx.stroke();
+  ctx.fillStyle = "rgba(243,217,177,.5)"; for (let yy = 284; yy < 520; yy += 22) { ctx.beginPath(); ctx.arc(180, yy, 4, 0, 7); ctx.fill(); }
+  ctx.fillStyle = "#9cb380"; ctx.beginPath(); ctx.ellipse(180, 214, 70, 34, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#e8e2c8"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(180, 214, 62, 28, 0, 0, 7); ctx.stroke();
+  // cửa sổ lớn (trăng, sao, tuyết/mưa) + rèm be + đệm bậc cửa
+  const wx = 14, wy = 24, ww = 92, wh = 62;
+  ctx.fillStyle = "#f3e4cf"; rr(ctx, wx - 5, wy - 5, ww + 10, wh + 10, 5); ctx.fill();
+  const g = ctx.createLinearGradient(0, wy, 0, wy + wh); g.addColorStop(0, "#0a0f2e"); g.addColorStop(1, "#2b3a78");
   ctx.fillStyle = g; ctx.fillRect(wx, wy, ww, wh);
-  winStars.forEach(s => { ctx.fillStyle = `rgba(255,255,255,${.4 + .5 * Math.sin(t * 2 + s.p)})`; ctx.fillRect(wx + s.x * ww, wy + s.y * wh * .8, 1.5, 1.5); });
-  ctx.fillStyle = "rgba(255,246,200,.18)"; ctx.beginPath(); ctx.arc(wx + 58, wy + 24, 18, 0, 7); ctx.fill();
-  ctx.fillStyle = "#fff6c8"; ctx.beginPath(); ctx.arc(wx + 58, wy + 24, 10, 0, 7); ctx.fill();
-  ctx.fillStyle = "#1a2250"; ctx.beginPath(); ctx.arc(wx + 63, wy + 20, 9, 0, 7); ctx.fill();
-  ctx.fillStyle = "#d9c7a5"; ctx.fillRect(wx + ww / 2 - 2, wy, 4, wh); ctx.fillRect(wx, wy + wh / 2 - 2, ww, 4);
-  ctx.fillStyle = "#c86b85";
-  ctx.beginPath(); ctx.moveTo(wx - 8, wy - 8); ctx.lineTo(wx + 16, wy - 8); ctx.quadraticCurveTo(wx + 2, wy + 40, wx + 10, wy + wh + 10); ctx.lineTo(wx - 8, wy + wh + 10); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(wx + ww + 8, wy - 8); ctx.lineTo(wx + ww - 16, wy - 8); ctx.quadraticCurveTo(wx + ww - 2, wy + 40, wx + ww - 10, wy + wh + 10); ctx.lineTo(wx + ww + 8, wy + wh + 10); ctx.fill();
-  ctx.fillStyle = "#8a5a3c"; ctx.fillRect(wx - 12, wy - 11, ww + 24, 4);
-  // tranh treo tường 2 bên cửa phòng chiếu phim
-  ctx.fillStyle = "#c9a36b"; rr(ctx, 114, 46, 32, 40, 3); ctx.fill(); rr(ctx, 222, 46, 32, 40, 3); ctx.fill();
-  ctx.fillStyle = "#2a9d8f"; ctx.fillRect(117, 49, 26, 34); ctx.fillStyle = "#f4a261"; ctx.fillRect(225, 49, 26, 34);
-  ctx.fillStyle = "#fff6c8"; ctx.beginPath(); ctx.arc(130, 60, 5, 0, 7); ctx.fill();
-  ctx.fillStyle = "#e76f51"; ctx.beginPath(); ctx.moveTo(225, 83); ctx.lineTo(238, 60); ctx.lineTo(251, 83); ctx.fill();
-  drawSwitch();
-  drawClock(310, 62);
-  ctx.fillStyle = "#4a3428"; ctx.fillRect(278, 128, 62, 7); ctx.fillRect(282, 135, 4, 26); ctx.fillRect(332, 135, 4, 26);
+  winStars.forEach(st => { ctx.fillStyle = `rgba(255,255,255,${.4 + .5 * Math.sin(t * 2 + st.p)})`; ctx.fillRect(wx + st.x * ww, wy + st.y * wh * .8, 1.5, 1.5); });
+  ctx.fillStyle = "rgba(255,246,200,.2)"; ctx.beginPath(); ctx.arc(wx + 46, wy + 22, 15, 0, 7); ctx.fill();
+  ctx.fillStyle = "#fff6c8"; ctx.beginPath(); ctx.arc(wx + 46, wy + 22, 9, 0, 7); ctx.fill();
+  ctx.fillStyle = "#18245a"; ctx.beginPath(); ctx.arc(wx + 50, wy + 19, 8, 0, 7); ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.rect(wx, wy, ww, wh); ctx.clip();
+  const snow = Math.floor(Date.now() / 600000) % 2 === 0;                  // đổi tuyết/mưa mỗi 10 phút
+  for (let k = 0; k < 26; k++) {
+    const px = wx + ((k * 37 + t * (snow ? 6 : 14)) % ww), py = wy + ((k * 53 + t * (snow ? 14 : 90)) % wh);
+    if (snow) { ctx.fillStyle = "rgba(255,255,255,.85)"; ctx.beginPath(); ctx.arc(px + Math.sin(t + k) * 2, py, 1.2, 0, 7); ctx.fill(); }
+    else { ctx.strokeStyle = "rgba(180,200,240,.6)"; ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - 1.5, py + 5); ctx.stroke(); }
+  }
+  ctx.restore();
+  ctx.fillStyle = "#f3e4cf"; ctx.fillRect(wx + ww / 2 - 1.5, wy, 3, wh);
+  ctx.fillStyle = "#d8c3a5"; ctx.fillRect(wx - 10, wy - 9, 14, wh + 18); ctx.fillRect(wx + ww - 4, wy - 9, 14, wh + 18);
+  ctx.fillStyle = "#e9a87c"; rr(ctx, wx + 6, wy + wh + 2, ww - 12, 8, 4); ctx.fill();            // đệm ngồi bậc cửa
+  // lò sưởi giữa tường + ghế bành + bàn trà
+  ctx.fillStyle = "#b9a89a"; rr(ctx, 140, 74, 80, 88, 4); ctx.fill();
+  ctx.fillStyle = "rgba(0,0,0,.08)"; for (let yy = 80; yy < 160; yy += 9) for (let xx = 142 + (yy % 18 ? 0 : 6); xx < 218; xx += 12) ctx.fillRect(xx, yy, 10, 1);
+  ctx.fillStyle = "#8a5a3c"; ctx.fillRect(134, 70, 92, 7);
+  ctx.fillStyle = "#1c120d"; rr(ctx, 154, 106, 52, 54, 22); ctx.fill();
+  for (let k = 0; k < 5; k++) {
+    const fx = 180 + (k - 2) * 7, fh = 18 + 7 * Math.sin(t * 6 + k * 1.7) + 4 * Math.sin(t * 11 + k);
+    ctx.fillStyle = ["#ff5400", "#ff8500", "#ffb627"][k % 3]; ctx.globalAlpha = .9;
+    ctx.beginPath(); ctx.moveTo(fx - 6, 156); ctx.quadraticCurveTo(fx - 5, 156 - fh * .6, fx + Math.sin(t * 5 + k) * 2, 156 - fh); ctx.quadraticCurveTo(fx + 5, 156 - fh * .6, fx + 6, 156); ctx.fill();
+  }
+  ctx.globalAlpha = 1; ctx.fillStyle = "#5b3a1e"; ctx.fillRect(164, 154, 32, 5);
+  ctx.fillStyle = "#fff3d6"; ctx.fillRect(144, 60, 4, 10); ctx.fillRect(212, 60, 4, 10);              // nến trên bệ
+  ctx.fillStyle = `rgba(255,200,90,${.8 + Math.sin(t * 9) * .2})`; ctx.beginPath(); ctx.arc(146, 58, 2, 0, 7); ctx.arc(214, 58, 2, 0, 7); ctx.fill();
+  for (let k = 0; k < 5; k++) { ctx.fillStyle = "#fff"; ctx.fillRect(156 + k * 10, 46 + Math.sin(k) * 2, 8, 9); ctx.fillStyle = ["#e76f51", "#2a9d8f", "#e9c46a", "#9b5de5", "#4cc9f0"][k]; ctx.fillRect(157 + k * 10, 47 + Math.sin(k) * 2, 6, 6); }  // ảnh polaroid
+  ctx.strokeStyle = "#8a5a3c"; ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(150, 44); ctx.quadraticCurveTo(180, 50, 210, 44); ctx.stroke();
+  for (const cx of [140, 220]) { ctx.fillStyle = "#e9a87c"; ctx.beginPath(); ctx.arc(cx, 206, 15, 0, 7); ctx.fill(); ctx.fillStyle = "#d98c5f"; ctx.beginPath(); ctx.arc(cx, 200, 12, Math.PI, 0); ctx.fill(); }
+  ctx.fillStyle = "#8a5a3c"; ctx.beginPath(); ctx.arc(180, 214, 11, 0, 7); ctx.fill();
+  ctx.fillStyle = "#f3f0ea"; ctx.beginPath(); ctx.arc(178, 212, 4.5, 0, 7); ctx.fill(); ctx.fillRect(181, 210, 4, 2);
+  ctx.strokeStyle = "rgba(255,255,255,.4)"; ctx.lineWidth = 1;
+  for (let k = 0; k < 2; k++) { const ph = (t * .5 + k * .5) % 1; ctx.globalAlpha = Math.sin(ph * Math.PI); ctx.beginPath(); ctx.moveTo(177 + k * 3, 206 - ph * 10); ctx.quadraticCurveTo(180 + k * 3, 202 - ph * 10, 177 + k * 3, 198 - ph * 10); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  // kệ sách thấp bên phải: sách, đĩa than, radio cũ, đèn muối
+  ctx.fillStyle = "#8a5a3c"; rr(ctx, 248, 110, 104, 50, 3); ctx.fill();
+  ctx.fillStyle = "#5e3d27"; ctx.fillRect(252, 114, 96, 20); ctx.fillRect(252, 137, 96, 20);
+  BOOKS[0].slice(0, 10).forEach(bk => { ctx.fillStyle = bk.c; ctx.fillRect(254 + bk.x * .9, 134 - bk.h * .7, bk.w * .8, bk.h * .7); });
+  for (let k = 0; k < 4; k++) { ctx.fillStyle = "#151515"; ctx.beginPath(); ctx.arc(266 + k * 22, 147, 8, 0, 7); ctx.fill(); ctx.fillStyle = ["#e63946", "#ffd166", "#06d6a0", "#118ab2"][k]; ctx.beginPath(); ctx.arc(266 + k * 22, 147, 2.5, 0, 7); ctx.fill(); }
+  ctx.fillStyle = `rgba(255,140,60,${.7 + Math.sin(t * 1.3) * .1})`; ctx.beginPath(); ctx.moveTo(256, 110); ctx.lineTo(262, 96); ctx.lineTo(270, 98); ctx.lineTo(274, 110); ctx.fill();
   drawRadio(t);
+  // cây xanh, chậu treo, đèn lồng giấy
+  ctx.fillStyle = "#8a5a3c"; rr(ctx, 118, 140, 16, 16, 3); ctx.fill();
+  ctx.fillStyle = "#4f9d5d"; ctx.beginPath(); ctx.arc(126, 130, 11, 0, 7); ctx.arc(119, 124, 7, 0, 7); ctx.arc(133, 123, 7, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#8a5a3c"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(240, 17); ctx.lineTo(240, 40); ctx.stroke();
+  ctx.fillStyle = "#c1694f"; rr(ctx, 233, 40, 14, 10, 3); ctx.fill();
+  ctx.fillStyle = "#4f9d5d"; for (let k = 0; k < 5; k++) { ctx.beginPath(); ctx.ellipse(232 + k * 4, 54 + (k % 2) * 6, 2.5, 5, 0, 0, 7); ctx.fill(); }
+  ctx.fillStyle = "#f1e3c8"; ctx.beginPath(); ctx.ellipse(330, 36, 9, 11, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,.12)"; ctx.beginPath(); ctx.moveTo(321, 36); ctx.lineTo(339, 36); ctx.stroke();
+  drawSwitch();
+}
+function drawFairyLights(t) {                     // dây đèn vàng chạy dọc trần và mép tường
+  const on = room.light ? 1 : .55;
+  const pts = [];
+  for (let x = 4; x <= W - 4; x += 16) pts.push([x, 20 + Math.sin(x * .09) * 4]);
+  for (let y = 180; y < 520; y += 22) { pts.push([4, y]); pts.push([W - 4, y]); }
+  pts.forEach(([x, y], k) => {
+    const a = on * (.55 + .45 * Math.sin(t * 2 + k * 1.3));
+    const g = ctx.createRadialGradient(x, y, 0, x, y, 6);
+    g.addColorStop(0, `rgba(255,214,120,${a})`); g.addColorStop(1, "rgba(255,214,120,0)");
+    ctx.fillStyle = g; ctx.fillRect(x - 6, y - 6, 12, 12);
+    ctx.fillStyle = `rgba(255,236,170,${a})`; ctx.beginPath(); ctx.arc(x, y, 1.6, 0, 7); ctx.fill();
+  });
 }
 
 // ---- 📚 phòng học ----
@@ -1252,7 +1455,7 @@ function drawStudyRoom(t) {
   ctx.fillStyle = "#3f8f47"; ctx.beginPath(); ctx.arc(343, 428, 14, 0, 7); ctx.arc(334, 420, 9, 0, 7); ctx.arc(352, 418, 9, 0, 7); ctx.fill();
 }
 
-// ---- 🌳 công viên ----
+// ---- 🌳 công viên trung tâm ----
 function drawPark(t) {
   const day = room.light, M = LAYOUT.moon;
   const g = ctx.createLinearGradient(0, -400, 0, 165);
@@ -1273,68 +1476,98 @@ function drawPark(t) {
     ctx.fillStyle = "#fff6c8"; ctx.beginPath(); ctx.arc(M.x, M.y, 14, 0, 7); ctx.fill();
     ctx.fillStyle = "#121a45"; ctx.beginPath(); ctx.arc(M.x + 7, M.y - 6, 12, 0, 7); ctx.fill();
   }
-  ctx.fillStyle = day ? "#5aa35f" : "#1d3b26";                     // đồi xa
+  ctx.fillStyle = day ? "#5aa35f" : "#1d3b26";
   ctx.beginPath(); ctx.moveTo(-50, 170);
-  for (let x = -50; x <= W + 50; x += 20) ctx.lineTo(x, 132 + Math.sin(x * .07) * 8 + Math.sin(x * .023) * 10);
+  for (let x = -50; x <= W + 50; x += 20) ctx.lineTo(x, 136 + Math.sin(x * .07) * 8 + Math.sin(x * .023) * 10);
   ctx.lineTo(W + 50, 170); ctx.fill();
-  ctx.fillStyle = day ? "#3f8a4a" : "#14301d";
-  for (let x = -10; x < W + 20; x += 34) { ctx.beginPath(); ctx.arc(x, 152, 14 + (x * 13 % 7), 0, 7); ctx.fill(); }
-  // cỏ + lối đi
+  // [BẮC] tòa nhà phòng học: sân trước, cổng, bảng tên
+  ctx.fillStyle = "#e9e1d3"; ctx.fillRect(108, 58, 144, 104);
+  ctx.fillStyle = "#7d8597"; ctx.beginPath(); ctx.moveTo(100, 60); ctx.lineTo(180, 26); ctx.lineTo(260, 60); ctx.fill();
+  ctx.fillStyle = "#f8f9fa"; ctx.beginPath(); ctx.arc(180, 46, 8, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#333"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(180, 46); ctx.lineTo(180, 41); ctx.moveTo(180, 46); ctx.lineTo(184, 47); ctx.stroke();
+  ctx.fillStyle = "#adb5bd"; for (const cx of [116, 136, 216, 236]) ctx.fillRect(cx, 66, 8, 94);       // cột
+  ctx.fillStyle = "#8ecae6"; for (const [cx, cy] of [[128, 76], [222, 76], [128, 112], [222, 112]]) ctx.fillRect(cx - 6 + (cx > 180 ? 4 : 0), cy, 14, 18);
+  ctx.fillStyle = "#264653"; rr(ctx, 140, 64, 80, 16, 3); ctx.fill();
+  ctx.fillStyle = "#ffd27a"; ctx.font = "800 9px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("📚 PHÒNG HỌC", 180, 72.5);
+  ctx.fillStyle = "#6b4a35"; rr(ctx, 160, 108, 40, 56, 3); ctx.fill();
+  ctx.fillStyle = "#8d6346"; ctx.fillRect(163, 111, 16, 50); ctx.fillRect(181, 111, 16, 50);
+  ctx.fillStyle = "#ffd27a"; ctx.fillRect(176, 136, 2, 6); ctx.fillRect(182, 136, 2, 6);
+  // cỏ
   ctx.fillStyle = "#67b85a"; ctx.fillRect(-50, 160, W + 100, 1400);
   ctx.fillStyle = "#58a84c"; PARK.grass.forEach(q => ctx.fillRect(q.x, q.y, 2, 5));
   ctx.fillStyle = "#4e9a45"; ctx.fillRect(-50, 160, W + 100, 5);
-  ctx.fillStyle = "#d8c08c"; rr(ctx, -20, 520, W + 40, 52, 22); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(150, 522); ctx.quadraticCurveTo(175, 400, 160, 300); ctx.lineTo(186, 300); ctx.quadraticCurveTo(200, 400, 180, 522); ctx.fill();  // lối nhỏ lên giữa
-  ctx.fillStyle = "rgba(0,0,0,.06)"; for (let x = 6; x < W; x += 26) ctx.fillRect(x, 538 + (x % 7), 10, 3);
-  // hồ bên trái + vịt
-  ctx.fillStyle = "#8d8f80"; ctx.beginPath(); ctx.ellipse(POND.x, POND.y, POND.rx + 4, POND.ry + 4, 0, 0, 7); ctx.fill();
-  const pg = ctx.createLinearGradient(0, POND.y - POND.ry, 0, POND.y + POND.ry); pg.addColorStop(0, "#5ab0e6"); pg.addColorStop(1, "#2f7fc0");
-  ctx.fillStyle = pg; ctx.beginPath(); ctx.ellipse(POND.x, POND.y, POND.rx, POND.ry, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = "#3f9a4f"; ctx.beginPath(); ctx.ellipse(POND.x - 30, POND.y + 26, 9, 5, .3, 0, 7); ctx.ellipse(POND.x + 22, POND.y - 30, 8, 5, -.4, 0, 7); ctx.fill();  // lá sen
-  ctx.strokeStyle = "rgba(255,255,255,.35)"; ctx.lineWidth = 1;
-  for (let k = 0; k < 3; k++) { const yy = POND.y - 30 + k * 28 + Math.sin(t + k) * 3; ctx.beginPath(); ctx.moveTo(POND.x - 20, yy); ctx.quadraticCurveTo(POND.x, yy - 3, POND.x + 20, yy); ctx.stroke(); }
-  for (let k = 0; k < 2; k++) {
-    const a = t * .22 + k * Math.PI, dx = POND.x + Math.cos(a) * 38, dy = POND.y + Math.sin(a) * 36;
-    ctx.save(); ctx.translate(dx, dy); ctx.scale(Math.sin(a) > 0 ? -1 : 1, 1);
-    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(0, 0, 6, 4, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = k ? "#2d6a4f" : "#fff"; ctx.beginPath(); ctx.arc(4, -4, 3, 0, 7); ctx.fill();
-    ctx.fillStyle = "#f4a261"; ctx.fillRect(6.5, -4.5, 3, 1.6);
-    ctx.restore();
+  // 4 lối đi tỏa ra từ quảng trường
+  ctx.fillStyle = "#cfc6b8"; ctx.fillRect(166, 162, 28, 140);                     // Bắc: lát đá
+  ctx.fillStyle = "rgba(0,0,0,.08)"; for (let yy = 168; yy < 300; yy += 12) ctx.fillRect(166, yy, 28, 1.5);
+  ctx.fillStyle = "#d8c08c"; ctx.fillRect(-20, 340, 140, 32);                     // Tây: đường đất yên tĩnh
+  ctx.fillStyle = "#d6d1c4"; ctx.fillRect(240, 340, 140, 32);                     // Đông: lát gạch sáng
+  ctx.fillStyle = "rgba(0,0,0,.07)"; for (let xx = 244; xx < 360; xx += 14) ctx.fillRect(xx, 340, 1.5, 32);
+  ctx.fillStyle = "#d8c08c"; ctx.fillRect(166, 410, 28, 170);                     // Nam: tới cổng
+  // quảng trường tròn + đài phun nước
+  const F = FOUNTAIN;
+  ctx.fillStyle = "#d9d2c3"; ctx.beginPath(); ctx.arc(F.x, F.y, F.r + 6, 0, 7); ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,.08)"; ctx.lineWidth = 1; for (let r = 20; r < F.r + 6; r += 12) { ctx.beginPath(); ctx.arc(F.x, F.y, r, 0, 7); ctx.stroke(); }
+  ctx.fillStyle = "#9aa5b1"; ctx.beginPath(); ctx.arc(F.x, F.y, 30, 0, 7); ctx.fill();
+  const wg = ctx.createRadialGradient(F.x, F.y, 4, F.x, F.y, 27); wg.addColorStop(0, "#9ad7ff"); wg.addColorStop(1, "#3f8fd1");
+  ctx.fillStyle = wg; ctx.beginPath(); ctx.arc(F.x, F.y, 26, 0, 7); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,.5)"; for (let k = 0; k < 3; k++) { const r = ((t * 10 + k * 8) % 24) + 3; ctx.globalAlpha = 1 - r / 27; ctx.beginPath(); ctx.arc(F.x, F.y, r, 0, 7); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "#b8c1cc"; ctx.beginPath(); ctx.arc(F.x, F.y, 7, 0, 7); ctx.fill();
+  for (let k = 0; k < 10; k++) {                                                  // tia nước
+    const a = k / 10 * Math.PI * 2, ph = (t * 1.2 + k * .1) % 1, d = 4 + ph * 18;
+    ctx.fillStyle = `rgba(220,240,255,${.9 - ph * .7})`; ctx.beginPath(); ctx.arc(F.x + Math.cos(a) * d, F.y + Math.sin(a) * d * .8 - Math.sin(ph * Math.PI) * 10, 1.6, 0, 7); ctx.fill();
   }
-  // hoa (tránh hồ)
+  // hồ nhỏ góc Tây Nam + vịt
+  ctx.fillStyle = "#8d8f80"; ctx.beginPath(); ctx.ellipse(62, 488, 52, 26, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#4a9fd9"; ctx.beginPath(); ctx.ellipse(62, 488, 48, 22, 0, 0, 7); ctx.fill();
+  const da = t * .3, dx = 62 + Math.cos(da) * 26, dy = 488 + Math.sin(da) * 10;
+  ctx.save(); ctx.translate(dx, dy); ctx.scale(Math.sin(da) > 0 ? -1 : 1, 1);
+  ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(0, 0, 6, 4, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(4, -4, 3, 0, 7); ctx.fill();
+  ctx.fillStyle = "#f4a261"; ctx.fillRect(6.5, -4.5, 3, 1.6); ctx.restore();
+  // hoa (tránh lối đi + quảng trường)
   PARK.flowers.forEach(f => {
-    if (((f.x - POND.x) / (POND.rx + 8)) ** 2 + ((f.y - POND.y) / (POND.ry + 8)) ** 2 < 1) return;
+    if (Math.hypot(f.x - F.x, f.y - F.y) < F.r + 14 || (f.x > 160 && f.x < 200) || (f.y > 334 && f.y < 378)) return;
     ctx.fillStyle = f.c; ctx.beginPath(); ctx.arc(f.x, f.y, 1.9, 0, 7); ctx.fill();
   });
-  // cây
-  const tree = (x, y, r) => {
-    ctx.fillStyle = "#7a5236"; ctx.fillRect(x - 4, y + r * .4, 8, r * .9);
-    ctx.fillStyle = "#3f8f47"; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
-    ctx.fillStyle = "#4fa857"; ctx.beginPath(); ctx.arc(x - r * .35, y - r * .3, r * .55, 0, 7); ctx.arc(x + r * .4, y - r * .35, r * .48, 0, 7); ctx.fill();
+  const tree = (x, y, r, c1 = "#3f8f47", c2 = "#4fa857") => {
+    ctx.fillStyle = "#7a5236"; ctx.fillRect(x - 3, y + r * .4, 6, r * .9);
+    ctx.fillStyle = c1; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    ctx.fillStyle = c2; ctx.beginPath(); ctx.arc(x - r * .35, y - r * .3, r * .55, 0, 7); ctx.arc(x + r * .4, y - r * .35, r * .48, 0, 7); ctx.fill();
   };
-  tree(158, 232, 17); tree(338, 372, 20); tree(20, 280, 14);
-  // tòa nhà rạp phim (góc phải) - cửa vào phòng chiếu phim
-  ctx.fillStyle = "#8d3b3b"; ctx.fillRect(204, 40, 140, 122);
-  ctx.fillStyle = "rgba(0,0,0,.12)"; for (let yy = 46; yy < 160; yy += 8) for (let xx = 204 + (yy % 16 ? 0 : 8); xx < 344; xx += 16) ctx.fillRect(xx, yy, 14, 1);
-  ctx.fillStyle = "#1b1b2f"; rr(ctx, 198, 26, 152, 26, 4); ctx.fill();                       // biển hiệu
-  for (let k = 0; k < 14; k++) { ctx.fillStyle = (Math.floor(t * 4) + k) % 2 ? "#ffd27a" : "#ff8fab"; ctx.beginPath(); ctx.arc(204 + k * 10.6, 29, 1.6, 0, 7); ctx.arc(204 + k * 10.6, 49, 1.6, 0, 7); ctx.fill(); }
-  ctx.fillStyle = "#ffd27a"; ctx.font = "800 12px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🎬 RẠP PHIM", 274, 39);
-  ctx.fillStyle = "#f1f3f5"; rr(ctx, 212, 64, 30, 40, 2); ctx.fill(); rr(ctx, 306, 64, 30, 40, 2); ctx.fill();   // poster
-  ctx.fillStyle = "#3a86ff"; ctx.fillRect(215, 67, 24, 34); ctx.fillStyle = "#ff006e"; ctx.fillRect(309, 67, 24, 34);
-  ctx.fillStyle = "#ffbe0b"; ctx.beginPath(); ctx.arc(227, 80, 6, 0, 7); ctx.fill(); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(316, 92); ctx.lineTo(321, 74); ctx.lineTo(326, 92); ctx.fill();
-  // bàn picnic + loa (góc trái)
-  const R = RADIO;
-  ctx.fillStyle = "#e63946"; rr(ctx, R.x - 14, R.y + 26, R.w + 28, 9, 2); ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,.8)"; for (let k = 0; k < 5; k++) ctx.fillRect(R.x - 12 + k * 15, R.y + 27, 6, 7);
-  ctx.fillStyle = "#8a5a3c"; ctx.fillRect(R.x - 8, R.y + 35, 4, 26); ctx.fillRect(R.x + R.w + 4, R.y + 35, 4, 26);
-  const bounce = room.music.on ? Math.abs(Math.sin(t * 4.2)) * 1.5 : 0;
-  ctx.strokeStyle = "#333"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(R.x + 24, R.y - bounce, 12, Math.PI, 0); ctx.stroke();
-  ctx.fillStyle = "#2b2d42"; rr(ctx, R.x, R.y - bounce, R.w, R.h, 5); ctx.fill();
-  for (const sx of [12, 36]) {
-    ctx.fillStyle = "#8d99ae"; ctx.beginPath(); ctx.arc(R.x + sx, R.y + 14 - bounce, 8 + bounce * .5, 0, 7); ctx.fill();
-    ctx.fillStyle = "#2b2d42"; ctx.beginPath(); ctx.arc(R.x + sx, R.y + 14 - bounce, 3, 0, 7); ctx.fill();
-  }
-  ctx.fillStyle = room.music.on ? "#ffd27a" : "#555"; ctx.fillRect(R.x + 20, R.y + 4 - bounce, 8, 4);
+  for (const yy of [196, 236, 276]) { tree(152, yy, 9); tree(208, yy, 9); }      // hàng cây lối Bắc
+  // [TÂY] cổng gỗ + đèn lồng dẫn về ký túc xá
+  ctx.fillStyle = "#7a5236"; ctx.fillRect(4, 314, 6, 64); ctx.fillRect(4, 314, 30, 6);
+  ctx.fillStyle = "#5e3d27"; rr(ctx, 0, 300, 44, 14, 3); ctx.fill();
+  ctx.fillStyle = "#ffd27a"; ctx.font = "800 7px system-ui"; ctx.textAlign = "center"; ctx.fillText("KÝ TÚC XÁ", 22, 307);
+  for (const lx of [40, 80, 112]) { ctx.fillStyle = "#3a3a46"; ctx.fillRect(lx - 1, 330, 2, 10); ctx.fillStyle = day ? "#f4a261" : "#ffb347"; ctx.beginPath(); ctx.ellipse(lx, 328, 4, 5, 0, 0, 7); ctx.fill(); }
+  // [ĐÔNG] cổng neon phố rạp phim + đèn lồng đỏ + anh đào + xe kem
+  ctx.fillStyle = "#2b2d42"; ctx.fillRect(348, 300, 8, 80); ctx.fillRect(316, 300, 44, 8);
+  const neon = (Math.floor(t * 3) % 2) ? "#ff4fd8" : "#4cc9f0";
+  ctx.fillStyle = "#1b1b2f"; rr(ctx, 334, 220, 22, 76, 3); ctx.fill();
+  ctx.fillStyle = neon; ctx.font = "800 10px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  "RẠP".split("").forEach((ch, k) => ctx.fillText(ch, 345, 234 + k * 14)); ctx.fillText("🎬", 345, 284);
+  for (const lx of [252, 284, 316]) { ctx.strokeStyle = "#555"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(lx, 316); ctx.lineTo(lx, 324); ctx.stroke(); ctx.fillStyle = "#e63946"; ctx.beginPath(); ctx.ellipse(lx, 330, 5, 7, 0, 0, 7); ctx.fill(); ctx.fillStyle = "#111"; ctx.fillRect(lx - 3, 322, 6, 2); }
+  tree(330, 424, 16, "#f4a6c4", "#ffc8dd");                                       // cây anh đào
+  for (let k = 0; k < 5; k++) { const ph = (t * .2 + k * .2) % 1; ctx.fillStyle = `rgba(255,192,214,${1 - ph})`; ctx.fillRect(320 + Math.sin(t + k) * 12, 420 + ph * 40, 2, 2); }
+  const R = RADIO;                                                                // xe kem (phát nhạc)
+  const bounce = room.music.on ? Math.abs(Math.sin(t * 4.2)) * 1.2 : 0;
+  ctx.fillStyle = "#ffafcc"; rr(ctx, R.x, R.y + 8 - bounce, R.w, R.h - 8, 4); ctx.fill();
+  ctx.fillStyle = "#fff"; for (let k = 0; k < 4; k++) ctx.fillRect(R.x + 4 + k * 14, R.y + 14 - bounce, 8, 12);
+  ctx.fillStyle = "#cdb4db"; ctx.beginPath(); ctx.moveTo(R.x - 4, R.y + 9 - bounce); ctx.lineTo(R.x + R.w / 2, R.y - 6 - bounce); ctx.lineTo(R.x + R.w + 4, R.y + 9 - bounce); ctx.fill();
+  ctx.fillStyle = "#333"; ctx.beginPath(); ctx.arc(R.x + 10, R.y + R.h + 1, 4, 0, 7); ctx.arc(R.x + R.w - 10, R.y + R.h + 1, 4, 0, 7); ctx.fill();
+  ctx.font = "11px system-ui"; ctx.fillText("🍦", R.x + R.w / 2, R.y + 2 - bounce);
+  // [NAM] cổng vào + bảng bản đồ
+  ctx.fillStyle = "#6b4a35"; ctx.fillRect(150, 520, 7, 56); ctx.fillRect(203, 520, 7, 56);
+  ctx.fillStyle = "#8a5a3c"; rr(ctx, 142, 512, 76, 12, 3); ctx.fill();
+  ctx.fillStyle = "#ffd27a"; ctx.font = "800 8px system-ui"; ctx.fillText("CỔNG VÀO", 180, 518.5);
+  const MB = MAPBOARD;
+  ctx.fillStyle = "#6b4a35"; ctx.fillRect(MB.x + MB.w / 2 - 2, MB.y + MB.h, 4, 12);
+  ctx.fillStyle = "#f3e9dc"; rr(ctx, MB.x, MB.y, MB.w, MB.h, 3); ctx.fill(); ctx.strokeStyle = "#6b4a35"; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = "#67b85a"; ctx.beginPath(); ctx.arc(MB.x + 22, MB.y + 18, 5, 0, 7); ctx.fill();
+  ctx.fillStyle = "#264653"; ctx.fillRect(MB.x + 19, MB.y + 4, 6, 6);
+  ctx.fillStyle = "#c86b85"; ctx.fillRect(MB.x + 5, MB.y + 15, 6, 6);
+  ctx.fillStyle = "#8d3b3b"; ctx.fillRect(MB.x + 33, MB.y + 15, 6, 6);
+  ctx.fillStyle = "#333"; ctx.font = "700 6px system-ui"; ctx.fillText("BẢN ĐỒ", MB.x + MB.w / 2, MB.y + 29);
   // đèn đường
   LAMPS.forEach(l => {
     ctx.fillStyle = "#3a3a46"; ctx.fillRect(l.x - 1.5, l.y - 40, 3, 40); ctx.fillRect(l.x - 5, l.y - 2, 10, 3);
@@ -1361,58 +1594,128 @@ function drawBench(i, t) {
   ctx.fillStyle = "#8d5e3c"; rr(ctx, x + 8, y + 64, 94, 6, 3); ctx.fill(); rr(ctx, x + 8, y + 73, 94, 6, 3); ctx.fill();
 }
 
+// ---- 🎬 rạp kiểu Nhật: phòng chiếu (trong) + sảnh (ngay sau cửa) ----
+const FILMS = [
+  {name: "Mèo Mây Bay", c1: "#4cc9f0", c2: "#f72585"}, {name: "Đêm Sao Băng", c1: "#3a0ca3", c2: "#ffd166"},
+  {name: "Nhà Ma Tầng 4", c1: "#1b1b1b", c2: "#e63946"}, {name: "Kỳ Nghỉ Hè", c1: "#06d6a0", c2: "#ffb703"},
+];
+const PRIZES = ["🧸 gấu bông mèo", "🐰 thỏ trắng", "🐼 gấu trúc mini", "🦊 cáo nhỏ"];
+const LOBBY_ITEMS = [
+  {x: 20, y: 432, w: 40, h: 48, act: () => toast("🎟️ Máy bán vé: phim nào cũng miễn phí, cứ vào xem!")},
+  {x: 92, y: 434, w: 22, h: 40, act: () => toast(`📄 Bạn lấy 1 tờ rơi phim "${FILMS[Math.random() * FILMS.length | 0].name}" làm kỷ niệm`)},
+  {x: 120, y: 452, w: 120, h: 50, act: () => { const f = ["muối", "caramel", "bơ", "trà xanh"][Math.random() * 4 | 0]; toast(`🍿 Bạn mua 1 bắp rang vị ${f} + nước combo`); send({t: "emote", e: "😂"}); }},
+  {x: 256, y: 432, w: 76, h: 50, act: () => toast("🛍️ Kệ đồ lưu niệm: móc khóa, standee, mô hình mini…")},
+  {x: 70, y: 500, w: 34, h: 46, act: () => toast(Math.random() < .35 ? `🎉 Gắp trúng ${PRIZES[Math.random() * PRIZES.length | 0]}!` : "😢 Gắp trượt rồi, thử lại nhé")},
+  {x: 248, y: 500, w: 34, h: 48, act: () => toast(["🍵 Bạn mua 1 chai trà xanh", "☕ Bạn mua 1 lon cà phê", "🥤 Bạn mua 1 lon nước ngọt"][Math.random() * 3 | 0])},
+];
 function drawCinema(t) {
-  ctx.fillStyle = "#1a0f17"; ctx.fillRect(-50, -400, W + 100, 565);                       // tường tối
-  ctx.fillStyle = "#3a1f2b"; ctx.fillRect(-50, 160, W + 100, 1400);                        // thảm
-  ctx.fillStyle = "rgba(255,255,255,.035)"; for (let y = 170; y < 640; y += 14) for (let x = (y % 28 ? 0 : 7); x < W; x += 14) ctx.fillRect(x, y, 3, 3);
-  ctx.fillStyle = "#2a1520"; ctx.fillRect(-50, 160, W + 100, 8);
-  for (let y = 232; y < 520; y += 24) {                                                     // đèn lối đi
-    ctx.fillStyle = "rgba(255,190,90,.75)"; ctx.fillRect(6, y, 3, 2); ctx.fillRect(351, y, 3, 2);
+  // phòng chiếu: tường bọc vải tối, thảm đỏ rượu họa tiết nhỏ
+  ctx.fillStyle = "#16131c"; ctx.fillRect(-50, -400, W + 100, 565);
+  ctx.fillStyle = "#4a1626"; ctx.fillRect(-50, 160, W + 100, 1400);
+  ctx.fillStyle = "rgba(255,255,255,.04)"; for (let y = 166; y < 640; y += 12) for (let x = (y % 24 ? 0 : 6); x < W; x += 12) ctx.fillRect(x, y, 2, 2);
+  for (const yy of [214, 298]) { ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.fillRect(-50, yy + 32, W + 100, 3); }           // bậc thang
+  for (let y = 176; y < 360; y += 20) { ctx.fillStyle = "rgba(255,190,90,.8)"; ctx.fillRect(8, y, 3, 2); ctx.fillRect(349, y, 3, 2); }
+  for (const [x0, dir] of [[0, 1], [360, -1]]) for (let k = 0; k < 3; k++) {          // rèm gấp 2 bên màn
+    ctx.fillStyle = k % 2 ? "#3c1a26" : "#4f2232";
+    ctx.beginPath(); ctx.moveTo(x0 + dir * k * 7, -40); ctx.lineTo(x0 + dir * (k * 7 + 8), -40);
+    ctx.quadraticCurveTo(x0 + dir * (k * 7 + 11), 90, x0 + dir * (k * 7 + 8), 160); ctx.lineTo(x0 + dir * k * 7, 160); ctx.fill();
   }
-  // rèm nhung 2 bên
-  for (const [x0, dir] of [[0, 1], [360, -1]]) {
-    for (let k = 0; k < 4; k++) {
-      ctx.fillStyle = k % 2 ? "#8b0f1f" : "#a4161a";
-      ctx.beginPath(); ctx.moveTo(x0 + dir * k * 6, -40); ctx.lineTo(x0 + dir * (k * 6 + 7), -40);
-      ctx.quadraticCurveTo(x0 + dir * (k * 6 + 10), 90, x0 + dir * (k * 6 + 7), 168); ctx.lineTo(x0 + dir * k * 6, 168); ctx.fill();
-    }
-  }
-  ctx.fillStyle = "#6a040f"; ctx.fillRect(-50, -40, W + 100, 16);
-  // màn chiếu lớn
-  ctx.fillStyle = "#0b0b10"; rr(ctx, TVR.x, TVR.y, TVR.w, TVR.h, 4); ctx.fill();
+  ctx.fillStyle = "#0b0b10"; rr(ctx, TVR.x, TVR.y, TVR.w, TVR.h, 3); ctx.fill();
   drawTVScreen(t);
-  if (!room.tv.on) { ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🎬 Chạm màn hình để chọn phim", 180, 90); }
+  if (!room.tv.on) {
+    ctx.fillStyle = "rgba(255,255,255,.4)"; ctx.font = "700 12px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("🎬 Chạm màn hình để chọn phim", 180, 80);
+    ctx.fillStyle = "rgba(255,255,255,.25)"; ctx.font = "10px system-ui"; ctx.fillText("Sắp chiếu: " + FILMS.map(f => f.name).join(" · "), 180, 100);
+  }
   drawSwitch();
-  // xe bỏng ngô + loa
-  ctx.fillStyle = "#c1121f"; rr(ctx, 28, 444, 50, 40, 4); ctx.fill();
-  ctx.fillStyle = "#fff"; for (let k = 0; k < 4; k++) ctx.fillRect(31 + k * 12, 446, 6, 36);
-  ctx.fillStyle = "rgba(200,230,255,.5)"; rr(ctx, 30, 420, 46, 26, 3); ctx.fill();
-  ctx.fillStyle = "#fff3c4"; for (let k = 0; k < 14; k++) { ctx.beginPath(); ctx.arc(36 + (k * 7) % 36, 438 - (k % 3) * 4, 3, 0, 7); ctx.fill(); }
-  ctx.fillStyle = "#333"; ctx.beginPath(); ctx.arc(38, 488, 4, 0, 7); ctx.arc(68, 488, 4, 0, 7); ctx.fill();
-  ctx.fillStyle = "#ffd27a"; ctx.font = "800 8px system-ui"; ctx.textAlign = "center"; ctx.fillText("POPCORN", 53, 414);
-  ctx.fillStyle = "#2b2d42"; rr(ctx, RADIO.x - 2, RADIO.y + 28, RADIO.w + 4, 30, 3); ctx.fill();  // bục loa
+  // vách ngăn: phòng máy chiếu + lối vào phòng chiếu
+  ctx.fillStyle = "#24161d"; ctx.fillRect(-50, 362, 196, 22); ctx.fillRect(214, 362, 196, 22);
+  ctx.fillStyle = "#0e0a0d"; rr(ctx, 168, 352, 24, 12, 2); ctx.fill();                       // ô kính phòng máy chiếu
+  ctx.fillStyle = room.tv.on ? "#fff6c8" : "#333"; ctx.fillRect(176, 355, 8, 6);
+  // sảnh: sàn gạch bóng
+  ctx.fillStyle = "#2e2a33"; ctx.fillRect(-50, 384, W + 100, 1000);
+  ctx.fillStyle = "rgba(255,255,255,.05)"; for (let y = 384; y < 640; y += 20) for (let x = (y % 40 ? 0 : 20); x < W; x += 40) ctx.fillRect(x, y, 20, 20);
+  // poster phim + bảng giờ chiếu điện tử
+  FILMS.forEach((f, k) => {
+    const px = [14, 72, 248, 306][k], py = 390;
+    ctx.fillStyle = "#e9e3d6"; rr(ctx, px, py, 40, 34, 2); ctx.fill();
+    const pg = ctx.createLinearGradient(0, py, 0, py + 30); pg.addColorStop(0, f.c1); pg.addColorStop(1, f.c2);
+    ctx.fillStyle = pg; ctx.fillRect(px + 2, py + 2, 36, 22);
+    ctx.fillStyle = "#222"; ctx.font = "700 5.5px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(f.name, px + 20, py + 29);
+  });
+  ctx.fillStyle = "#0c0c0c"; rr(ctx, 124, 390, 112, 30, 3); ctx.fill();
+  ctx.fillStyle = "#39ff88"; ctx.font = "700 7px monospace"; ctx.textAlign = "center";
+  const sh = Math.floor(t / 3) % FILMS.length;
+  ctx.fillText(`${FILMS[sh].name}  19:00`, 180, 399); ctx.fillText(`${FILMS[(sh + 1) % 4].name}  21:30`, 180, 411);
+  // máy bán vé + kệ tờ rơi
+  for (let k = 0; k < 2; k++) { ctx.fillStyle = "#d9dde3"; rr(ctx, 20 + k * 21, 432, 18, 48, 3); ctx.fill(); ctx.fillStyle = "#4cc9f0"; ctx.fillRect(23 + k * 21, 436, 12, 10); ctx.fillStyle = "#555"; ctx.fillRect(25 + k * 21, 452, 8, 2); }
+  ctx.fillStyle = "#5e3d27"; rr(ctx, 92, 434, 22, 40, 2); ctx.fill();
+  for (let k = 0; k < 4; k++) { ctx.fillStyle = FILMS[k].c1; ctx.fillRect(95, 437 + k * 9, 16, 7); }
+  // quầy bắp nước + bảng menu đèn
+  ctx.fillStyle = "#111"; rr(ctx, 124, 430, 112, 22, 3); ctx.fill();
+  ctx.fillStyle = "#ffd27a"; ctx.font = "700 6.5px system-ui"; ctx.fillText("🍿 MUỐI · CARAMEL · BƠ · TRÀ XANH", 180, 437); ctx.fillStyle = "#ff8fab"; ctx.fillText("COMBO + CỐC NHÂN VẬT", 180, 446);
+  ctx.fillStyle = "#c1121f"; rr(ctx, 120, 456, 120, 26, 4); ctx.fill();
+  ctx.fillStyle = "#f8f1e5"; ctx.fillRect(124, 458, 112, 8);
+  ctx.fillStyle = "#fff3c4"; for (let k = 0; k < 10; k++) { ctx.beginPath(); ctx.arc(130 + k * 3.2, 466 - (k % 3) * 2, 2.5, 0, 7); ctx.fill(); }
+  ctx.fillStyle = "rgba(200,230,255,.45)"; ctx.fillRect(126, 456, 34, 12);
+  // kệ đồ lưu niệm sáng đèn
+  ctx.fillStyle = "#3a3a46"; rr(ctx, 256, 432, 76, 50, 3); ctx.fill();
+  ctx.fillStyle = "rgba(255,236,170,.25)"; ctx.fillRect(259, 435, 70, 44);
+  for (let r = 0; r < 3; r++) for (let k = 0; k < 6; k++) { ctx.fillStyle = ["#ff8fab", "#4cc9f0", "#ffd166", "#90be6d", "#cdb4db", "#f4a261"][(r + k) % 6]; ctx.fillRect(262 + k * 11, 438 + r * 14, 7, 9); }
+  // máy gắp thú + máy bán nước
+  ctx.fillStyle = "#ff8fab"; rr(ctx, 70, 500, 34, 46, 4); ctx.fill();
+  ctx.fillStyle = "rgba(200,240,255,.55)"; ctx.fillRect(74, 504, 26, 24);
+  ctx.strokeStyle = "#555"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(87, 504); ctx.lineTo(87 + Math.sin(t) * 6, 512); ctx.stroke();
+  ["#ffd166", "#f3f0ea", "#90be6d"].forEach((c, k) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(80 + k * 7, 524, 3.2, 0, 7); ctx.fill(); });
+  ctx.fillStyle = "#e9ecef"; rr(ctx, 248, 500, 34, 48, 3); ctx.fill();
+  ctx.fillStyle = `rgba(255,220,150,${.8 + Math.sin(t * 2) * .1})`; ctx.fillRect(251, 503, 28, 26);
+  for (let r = 0; r < 2; r++) for (let k = 0; k < 4; k++) { ctx.fillStyle = ["#2a9d8f", "#6b4226", "#e63946", "#4cc9f0"][k]; ctx.fillRect(253 + k * 7, 506 + r * 12, 4, 8); }
+  // ghế chờ dài bọc da + loa sảnh
+  ctx.fillStyle = "#6b2f2f"; rr(ctx, 124, 520, 30, 14, 4); ctx.fill(); rr(ctx, 206, 520, 30, 14, 4); ctx.fill();
+  ctx.fillStyle = "#2b2d42"; rr(ctx, RADIO.x - 2, RADIO.y + 26, RADIO.w + 4, 24, 3); ctx.fill();
   drawRadio(t);
 }
 function drawCinemaSeat(i, t) {
   const b = BEDS[i], o = bedOwner(i), sit = o && o.lying, x = b.x + 10, y = b.y + 30, w = 90;
+  const row = i < 3 ? "A" : "B", num = (i % 3) + 1;
   ctx.fillStyle = "rgba(0,0,0,.3)"; rr(ctx, x + 2, y + 14, w, 40, 8); ctx.fill();
-  ctx.fillStyle = "#6a040f"; rr(ctx, x, y + 10, w, 26, 8); ctx.fill();                    // đệm ngồi
-  ctx.fillStyle = "#9d0208"; rr(ctx, x + 4, y + 12, w - 8, 20, 7); ctx.fill();
+  ctx.fillStyle = "#1d2d50"; rr(ctx, x, y + 10, w, 26, 8); ctx.fill();
+  ctx.fillStyle = "#2c4a7c"; rr(ctx, x + 4, y + 12, w - 8, 20, 7); ctx.fill();
   if (sit) {
     drawPlayer({...o, x: b.x + 55, y: b.y + 66 + Math.sin(t * 2 + i) * .4, walking: false, up: true}, t);
-    ctx.fillStyle = "#c1121f"; ctx.fillRect(x + w - 6, y + 20, 10, 12);                      // hộp bỏng ngô
+    ctx.fillStyle = "#c1121f"; ctx.fillRect(x + w - 6, y + 20, 10, 12);
     ctx.fillStyle = "#fff3c4"; ctx.beginPath(); ctx.arc(x + w - 3, y + 19, 3, 0, 7); ctx.arc(x + w + 2, y + 18, 3, 0, 7); ctx.fill();
   }
-  ctx.fillStyle = "#370617"; rr(ctx, x - 6, y + 8, 8, 34, 3); ctx.fill(); rr(ctx, x + w - 2, y + 8, 8, 34, 3); ctx.fill();  // tay vịn
-  ctx.fillStyle = "#9d0208"; rr(ctx, x, y + 34, w, 14, 6); ctx.fill();                     // lưng ghế
-  ctx.fillStyle = "#c1121f"; rr(ctx, x + 6, y + 36, w - 12, 5, 3); ctx.fill();
+  ctx.fillStyle = "#111827"; rr(ctx, x - 6, y + 8, 8, 34, 3); ctx.fill(); rr(ctx, x + w - 2, y + 8, 8, 34, 3); ctx.fill();
+  ctx.fillStyle = "#555"; ctx.beginPath(); ctx.arc(x + w + 2, y + 12, 3, 0, 7); ctx.fill();                           // giá để cốc
+  ctx.fillStyle = "#2c4a7c"; rr(ctx, x, y + 34, w, 14, 6); ctx.fill();
+  ctx.fillStyle = "#3d5f99"; rr(ctx, x + 6, y + 36, w - 12, 5, 3); ctx.fill();
+  ctx.fillStyle = "#ffd27a"; ctx.font = "700 6px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(row + num, x - 2, y + 40);                                                                           // số ghế
+}
+function drawCinemaFX(t) {                         // luồng sáng máy chiếu + biển EXIT xanh
+  if (room.tv.on) {
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    const g = ctx.createLinearGradient(180, 356, 180, 150);
+    g.addColorStop(0, `rgba(200,220,255,${.18 * lightLevel + .04})`); g.addColorStop(1, "rgba(200,220,255,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(176, 358); ctx.lineTo(184, 358); ctx.lineTo(TVR.x + TVR.w - 10, TVR.y + TVR.h); ctx.lineTo(TVR.x + 10, TVR.y + TVR.h); ctx.fill();
+    for (let k = 0; k < 14; k++) {
+      const ph = (t * .05 + k * .071) % 1, yy = 356 - ph * 200, spread = (356 - yy) / 206 * 140;
+      ctx.fillStyle = `rgba(255,255,255,${.35 * Math.sin(ph * Math.PI)})`; ctx.fillRect(180 + Math.sin(k * 7.3 + t * .3) * spread, yy, 1.2, 1.2);
+    }
+    ctx.restore();
+  }
+  for (const ex of [16, 344]) {
+    ctx.fillStyle = "#1d8f3a"; rr(ctx, ex - 12, 166, 24, 10, 2); ctx.fill();
+    ctx.fillStyle = "#e9ffe9"; ctx.font = "700 6.5px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("EXIT", ex, 171);
+  }
 }
 
 function drawRoom(t) {
   if (cinema()) drawCinema(t);
   else if (park()) drawPark(t);
   else if (study()) drawStudyRoom(t);
-  else drawBedroom(t);
+  else drawDorm(t);
 }
 
 function drawTVScreen(t) {
@@ -1535,8 +1838,7 @@ function drawDoorAt(d, t) {
       ctx.fillStyle = "#c9a36b"; ctx.fillRect(x + w / 2 - 4, y + h / 2, 2, 8); ctx.fillRect(x + w / 2 + 2, y + h / 2, 2, 8);
       ctx.fillStyle = "rgba(193,18,31,.35)"; ctx.fillRect(x + w / 2 - 1, y + 2, 2, h - 2);
     } else {
-      ctx.fillStyle = "#1d8f3a"; rr(ctx, x + w / 2 - 14, y - 16, 28, 10, 2); ctx.fill();               // biển EXIT
-      ctx.fillStyle = "#e9ffe9"; ctx.font = "700 7px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("EXIT", x + w / 2, y - 11);
+      ctx.fillStyle = "#8a5a3c"; rr(ctx, x + 4, y - 8, w - 8, 7, 3); ctx.fill();                        // thảm chùi chân
     }
     ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.font = "14px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillText(icon, x + w / 2, y + (d.side === "wall" ? 16 : h / 2));
@@ -1598,6 +1900,7 @@ function drawBed(i, t) {
   if (cinema()) { drawCinemaSeat(i, t); return; }
   if (park()) { drawBench(i, t); return; }
   if (study()) { drawDesk(i, t); return; }
+  drawCozyBed(i, t); return;
   const b = BEDS[i], o = bedOwner(i), lying = o && o.lying;
   ctx.fillStyle = "rgba(0,0,0,.25)"; rr(ctx, b.x + 3, b.y + 5, BED_W, BED_H, 10); ctx.fill();
   ctx.fillStyle = "#efe6d2"; rr(ctx, b.x, b.y, BED_W, BED_H, 10); ctx.fill();
@@ -1636,10 +1939,10 @@ function setRoomPet(pt) {
   roomPet.area = area;
   roomPet.mode = pt.mode; roomPet.bed = pt.bed;
   if (pt.mode === "sleep" && pt.bed != null) {
-    const b = BEDS[pt.bed];
+    const b = seatIn(area, pt.bed), bw = LAYOUTS[area].bw, bh = LAYOUTS[area].bh;
     if (area === "study") { roomPet.tx = b.x + 66; roomPet.ty = b.y + 46; }        // nằm trên bàn học
     else if (area === "park" || area === "cinema") { roomPet.tx = b.x + 88; roomPet.ty = b.y + 60; }    // nằm trên ghế
-    else { roomPet.tx = b.x + 84; roomPet.ty = b.y + BED_H - 12; }
+    else { const right = pt.bed % 2 === 1; roomPet.tx = right ? b.x + 34 : b.x + bw - 34; roomPet.ty = b.y + bh - 2; }
   }
   else { roomPet.tx = pt.x; roomPet.ty = pt.y; }
 }
@@ -1659,8 +1962,9 @@ function updatePets(dt) {
     if (p.walking && Math.abs(p.tx - p.x) > 2) o.side = p.tx > p.x ? -1 : 1;   // đi phía sau chủ
     let tx, ty, sleep = false;
     if (p.bed != null && p.lying) {
-      const b = BEDS[p.bed]; sleep = true;
-      if (p.area !== "sleep") { tx = b.x + 20; ty = b.y + 86; } else { tx = b.x + 26; ty = b.y + BED_H - 12; }
+      const b = seatIn(p.area, p.bed), L = LAYOUTS[p.area]; sleep = true;
+      if (p.area !== "sleep") { tx = b.x + 20; ty = b.y + 86; }
+      else { const right = p.bed % 2 === 1; tx = right ? b.x + 16 : b.x + L.bw - 16; ty = b.y + L.bh - 4; }
     }
     else { tx = p.x + o.side * 18; ty = p.y + 3; }
     const far = Math.hypot(tx - o.x, ty - o.y) > 40;
@@ -1804,6 +2108,10 @@ function drawDarkness(t) {
   if (room.tv.on && TVR) hole(tc.x, tc.y, 260,.85 + Math.sin(t * 7) * .05 + Math.sin(t * 13) * .04);
   if (room.music.on) hole(rc.x, rc.y, 55, .45);
   if (park()) LAMPS.forEach(l => hole(l.x, l.y - 30, 95, .75));    // đèn đường
+  if (myArea === "sleep") {                                         // lò sưởi + đèn ngủ từng giường
+    hole(180, 140, 150, .9 + Math.sin(t * 8) * .04);
+    BEDS.forEach((b, i) => hole(i % 2 ? b.x + BED_W - 14 : b.x + 14, b.y - 20, 34, .6));
+  }
   if (study()) for (const p of here())                            // đèn bàn học
     if (p.lying && p.bed != null) { const b = BEDS[p.bed]; hole(b.x + 32, b.y + 32, 75, .8); }
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(dark, 0, 0); ctx.restore();
@@ -1855,7 +2163,7 @@ function frame() {
   drawRoom(t);
   BEDS.forEach((_, i) => drawBed(i, t));
   taps.forEach(tp => { const a = (t - tp.t) / .6; ctx.strokeStyle = `rgba(255,210,122,${1 - a})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(tp.x, tp.y, 4 + a * 12, 2 + a * 5, 0, 0, 7); ctx.stroke(); });
-  doorsHere().forEach(d => drawDoorAt(d, t));
+  doorsHere().forEach(d => { if (!d.custom) drawDoorAt(d, t); });
   const ents = [];                                                // vẽ theo thứ tự y
   for (const p of here()) {
     if (!p.lying) ents.push({y: p.y, f: () => drawPlayer(p, t)});
@@ -1882,11 +2190,14 @@ function frame() {
   for (const p of here()) if (p.petObj) petOverlay(p.petObj, p.pet.name, t);
   if (roomPet.area === myArea) petOverlay(roomPet, ROOM_PET.name, t);
   for (const d of doorsHere()) {
-    const txt = d.side === "right" ? `${AREA_NAME[d.to]} →` : d.side === "left" ? `← ${AREA_NAME[d.to]}` : AREA_NAME[d.to];
+    const txt = d.side === "right" ? `${AREA_NAME[d.to]} →` : d.side === "left" ? `← ${AREA_NAME[d.to]}` : d.side === "bottom" ? `↓ ${AREA_NAME[d.to]}` : `↑ ${AREA_NAME[d.to]}`;
     const lx = d.side === "right" ? d.x - 24 : d.side === "left" ? d.x + 50 : d.x + d.w / 2;
-    label(txt, Math.max(52, Math.min(W - 52, lx)), d.y - 9, "#ffe2a8");
+    const ly = d.custom && d.side !== "wall" ? d.y - 12 : d.y - 9;
+    label(txt, Math.max(52, Math.min(W - 52, lx)), ly, "#ffe2a8");
   }
   if (park() && lightLevel > .05) drawFireflies(t);
+  if (myArea === "sleep") drawFairyLights(t);
+  if (cinema()) drawCinemaFX(t);
 
   for (const p of here()) {
     let hx, hy;
@@ -1980,16 +2291,13 @@ function frame() {
     Sound.ensure();                // mở khoá âm thanh trong lúc người dùng bấm
     connect();
   };
-  $("#joinBtn").onclick = () => { wantKind = ["study", "park", "cinema"].includes(params.get("area")) ? params.get("area") : "sleep"; go($("#roomInput").value); };
+  $("#joinBtn").onclick = () => { wantKind = ["study", "sleep", "cinema"].includes(params.get("area")) ? params.get("area") : "park"; go($("#roomInput").value); };
   const newRoom = kind => {
     const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s = "";
     for (let i = 0; i < 5; i++) s += A[Math.random() * A.length | 0];
     wantKind = kind; $("#roomInput").value = s; go(s);
   };
-  $("#newBtn").onclick = () => newRoom("sleep");
-  $("#newStudyBtn").onclick = () => newRoom("study");
-  $("#newParkBtn").onclick = () => newRoom("park");
-  $("#newCinemaBtn").onclick = () => newRoom("cinema");
+  $("#newBtn").onclick = () => newRoom("park");
   $("#roomInput").addEventListener("keydown", e => { if (e.key === "Enter") $("#joinBtn").click(); });
 })();
 

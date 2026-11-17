@@ -15,16 +15,23 @@ Rồi mở http://localhost:8080 (hoặc bấm đúp `run.bat`).
 Điện thoại dùng chung wifi: mở `http://<IP máy tính>:8080` (xem IP bằng `ipconfig`).
 Lần đầu Windows hỏi tường lửa thì bấm **Allow**.
 
-## Một căn nhà, 4 khu thông nhau
-Mỗi mã phòng là một căn nhà có **🛏️ phòng ngủ**, **📚 phòng học**, **🌳 công viên** và **🎬 phòng chiếu phim**.
-Phòng ngủ / phòng học / công viên nối nhau qua 2 cửa góc dưới; mỗi khu có thêm 1 cửa vào phòng chiếu phim.
-- 🛏️ **Phòng ngủ**: cửa sổ có trăng, 6 giường, tắt đèn ngủ cùng nhau
+## Bản đồ thế giới (công viên ở trung tâm)
+```
+                 [BẮC] 📚 Phòng học
+[TÂY] 🛏️ Ký túc xá ── 🌳 CÔNG VIÊN ── 🎬 Rạp phim [ĐÔNG]
+                 [NAM] 🚪 Cổng vào (người mới xuất hiện ở đây)
+```
+Các khu không nối thẳng với nhau, muốn đi đâu cũng phải qua công viên. Bấm 🗺️ để mở bản đồ và tự đi tới khu bất kỳ.
+- 🌳 **Công viên**: quảng trường có đài phun nước, 4 lối đi, ghế đá, hồ nhỏ, xe kem (phát nhạc),
+  cây anh đào, cổng vào có bảng bản đồ; chạm mặt trời/mặt trăng đổi ngày đêm (đêm có đom đóm)
+- 🛏️ **Ký túc xá**: 8 giường mỗi giường một họa tiết, thú bông, đèn ngủ nấm/trăng, rèm đầu giường,
+  lò sưởi + ghế bành + bàn trà, cửa sổ có tuyết/mưa, dây đèn vàng; tắt đèn thì nhạc nhỏ và trầm dần,
+  có tiếng lửa lách tách + đồng hồ tích tắc
 - 📚 **Phòng học**: giá sách, bảng trắng, 3 dãy bàn x 2 hàng, góc đọc sách, Pomodoro chung,
-  ghi "đang học gì", bảng xếp hạng thời gian ngồi học
-- 🌳 **Công viên**: hồ có vịt, ghế đá so le, picnic có loa, tòa nhà rạp phim,
-  chạm mặt trời/mặt trăng đổi ngày đêm (ban đêm có đom đóm, đèn đường)
-- 🎬 **Phòng chiếu phim**: màn chiếu lớn (YouTube + kênh có sẵn, hẹn giờ tắt), 6 ghế nhung, xe bỏng ngô
-  — TV chỉ có ở đây
+  "đang học gì", bảng xếp hạng thời gian ngồi học
+- 🎬 **Rạp phim kiểu Nhật**: phòng chiếu (màn lớn, ghế đánh số, luồng sáng máy chiếu, EXIT) +
+  sảnh (poster, bảng giờ chiếu, máy bán vé, tờ rơi, quầy bắp, đồ lưu niệm, máy gắp thú, máy bán nước).
+  Bật phim thì đèn tự tắt. TV/YouTube chỉ có ở đây.
 
 ## Cách chơi
 - Chạm sàn để đi, chạm giường để ngủ, chạm sàn lần nữa để dậy

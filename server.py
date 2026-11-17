@@ -1,11 +1,11 @@
 """Ngủ Cùng Nhau - server multiplayer (aiohttp + WebSocket).
 
-Mỗi mã phòng là một "căn nhà" gồm 4 khu thông nhau bằng cửa:
-  - sleep:  phòng ngủ (giường)
-  - study:  phòng học (bàn học + Pomodoro)
-  - park:   công viên (ghế đá, hồ, ngày/đêm)
-  - cinema: phòng chiếu phim (màn chiếu lớn: YouTube + kênh có sẵn)
-Mỗi khu có nhạc, đèn (công viên: ngày/đêm) riêng; TV chỉ dùng ở phòng chiếu phim.
+Mỗi mã phòng là một "thế giới" nhỏ, công viên ở trung tâm:
+                 [Bắc] phòng học
+  [Tây] phòng ngủ ── CÔNG VIÊN ── rạp phim [Đông]
+                 [Nam] cổng vào (người mới xuất hiện ở đây)
+Các khu không nối thẳng với nhau, muốn đi đâu cũng phải qua công viên.
+Mỗi khu có nhạc, đèn (công viên: ngày/đêm) riêng; TV chỉ dùng ở rạp phim.
 
 Chạy:  python server.py      rồi mở http://localhost:8080
 """
@@ -23,15 +23,17 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(ROOT, "static")
 
 AREAS = ("sleep", "study", "park", "cinema")
+SEATS = {"sleep": 8, "study": 6, "park": 4, "cinema": 6}
 # SPAWN[(khu đến, khu vừa rời)] = chỗ xuất hiện (ngay trong cánh cửa nối 2 khu)
-LEFT, RIGHT = (42.0, 545.0), (318.0, 545.0)
 SPAWN = {
-    ("sleep", "park"): LEFT, ("sleep", "study"): RIGHT, ("sleep", "cinema"): (184.0, 186.0),
-    ("study", "park"): LEFT, ("study", "sleep"): RIGHT, ("study", "cinema"): (276.0, 184.0),
-    ("park", "sleep"): LEFT, ("park", "study"): RIGHT, ("park", "cinema"): (274.0, 182.0),
-    ("cinema", "sleep"): LEFT, ("cinema", "study"): RIGHT, ("cinema", "park"): (180.0, 548.0),
+    ("park", "sleep"): (40.0, 356.0),    # lối Tây
+    ("park", "study"): (180.0, 188.0),   # lối Bắc
+    ("park", "cinema"): (320.0, 356.0),  # lối Đông
+    ("sleep", "park"): (180.0, 540.0),   # cửa đầu phòng ngủ
+    ("study", "park"): (180.0, 540.0),   # cửa cuối lớp
+    ("cinema", "park"): (44.0, 545.0),   # cửa sảnh rạp
 }
-BEDS = 6
+GATE = (180.0, 528.0)                    # cổng Nam của công viên
 MAX_PLAYERS = 12
 TV_CHANNELS = 4
 MUSIC_TRACKS = 4
@@ -48,9 +50,9 @@ FLOOR = (16, 175, 344, 575)  # x1, y1, x2, y2
 rooms = {}
 
 
-def new_area():
+def new_area(n):
     return {
-        "beds": [None] * BEDS,
+        "beds": [None] * n,
         "tv": {"on": False, "ch": 0},
         "music": {"on": False, "track": 0},
         "light": True,
@@ -65,9 +67,9 @@ def new_room():
     return {
         "players": {},
         "sockets": {},
-        "areas": {a: new_area() for a in AREAS},
+        "areas": {a: new_area(SEATS[a]) for a in AREAS},
         # Mèo Mun của nhà: mode = walk | sit | sleep
-        "pet": {"x": 300.0, "y": 200.0, "mode": "sit", "bed": None, "area": "sleep"},
+        "pet": {"x": 230.0, "y": 360.0, "mode": "sit", "bed": None, "area": "park"},
         "_pet_task": None,
         # Pomodoro chung (hiện ở phòng học)
         "pomo": {"phase": "focus", "running": False, "end": None, "left": 25 * 60,
@@ -256,13 +258,18 @@ async def ws_handler(request):
                 ptype = pd.get("type") if pd.get("type") in PET_TYPES else "none"
                 pet = {"type": ptype, "name": clean_text(pd.get("name"), 10) or PET_TYPES[ptype]}
                 start = d.get("area") or d.get("kind")
+                start = start if start in AREAS else "park"
+                if start == "park":
+                    sx, sy = GATE[0] + random.uniform(-14, 14), GATE[1]
+                else:
+                    sx, sy = random.randint(140, 220), random.randint(520, 545)
                 player = {
                     "id": pid,
                     "name": clean_text(d.get("name"), 14) or "Bạn",
                     "color": color,
-                    "area": start if start in AREAS else "sleep",
-                    "x": random.randint(140, 220),
-                    "y": random.randint(535, 565),
+                    "area": start,
+                    "x": round(sx, 1),
+                    "y": sy,
                     "bed": None,
                     "pet": pet,
                     "status": "",
@@ -305,7 +312,7 @@ async def ws_handler(request):
 
             elif t == "sleep":
                 b = d.get("bed")
-                if not isinstance(b, int) or not 0 <= b < BEDS:
+                if not isinstance(b, int) or not 0 <= b < len(A["beds"]):
                     continue
                 if A["beds"][b] not in (None, pid):
                     await ws.send_json({"t": "error", "msg": "Chỗ này có người rồi!"})
