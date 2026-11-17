@@ -15,15 +15,16 @@ Rồi mở http://localhost:8080 (hoặc bấm đúp `run.bat`).
 Điện thoại dùng chung wifi: mở `http://<IP máy tính>:8080` (xem IP bằng `ipconfig`).
 Lần đầu Windows hỏi tường lửa thì bấm **Allow**.
 
-## Một căn nhà, 3 khu thông nhau
-Mỗi mã phòng là một căn nhà có **🛏️ phòng ngủ**, **📚 phòng học** và **🌳 công viên**.
-Mỗi khu có 2 cửa (góc trái dưới / phải dưới) dẫn sang 2 khu còn lại.
-Mỗi khu có TV, nhạc, đèn, hẹn giờ riêng.
-- 🛏️ **Phòng ngủ**: giường, tắt đèn, ngủ cùng nhau
-- 📚 **Phòng học**: bàn học có đèn + laptop, Pomodoro chung (25/5, 50/10…),
+## Một căn nhà, 4 khu thông nhau
+Mỗi mã phòng là một căn nhà có **🛏️ phòng ngủ**, **📚 phòng học**, **🌳 công viên** và **🎬 phòng chiếu phim**.
+Phòng ngủ / phòng học / công viên nối nhau qua 2 cửa góc dưới; mỗi khu có thêm 1 cửa vào phòng chiếu phim.
+- 🛏️ **Phòng ngủ**: cửa sổ có trăng, 6 giường, tắt đèn ngủ cùng nhau
+- 📚 **Phòng học**: giá sách, bảng trắng, 3 dãy bàn x 2 hàng, góc đọc sách, Pomodoro chung,
   ghi "đang học gì", bảng xếp hạng thời gian ngồi học
-- 🌳 **Công viên**: ghế đá, hồ có vịt, màn chiếu phim ngoài trời (YouTube/kênh có sẵn),
-  loa trên bàn picnic, nút ☀️/🌙 đổi ngày đêm (ban đêm có đom đóm, đèn đường)
+- 🌳 **Công viên**: hồ có vịt, ghế đá so le, picnic có loa, tòa nhà rạp phim,
+  chạm mặt trời/mặt trăng đổi ngày đêm (ban đêm có đom đóm, đèn đường)
+- 🎬 **Phòng chiếu phim**: màn chiếu lớn (YouTube + kênh có sẵn, hẹn giờ tắt), 6 ghế nhung, xe bỏng ngô
+  — TV chỉ có ở đây
 
 ## Cách chơi
 - Chạm sàn để đi, chạm giường để ngủ, chạm sàn lần nữa để dậy

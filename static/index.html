@@ -139,7 +139,7 @@
   #colors{display:flex;gap:8px;justify-content:space-between}
   #colors button{width:34px;height:34px;border-radius:50%;border:3px solid transparent}
   #colors button.sel{border-color:#fff;transform:scale(1.1)}
-  .newRow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+  .newRow{display:grid;grid-template-columns:1fr 1fr;gap:6px}
   .newRow .ghost{font-size:13px;padding:12px 4px;margin-top:0}
   /* Phòng học */
   #pomoPill{position:fixed;right:10px;top:calc(46px + env(safe-area-inset-top));z-index:5;font-weight:700;font-variant-numeric:tabular-nums}
@@ -193,7 +193,7 @@
 <div id="tvFrame" class="hidden"><div class="ythold" id="tvHold"></div><button id="tvShrink">✕ Thu nhỏ</button></div>
 <div id="ytMusic" class="hidden"><div class="mframe"><div class="ythold" id="musicHold"></div></div><div class="mtitle">▶️ <span id="mTitle">YouTube</span></div></div>
 <div id="theater" class="hidden"><canvas id="bigTV"></canvas>
-  <div id="theaterOff">📺<div>TV đang tắt</div><small>Chạm để bật TV hoặc mở YouTube</small></div></div>
+  <div id="theaterOff">🎬<div id="thTitle">Màn chiếu đang tắt</div><small id="thSub">Chạm để bật phim hoặc mở YouTube</small></div></div>
 <div id="theaterTimer" class="hidden"></div>
 <div id="sa"></div>
 <div id="volCtl" class="hidden"><button id="volUp" aria-label="Tăng âm lượng">＋</button><div id="volPct">70%</div><button id="volDown" aria-label="Giảm âm lượng">－</button></div>
@@ -215,7 +215,7 @@
     <input id="roomInput" maxlength="8" placeholder="VD: MEOW" autocomplete="off">
     <button id="joinBtn" class="primary">Vào phòng</button>
     <label>✨ Hoặc tạo nhà mới, bắt đầu ở:</label>
-    <div class="newRow"><button id="newBtn" class="ghost">🛏️ Phòng ngủ</button><button id="newStudyBtn" class="ghost">📚 Phòng học</button><button id="newParkBtn" class="ghost">🌳 Công viên</button></div>
+    <div class="newRow"><button id="newBtn" class="ghost">🛏️ Phòng ngủ</button><button id="newStudyBtn" class="ghost">📚 Phòng học</button><button id="newParkBtn" class="ghost">🌳 Công viên</button><button id="newCinemaBtn" class="ghost">🎬 Rạp phim</button></div>
     <p id="lobbyErr"></p>
   </div>
 </div>
@@ -230,20 +230,26 @@ const LAYOUTS = {
   sleep: {                                   // phòng ngủ: 6 giường 2 cột, cửa sổ trái, TV giữa
     beds: [{x: 30, y: 185}, {x: 220, y: 185}, {x: 30, y: 300}, {x: 220, y: 300}, {x: 30, y: 415}, {x: 220, y: 415}],
     bw: 110, bh: 95,
-    tvr: {x: 114, y: 36, w: 140, h: 88}, scr: {x: 121, y: 43, w: 126, h: 74},
-    radio: {x: 286, y: 100, w: 48, h: 28}, sw: {x: 264, y: 74, w: 13, h: 19}, moon: {x: 64, y: 84},
+    tvr: null, scr: null,
+    radio: {x: 286, y: 100, w: 48, h: 28}, sw: {x: 254, y: 74, w: 13, h: 19}, moon: {x: 64, y: 84},
   },
   study: {                                   // phòng học: lớp học 3 dãy x 2 hàng, giá sách trái, bảng/TV phải
     beds: [{x: 6, y: 192}, {x: 125, y: 192}, {x: 244, y: 192}, {x: 6, y: 318}, {x: 125, y: 318}, {x: 244, y: 318}],
     bw: 110, bh: 95,
-    tvr: {x: 138, y: 30, w: 156, h: 94}, scr: {x: 145, y: 37, w: 142, h: 80},
+    tvr: null, scr: null,
     radio: {x: 302, y: 104, w: 48, h: 28}, sw: {x: 122, y: 74, w: 13, h: 19}, moon: null,
   },
   park: {                                    // công viên: ghế đá rải rác quanh hồ, màn chiếu phải, picnic trái
     beds: [{x: 180, y: 178}, {x: 16, y: 178}, {x: 222, y: 266}, {x: 180, y: 356}, {x: 18, y: 424}, {x: 214, y: 440}],
     bw: 110, bh: 80,
-    tvr: {x: 196, y: 28, w: 152, h: 92}, scr: {x: 203, y: 35, w: 138, h: 78},
+    tvr: null, scr: null,
     radio: {x: 32, y: 100, w: 48, h: 28}, sw: {x: 136, y: 46, w: 32, h: 32}, moon: {x: 152, y: 62},
+  },
+  cinema: {                                  // phòng chiếu phim: màn lớn cả bức tường, 2 hàng ghế nhung
+    beds: [{x: 14, y: 236}, {x: 125, y: 236}, {x: 236, y: 236}, {x: 14, y: 344}, {x: 125, y: 344}, {x: 236, y: 344}],
+    bw: 110, bh: 80,
+    tvr: {x: 26, y: 20, w: 308, h: 140}, scr: {x: 32, y: 26, w: 296, h: 128},
+    radio: {x: 296, y: 446, w: 48, h: 28}, sw: {x: 341, y: 118, w: 13, h: 19}, moon: null,
   },
 };
 let BED_W = 110, BED_H = 95, BEDS = LAYOUTS.sleep.beds;
@@ -253,13 +259,18 @@ function applyLayout(a) {
   LAYOUT = LAYOUTS[a];
   ({beds: BEDS, bw: BED_W, bh: BED_H, tvr: TVR, scr: SCR, radio: RADIO, sw: SWITCH} = LAYOUT);
 }
-const tvCenter = () => ({x: TVR.x + TVR.w / 2, y: TVR.y + TVR.h / 2});
-// Cửa: mỗi khu có cửa trái + cửa phải dẫn sang 2 khu còn lại
+const tvCenter = () => TVR ? {x: TVR.x + TVR.w / 2, y: TVR.y + TVR.h / 2} : {x: 180, y: 90};
+// Cửa: góc trái/phải dưới nối 3 khu với nhau; thêm 1 cửa sang phòng chiếu phim
 const DOOR_R = {x: 332, y: 513, w: 28, h: 62, side: "right", spot: {x: 336, y: 546}};
 const DOOR_L = {x: 0, y: 513, w: 28, h: 62, side: "left", spot: {x: 24, y: 546}};
-const DOORS = {sleep: {right: "study", left: "park"}, study: {right: "sleep", left: "park"}, park: {left: "sleep", right: "study"}};
-const doorsHere = () => [{...DOOR_R, to: DOORS[myArea].right}, {...DOOR_L, to: DOORS[myArea].left}];
-const doorTo = (from, to) => DOORS[from].right === to ? DOOR_R : DOOR_L;
+const AREA_DOORS = {
+  sleep:  [{...DOOR_L, to: "park"}, {...DOOR_R, to: "study"}, {x: 156, y: 96, w: 56, h: 66, side: "wall", spot: {x: 184, y: 182}, to: "cinema"}],
+  study:  [{...DOOR_L, to: "park"}, {...DOOR_R, to: "sleep"}, {x: 256, y: 96, w: 40, h: 66, side: "wall", spot: {x: 276, y: 180}, to: "cinema"}],
+  park:   [{...DOOR_L, to: "sleep"}, {...DOOR_R, to: "study"}, {x: 254, y: 100, w: 40, h: 62, side: "wall", spot: {x: 274, y: 178}, to: "cinema"}],
+  cinema: [{...DOOR_L, to: "sleep"}, {...DOOR_R, to: "study"}, {x: 156, y: 538, w: 48, h: 37, side: "bottom", spot: {x: 180, y: 556}, to: "park"}],
+};
+const doorsHere = () => AREA_DOORS[myArea];
+const doorTo = (from, to) => AREA_DOORS[from].find(d => d.to === to);
 const LAMPS = [{x: 166, y: 420}, {x: 204, y: 262}];        // đèn đường công viên
 const COLORS = ["#e76f51","#f4a261","#e9c46a","#2a9d8f","#4cc9f0","#7b2cbf","#f72585","#90be6d"];
 const TV_CH = [
@@ -297,7 +308,8 @@ let taps = [], notes = [];
 let myPet = {type: "cat", name: ""};
 let roomKind = "sleep", wantKind = "sleep", pomo = null, lastPill = "";
 let areas = null, myArea = "sleep", pendingDoor = false, lastPet = null;
-const AREA_NAME = {sleep: "🛏️ Phòng ngủ", study: "📚 Phòng học", park: "🌳 Công viên"};
+const AREA_NAME = {sleep: "🛏️ Phòng ngủ", study: "📚 Phòng học", park: "🌳 Công viên", cinema: "🎬 Phòng chiếu phim"};
+const cinema = () => myArea === "cinema";
 const park = () => myArea === "park";
 const here = () => [...players.values()].filter(p => p.area === myArea);
 const study = () => roomKind === "study";
@@ -318,7 +330,7 @@ function lighten(hex, amt) {
   const f = v => Math.round(v + (255 - v) * amt);
   return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
 }
-function bedSpot(b) { return {x: BEDS[b].x + BED_W / 2, y: BEDS[b].y + ({study: 80, park: 66}[roomKind] || 62)}; }
+function bedSpot(b) { return {x: BEDS[b].x + BED_W / 2, y: BEDS[b].y + ({study: 80, park: 66, cinema: 66}[roomKind] || 62)}; }
 function bedOwner(b) { for (const p of players.values()) if (p.bed === b && p.area === myArea) return p; return null; }
 function me() { return players.get(myId); }
 function fmtTime(s) {
@@ -639,6 +651,7 @@ setInterval(() => { syncYT("tv"); syncYT("music"); }, 3000);
 setInterval(() => { if (joined) fetch("/ping", {cache: "no-store"}).catch(() => {}); }, 4 * 60 * 1000); // giữ server free không ngủ
 function placeTV() {
   const f = $("#tvFrame");
+  if (!theater && !SCR) return;
   const r = theater || {x: ox + SCR.x * scale, y: oy + SCR.y * scale, w: SCR.w * scale, h: SCR.h * scale};
   f.style.left = r.x + "px"; f.style.top = r.y + "px";
   f.style.width = r.w + "px"; f.style.height = r.h + "px";
@@ -653,7 +666,12 @@ function placeTheater() {
   $("#volCtl").style.right = (vw - theater.x - theater.w + 8) + "px";
   bigTV.width = Math.round(theater.w * dpr); bigTV.height = Math.round(theater.h * dpr);
 }
-$("#theater").onclick = () => { if (joined) openTV(); };
+$("#theater").onclick = () => { if (joined) openTVOrGo(); };
+function openTVOrGo() {
+  if (cinema()) { openTV(); return; }
+  toast("🎬 Đang đi sang phòng chiếu phim…");
+  goDoor(doorTo(myArea, "cinema"));
+}
 $("#tvShrink").onclick = () => { tvBig = false; placeTV(); };
 $("#ytMusic").onclick = () => $("#ytMusic").classList.toggle("mini");
 function ytToggle(slot) {
@@ -721,8 +739,9 @@ function handle(m) {
       resize();
       updateUI();
       log(`Chào <b>${esc(myName)}</b>! ` + {study: "Chạm vào bàn để ngồi học 📚, bấm 🍅 để bật Pomodoro",
-        park: "Chạm ghế để ngồi ngắm cảnh 🌳, bấm ☀️/🌙 để đổi ngày đêm", sleep: "Chạm vào giường để đi ngủ 🛏️"}[myArea]);
-      log(`🚪 Cửa trái → ${AREA_NAME[DOORS[myArea].left]} · cửa phải → ${AREA_NAME[DOORS[myArea].right]}`);
+        park: "Chạm ghế để ngồi ngắm cảnh 🌳, bấm ☀️/🌙 để đổi ngày đêm", sleep: "Chạm vào giường để đi ngủ 🛏️",
+        cinema: "Chạm màn chiếu để chọn phim 🎬, chạm ghế để ngồi xem 🍿"}[myArea]);
+      log(`🚪 Cửa đi: ${doorsHere().map(d => AREA_NAME[d.to]).join(" · ")}`);
       if (players.size === 1) log(`🐾 Mèo <b>Mun</b> của phòng sẽ ở cùng bạn. Chạm để vuốt ve nhé!`);
       break;
     }
@@ -858,6 +877,8 @@ function setArea(a) {
   $("#pomoPill").classList.toggle("hidden", !study());
   history.replaceState(null, "", `?room=${roomCode}&area=${a}`);
   syncMusic(); applyMedia("tv"); applyMedia("music"); placeTV();
+  $("#thTitle").textContent = cinema() ? "Màn chiếu đang tắt" : "Phim chỉ chiếu ở 🎬 Phòng chiếu phim";
+  $("#thSub").textContent = cinema() ? "Chạm để bật phim hoặc mở YouTube" : "Chạm để đi sang đó";
   updateUI();
 }
 function goDoor(d) {
@@ -874,14 +895,14 @@ function updateUI() {
   $("#count").textContent = players.size;
   $("#sleepCount").textContent = here().filter(p => p.bed != null).length;
   const ar = myArea;
-  $("#sleepIcon").textContent = {sleep: "😴", study: "📚", park: "🪑"}[ar];
+  $("#sleepIcon").textContent = {sleep: "😴", study: "📚", park: "🪑", cinema: "🍿"}[ar];
   $("#sleepBtn").innerHTML = sleeping ? (ar === "sleep" ? "🌅<span>Dậy</span>" : "🚶<span>Đứng dậy</span>")
-    : {sleep: "😴<span>Ngủ</span>", study: "📚<span>Học</span>", park: "🪑<span>Ngồi</span>"}[ar];
+    : {sleep: "😴<span>Ngủ</span>", study: "📚<span>Học</span>", park: "🪑<span>Ngồi</span>", cinema: "🍿<span>Ngồi xem</span>"}[ar];
   $("#sleepBtn").classList.toggle("on", !!sleeping);
   $("#lightBtn").classList.toggle("on", room.light);
   $("#lightBtn").innerHTML = park() ? (room.light ? "☀️<span>Ngày</span>" : "🌙<span>Đêm</span>")
     : room.light ? "💡<span>Đèn</span>" : "🌑<span>Tắt đèn</span>";
-  $("#tvBtn").innerHTML = park() ? "🎬<span>Chiếu phim</span>" : "📺<span>TV</span>";
+  $("#tvBtn").innerHTML = cinema() ? "🎬<span>Chiếu phim</span>" : "🎬<span>Rạp phim</span>";
   $("#tvBtn").classList.toggle("on", room.tv.on);
   $("#musicBtn").classList.toggle("on", room.music.on || !!media.music);
 }
@@ -910,7 +931,7 @@ function bindYt(el, slot) {
   const stop = el.querySelector("#ytStop"); if (stop) stop.onclick = () => { send({t: "media", slot, a: "stop"}); closeSheet(); };
 }
 function openTV() {
-  openSheet(park() ? "🎬 Màn chiếu phim ngoài trời" : "📺 TV",
+  openSheet("🎬 Màn chiếu phim",
     `${ytControls("tv")}
      <div class="sec">Kênh thư giãn</div>
      <div class="grid">${TV_CH.map((c, i) => `<button class="opt ${room.tv.on && room.tv.ch === i ? "active" : ""}" data-i="${i}">${c.name}</button>`).join("")}
@@ -1002,7 +1023,7 @@ function toggleSleep() {
     const s = bedSpot(i), d = Math.hypot(s.x - m.x, s.y - m.y);
     if (d < bd) { bd = d; best = i; }
   });
-  if (best < 0) toast({study: "Hết bàn rồi! 😅", park: "Hết ghế rồi! 😅", sleep: "Hết giường rồi! 😅"}[myArea]); else send({t: "sleep", bed: best});
+  if (best < 0) toast({study: "Hết bàn rồi! 😅", park: "Hết ghế rồi! 😅", cinema: "Hết ghế rồi! 😅", sleep: "Hết giường rồi! 😅"}[myArea]); else send({t: "sleep", bed: best});
 }
 
 $("#hud").addEventListener("click", e => {
@@ -1011,7 +1032,7 @@ $("#hud").addEventListener("click", e => {
   const a = b.dataset.a;
   if (a === "sleep") toggleSleep();
   else if (a === "light") send({t: "light", on: !room.light});
-  else if (a === "tv") openTV();
+  else if (a === "tv") openTVOrGo();
   else if (a === "music") openMusic();
   else if (a === "emote") openEmotes();
   else if (a === "chat") { $("#chatBar").classList.toggle("hidden"); if (!$("#chatBar").classList.contains("hidden")) $("#chatInput").focus(); }
@@ -1027,7 +1048,7 @@ $("#chatInput").addEventListener("keydown", e => { if (e.key === "Enter") sendCh
 $("#shareBtn").onclick = async () => {
   const url = `${location.origin}/?room=${roomCode}&area=${myArea}`;
   const text = {study: `Vào phòng ${roomCode} học cùng mình nè 📚`, park: `Ra công viên ${roomCode} chơi với mình nè 🌳`,
-    sleep: `Vào phòng ${roomCode} ngủ cùng mình nè 🌙`}[myArea];
+    cinema: `Vào phòng ${roomCode} xem phim cùng mình nè 🍿`, sleep: `Vào phòng ${roomCode} ngủ cùng mình nè 🌙`}[myArea];
   try {
     if (navigator.share) { await navigator.share({title: "Ngủ Cùng Nhau", text, url}); return; }
     await navigator.clipboard.writeText(url); toast("Đã copy link mời! 📋");
@@ -1048,12 +1069,12 @@ canvas.addEventListener("pointerdown", e => {
   if (roomPet.area === myArea && hitPet(roomPet)) { send({t: "pat", target: "room"}); return; }
   for (const d of doorsHere()) if (inRect(x, y, d, 10)) { goDoor(d); return; }
   if (inRect(x, y, SWITCH, 10)) { send({t: "light", on: !room.light}); return; }
-  if (inRect(x, y, TVR, 4)) { openTV(); return; }
+  if (TVR && inRect(x, y, TVR, 4)) { openTV(); return; }
   if (inRect(x, y, RADIO, 8)) { openMusic(); return; }
   for (let i = 0; i < BEDS.length; i++) {
     if (inRect(x, y, {...BEDS[i], w: BED_W, h: BED_H})) {
       const o = bedOwner(i);
-      if (o && o.id !== myId) { toast({study: `Bàn của ${o.name} rồi 📚`, park: `Ghế của ${o.name} rồi 🪑`, sleep: `Giường của ${o.name} rồi 😴`}[myArea]); return; }
+      if (o && o.id !== myId) { toast({study: `Bàn của ${o.name} rồi 📚`, park: `Ghế của ${o.name} rồi 🪑`, cinema: `Ghế của ${o.name} rồi 🍿`, sleep: `Giường của ${o.name} rồi 😴`}[myArea]); return; }
       if (!o) { send({t: "sleep", bed: i}); return; }
       return; // giường của mình
     }
@@ -1180,12 +1201,11 @@ function drawBedroom(t) {
   ctx.beginPath(); ctx.moveTo(wx - 8, wy - 8); ctx.lineTo(wx + 16, wy - 8); ctx.quadraticCurveTo(wx + 2, wy + 40, wx + 10, wy + wh + 10); ctx.lineTo(wx - 8, wy + wh + 10); ctx.fill();
   ctx.beginPath(); ctx.moveTo(wx + ww + 8, wy - 8); ctx.lineTo(wx + ww - 16, wy - 8); ctx.quadraticCurveTo(wx + ww - 2, wy + 40, wx + ww - 10, wy + wh + 10); ctx.lineTo(wx + ww + 8, wy + wh + 10); ctx.fill();
   ctx.fillStyle = "#8a5a3c"; ctx.fillRect(wx - 12, wy - 11, ww + 24, 4);
-  // kệ TV + TV
-  ctx.fillStyle = "#4a3428"; rr(ctx, 108, 127, 152, 36, 4); ctx.fill();
-  ctx.fillStyle = "#5a4032"; ctx.fillRect(114, 132, 68, 25); ctx.fillRect(186, 132, 68, 25);
-  ctx.fillStyle = "#c9a36b"; ctx.fillRect(145, 143, 6, 3); ctx.fillRect(217, 143, 6, 3);
-  ctx.fillStyle = "#222"; ctx.fillRect(174, 122, 20, 6);
-  drawTVSet(t);
+  // tranh treo tường 2 bên cửa phòng chiếu phim
+  ctx.fillStyle = "#c9a36b"; rr(ctx, 114, 46, 32, 40, 3); ctx.fill(); rr(ctx, 222, 46, 32, 40, 3); ctx.fill();
+  ctx.fillStyle = "#2a9d8f"; ctx.fillRect(117, 49, 26, 34); ctx.fillStyle = "#f4a261"; ctx.fillRect(225, 49, 26, 34);
+  ctx.fillStyle = "#fff6c8"; ctx.beginPath(); ctx.arc(130, 60, 5, 0, 7); ctx.fill();
+  ctx.fillStyle = "#e76f51"; ctx.beginPath(); ctx.moveTo(225, 83); ctx.lineTo(238, 60); ctx.lineTo(251, 83); ctx.fill();
   drawSwitch();
   drawClock(310, 62);
   ctx.fillStyle = "#4a3428"; ctx.fillRect(278, 128, 62, 7); ctx.fillRect(282, 135, 4, 26); ctx.fillRect(332, 135, 4, 26);
@@ -1205,11 +1225,16 @@ function drawStudyRoom(t) {
     row.forEach(b => { ctx.fillStyle = b.c; ctx.fillRect(17 + b.x, by - b.h, b.w, b.h); ctx.fillStyle = "rgba(255,255,255,.25)"; ctx.fillRect(17 + b.x + 1, by - b.h + 3, b.w - 2, 1.5); });
     ctx.fillStyle = "#6b4a35"; ctx.fillRect(13, by, 102, 4);
   });
-  // TV / bảng treo tường + khay phấn
-  drawTVSet(t);
-  ctx.fillStyle = "#c9ccd6"; rr(ctx, TVR.x + 10, TVR.y + TVR.h + 3, TVR.w - 20, 6, 3); ctx.fill();
-  ctx.fillStyle = "#ff6b6b"; ctx.fillRect(TVR.x + 30, TVR.y + TVR.h + 1, 10, 3);
-  ctx.fillStyle = "#4cc9f0"; ctx.fillRect(TVR.x + 46, TVR.y + TVR.h + 1, 10, 3);
+  // bảng trắng + khay bút
+  ctx.fillStyle = "#b0b5bf"; rr(ctx, 138, 30, 112, 82, 4); ctx.fill();
+  ctx.fillStyle = "#f8f9fa"; ctx.fillRect(142, 34, 104, 74);
+  ctx.font = "600 10px system-ui"; ctx.textAlign = "left"; ctx.textBaseline = "top";
+  ctx.fillStyle = "#1d4ed8"; ctx.fillText("E = mc²", 148, 40);
+  ctx.fillStyle = "#c1121f"; ctx.fillText("∫ x dx = x²/2", 148, 56);
+  ctx.fillStyle = "#2d6a4f"; ctx.fillText("Study hard! 💪", 148, 74);
+  ctx.strokeStyle = "#555"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(150, 98); ctx.quadraticCurveTo(190, 86, 236, 100); ctx.stroke();
+  ctx.fillStyle = "#c9ccd6"; rr(ctx, 148, 113, 92, 5, 2); ctx.fill();
+  ctx.fillStyle = "#ff6b6b"; ctx.fillRect(160, 111, 10, 3); ctx.fillStyle = "#4cc9f0"; ctx.fillRect(176, 111, 10, 3);
   drawSwitch();
   drawClock(326, 54);
   // bàn nhỏ + radio
@@ -1288,13 +1313,15 @@ function drawPark(t) {
     ctx.fillStyle = "#4fa857"; ctx.beginPath(); ctx.arc(x - r * .35, y - r * .3, r * .55, 0, 7); ctx.arc(x + r * .4, y - r * .35, r * .48, 0, 7); ctx.fill();
   };
   tree(158, 232, 17); tree(338, 372, 20); tree(20, 280, 14);
-  // màn chiếu phim ngoài trời (góc phải)
-  ctx.strokeStyle = "#4a4a55"; ctx.lineWidth = 3; ctx.lineCap = "round";
-  ctx.beginPath(); ctx.moveTo(TVR.x + 16, TVR.y + TVR.h - 4); ctx.lineTo(TVR.x + 6, 168);
-  ctx.moveTo(TVR.x + TVR.w - 16, TVR.y + TVR.h - 4); ctx.lineTo(TVR.x + TVR.w - 6, 168); ctx.stroke();
-  ctx.fillStyle = "#f1f3f5"; rr(ctx, TVR.x, TVR.y, TVR.w, TVR.h, 4); ctx.fill();
-  ctx.fillStyle = "#2b2b33"; rr(ctx, TVR.x - 2, TVR.y - 5, TVR.w + 4, 6, 3); ctx.fill();
-  drawTVScreen(t);
+  // tòa nhà rạp phim (góc phải) - cửa vào phòng chiếu phim
+  ctx.fillStyle = "#8d3b3b"; ctx.fillRect(204, 40, 140, 122);
+  ctx.fillStyle = "rgba(0,0,0,.12)"; for (let yy = 46; yy < 160; yy += 8) for (let xx = 204 + (yy % 16 ? 0 : 8); xx < 344; xx += 16) ctx.fillRect(xx, yy, 14, 1);
+  ctx.fillStyle = "#1b1b2f"; rr(ctx, 198, 26, 152, 26, 4); ctx.fill();                       // biển hiệu
+  for (let k = 0; k < 14; k++) { ctx.fillStyle = (Math.floor(t * 4) + k) % 2 ? "#ffd27a" : "#ff8fab"; ctx.beginPath(); ctx.arc(204 + k * 10.6, 29, 1.6, 0, 7); ctx.arc(204 + k * 10.6, 49, 1.6, 0, 7); ctx.fill(); }
+  ctx.fillStyle = "#ffd27a"; ctx.font = "800 12px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🎬 RẠP PHIM", 274, 39);
+  ctx.fillStyle = "#f1f3f5"; rr(ctx, 212, 64, 30, 40, 2); ctx.fill(); rr(ctx, 306, 64, 30, 40, 2); ctx.fill();   // poster
+  ctx.fillStyle = "#3a86ff"; ctx.fillRect(215, 67, 24, 34); ctx.fillStyle = "#ff006e"; ctx.fillRect(309, 67, 24, 34);
+  ctx.fillStyle = "#ffbe0b"; ctx.beginPath(); ctx.arc(227, 80, 6, 0, 7); ctx.fill(); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(316, 92); ctx.lineTo(321, 74); ctx.lineTo(326, 92); ctx.fill();
   // bàn picnic + loa (góc trái)
   const R = RADIO;
   ctx.fillStyle = "#e63946"; rr(ctx, R.x - 14, R.y + 26, R.w + 28, 9, 2); ctx.fill();
@@ -1334,8 +1361,56 @@ function drawBench(i, t) {
   ctx.fillStyle = "#8d5e3c"; rr(ctx, x + 8, y + 64, 94, 6, 3); ctx.fill(); rr(ctx, x + 8, y + 73, 94, 6, 3); ctx.fill();
 }
 
+function drawCinema(t) {
+  ctx.fillStyle = "#1a0f17"; ctx.fillRect(-50, -400, W + 100, 565);                       // tường tối
+  ctx.fillStyle = "#3a1f2b"; ctx.fillRect(-50, 160, W + 100, 1400);                        // thảm
+  ctx.fillStyle = "rgba(255,255,255,.035)"; for (let y = 170; y < 640; y += 14) for (let x = (y % 28 ? 0 : 7); x < W; x += 14) ctx.fillRect(x, y, 3, 3);
+  ctx.fillStyle = "#2a1520"; ctx.fillRect(-50, 160, W + 100, 8);
+  for (let y = 232; y < 520; y += 24) {                                                     // đèn lối đi
+    ctx.fillStyle = "rgba(255,190,90,.75)"; ctx.fillRect(6, y, 3, 2); ctx.fillRect(351, y, 3, 2);
+  }
+  // rèm nhung 2 bên
+  for (const [x0, dir] of [[0, 1], [360, -1]]) {
+    for (let k = 0; k < 4; k++) {
+      ctx.fillStyle = k % 2 ? "#8b0f1f" : "#a4161a";
+      ctx.beginPath(); ctx.moveTo(x0 + dir * k * 6, -40); ctx.lineTo(x0 + dir * (k * 6 + 7), -40);
+      ctx.quadraticCurveTo(x0 + dir * (k * 6 + 10), 90, x0 + dir * (k * 6 + 7), 168); ctx.lineTo(x0 + dir * k * 6, 168); ctx.fill();
+    }
+  }
+  ctx.fillStyle = "#6a040f"; ctx.fillRect(-50, -40, W + 100, 16);
+  // màn chiếu lớn
+  ctx.fillStyle = "#0b0b10"; rr(ctx, TVR.x, TVR.y, TVR.w, TVR.h, 4); ctx.fill();
+  drawTVScreen(t);
+  if (!room.tv.on) { ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🎬 Chạm màn hình để chọn phim", 180, 90); }
+  drawSwitch();
+  // xe bỏng ngô + loa
+  ctx.fillStyle = "#c1121f"; rr(ctx, 28, 444, 50, 40, 4); ctx.fill();
+  ctx.fillStyle = "#fff"; for (let k = 0; k < 4; k++) ctx.fillRect(31 + k * 12, 446, 6, 36);
+  ctx.fillStyle = "rgba(200,230,255,.5)"; rr(ctx, 30, 420, 46, 26, 3); ctx.fill();
+  ctx.fillStyle = "#fff3c4"; for (let k = 0; k < 14; k++) { ctx.beginPath(); ctx.arc(36 + (k * 7) % 36, 438 - (k % 3) * 4, 3, 0, 7); ctx.fill(); }
+  ctx.fillStyle = "#333"; ctx.beginPath(); ctx.arc(38, 488, 4, 0, 7); ctx.arc(68, 488, 4, 0, 7); ctx.fill();
+  ctx.fillStyle = "#ffd27a"; ctx.font = "800 8px system-ui"; ctx.textAlign = "center"; ctx.fillText("POPCORN", 53, 414);
+  ctx.fillStyle = "#2b2d42"; rr(ctx, RADIO.x - 2, RADIO.y + 28, RADIO.w + 4, 30, 3); ctx.fill();  // bục loa
+  drawRadio(t);
+}
+function drawCinemaSeat(i, t) {
+  const b = BEDS[i], o = bedOwner(i), sit = o && o.lying, x = b.x + 10, y = b.y + 30, w = 90;
+  ctx.fillStyle = "rgba(0,0,0,.3)"; rr(ctx, x + 2, y + 14, w, 40, 8); ctx.fill();
+  ctx.fillStyle = "#6a040f"; rr(ctx, x, y + 10, w, 26, 8); ctx.fill();                    // đệm ngồi
+  ctx.fillStyle = "#9d0208"; rr(ctx, x + 4, y + 12, w - 8, 20, 7); ctx.fill();
+  if (sit) {
+    drawPlayer({...o, x: b.x + 55, y: b.y + 66 + Math.sin(t * 2 + i) * .4, walking: false, up: true}, t);
+    ctx.fillStyle = "#c1121f"; ctx.fillRect(x + w - 6, y + 20, 10, 12);                      // hộp bỏng ngô
+    ctx.fillStyle = "#fff3c4"; ctx.beginPath(); ctx.arc(x + w - 3, y + 19, 3, 0, 7); ctx.arc(x + w + 2, y + 18, 3, 0, 7); ctx.fill();
+  }
+  ctx.fillStyle = "#370617"; rr(ctx, x - 6, y + 8, 8, 34, 3); ctx.fill(); rr(ctx, x + w - 2, y + 8, 8, 34, 3); ctx.fill();  // tay vịn
+  ctx.fillStyle = "#9d0208"; rr(ctx, x, y + 34, w, 14, 6); ctx.fill();                     // lưng ghế
+  ctx.fillStyle = "#c1121f"; rr(ctx, x + 6, y + 36, w - 12, 5, 3); ctx.fill();
+}
+
 function drawRoom(t) {
-  if (park()) drawPark(t);
+  if (cinema()) drawCinema(t);
+  else if (park()) drawPark(t);
   else if (study()) drawStudyRoom(t);
   else drawBedroom(t);
 }
@@ -1364,7 +1439,7 @@ function drawChannel(x, y, w, h, t) {
 }
 function drawTheater(t) {
   if (!theater || !joined) return;
-  $("#theaterOff").classList.toggle("hidden", room.tv.on);
+  $("#theaterOff").classList.toggle("hidden", room.tv.on && cinema());
   $("#theater").classList.toggle("glow", room.tv.on);
   if (room.tv.on && room.tv.ch >= 0) {
     const saved = ctx; ctx = bctx;                                // vẽ kênh lên TV lớn
@@ -1447,9 +1522,26 @@ function chCity(x, y, w, h, t) {
   }
 }
 
-const DOOR_LOOK = {study: ["#2f5d6b", "#8fd3c7", "📚"], sleep: ["#3a3270", "#9b8cff", "🛏️"], park: ["#3f8a4a", "#cdeefd", "🌳"]};
+const DOOR_LOOK = {study: ["#2f5d6b", "#8fd3c7", "📚"], sleep: ["#3a3270", "#9b8cff", "🛏️"], park: ["#3f8a4a", "#cdeefd", "🌳"], cinema: ["#3a0d14", "#c1121f", "🎬"]};
 function drawDoorAt(d, t) {
   const {x, y, w, h} = d, [c1, c2, icon] = DOOR_LOOK[d.to], right = d.side === "right";
+  if (d.side === "wall" || d.side === "bottom") {                                          // cửa trên tường / cửa thoát
+    ctx.fillStyle = "#4a2f20"; rr(ctx, x - 4, y - 4, w + 8, h + 6, 4); ctx.fill();
+    const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, c1); g.addColorStop(1, c2);
+    ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = "rgba(255,230,200," + (.1 + Math.sin(t * 2) * .05) + ")"; ctx.fillRect(x, y, w, h);
+    if (d.side === "wall") {
+      ctx.fillStyle = "#7a4e33"; ctx.fillRect(x + 2, y + 2, w / 2 - 3, h - 2); ctx.fillRect(x + w / 2 + 1, y + 2, w / 2 - 3, h - 2);  // 2 cánh cửa
+      ctx.fillStyle = "#c9a36b"; ctx.fillRect(x + w / 2 - 4, y + h / 2, 2, 8); ctx.fillRect(x + w / 2 + 2, y + h / 2, 2, 8);
+      ctx.fillStyle = "rgba(193,18,31,.35)"; ctx.fillRect(x + w / 2 - 1, y + 2, 2, h - 2);
+    } else {
+      ctx.fillStyle = "#1d8f3a"; rr(ctx, x + w / 2 - 14, y - 16, 28, 10, 2); ctx.fill();               // biển EXIT
+      ctx.fillStyle = "#e9ffe9"; ctx.font = "700 7px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("EXIT", x + w / 2, y - 11);
+    }
+    ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.font = "14px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(icon, x + w / 2, y + (d.side === "wall" ? 16 : h / 2));
+    return;
+  }
   ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.fillRect(x - 4, y + 2, w + 8, h);
   ctx.fillStyle = "#5a3d2b"; rr(ctx, x - 3, y - 3, w + 6, h + 6, 3); ctx.fill();            // khung cửa
   const g = ctx.createLinearGradient(x, 0, x + w, 0);                                       // ánh sáng khu bên kia
@@ -1503,6 +1595,7 @@ function drawDesk(i, t) {
 }
 
 function drawBed(i, t) {
+  if (cinema()) { drawCinemaSeat(i, t); return; }
   if (park()) { drawBench(i, t); return; }
   if (study()) { drawDesk(i, t); return; }
   const b = BEDS[i], o = bedOwner(i), lying = o && o.lying;
@@ -1545,7 +1638,7 @@ function setRoomPet(pt) {
   if (pt.mode === "sleep" && pt.bed != null) {
     const b = BEDS[pt.bed];
     if (area === "study") { roomPet.tx = b.x + 66; roomPet.ty = b.y + 46; }        // nằm trên bàn học
-    else if (area === "park") { roomPet.tx = b.x + 88; roomPet.ty = b.y + 60; }    // nằm trên ghế đá
+    else if (area === "park" || area === "cinema") { roomPet.tx = b.x + 88; roomPet.ty = b.y + 60; }    // nằm trên ghế
     else { roomPet.tx = b.x + 84; roomPet.ty = b.y + BED_H - 12; }
   }
   else { roomPet.tx = pt.x; roomPet.ty = pt.y; }
@@ -1708,13 +1801,13 @@ function drawDarkness(t) {
   };
   if (LAYOUT.moon) hole(LAYOUT.moon.x, LAYOUT.moon.y, 120, .55);  // ánh trăng
   const tc = tvCenter(), rc = {x: RADIO.x + 24, y: RADIO.y + 14};
-  if (room.tv.on) hole(tc.x, tc.y, 260,.85 + Math.sin(t * 7) * .05 + Math.sin(t * 13) * .04);
+  if (room.tv.on && TVR) hole(tc.x, tc.y, 260,.85 + Math.sin(t * 7) * .05 + Math.sin(t * 13) * .04);
   if (room.music.on) hole(rc.x, rc.y, 55, .45);
   if (park()) LAMPS.forEach(l => hole(l.x, l.y - 30, 95, .75));    // đèn đường
   if (study()) for (const p of here())                            // đèn bàn học
     if (p.lying && p.bed != null) { const b = BEDS[p.bed]; hole(b.x + 32, b.y + 32, 75, .8); }
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(dark, 0, 0); ctx.restore();
-  if (room.tv.on) {                                               // ánh màu TV
+  if (room.tv.on && TVR) {                                        // ánh màu TV
     const c = room.tv.ch >= 0 ? TV_CH[room.tv.ch].glow : "170,180,255", tcc = tvCenter(), g = ctx.createRadialGradient(tcc.x, tcc.y, 0, tcc.x, tcc.y, 280);
     g.addColorStop(0, `rgba(${c},${.22 * lightLevel})`); g.addColorStop(1, `rgba(${c},0)`);
     ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = g; ctx.fillRect(-50, -200, W + 100, 700); ctx.restore();
@@ -1779,7 +1872,7 @@ function frame() {
 
   // top layer: notes, names, zzz, bubbles, emotes
   ctx.font = "14px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  if (tvTimerEnd && room.tv.on) {
+  if (tvTimerEnd && room.tv.on && TVR) {
     const rem = tvTimerEnd - serverNow();
     if (rem > 0) label("⏰ " + fmtTime(rem), TVR.x + TVR.w / 2, TVR.y + TVR.h + 20, "#ffd27a");
   }
@@ -1788,7 +1881,11 @@ function frame() {
 
   for (const p of here()) if (p.petObj) petOverlay(p.petObj, p.pet.name, t);
   if (roomPet.area === myArea) petOverlay(roomPet, ROOM_PET.name, t);
-  for (const d of doorsHere()) label(d.side === "right" ? `${AREA_NAME[d.to]} →` : `← ${AREA_NAME[d.to]}`, d.side === "right" ? d.x - 24 : d.x + 50, d.y - 9, "#ffe2a8");
+  for (const d of doorsHere()) {
+    const txt = d.side === "right" ? `${AREA_NAME[d.to]} →` : d.side === "left" ? `← ${AREA_NAME[d.to]}` : AREA_NAME[d.to];
+    const lx = d.side === "right" ? d.x - 24 : d.side === "left" ? d.x + 50 : d.x + d.w / 2;
+    label(txt, Math.max(52, Math.min(W - 52, lx)), d.y - 9, "#ffe2a8");
+  }
   if (park() && lightLevel > .05) drawFireflies(t);
 
   for (const p of here()) {
@@ -1835,6 +1932,7 @@ function frame() {
       $("#togetherText").textContent = {
         study: n > 1 ? `📚 Cả ${n} người đang học cùng nhau` : "📚 Đang tập trung học",
         park: n > 1 ? `🌳 Cả ${n} người đang ngồi ngắm trời cùng nhau` : "🌳 Đang ngồi thư giãn",
+        cinema: n > 1 ? `🍿 Cả ${n} người đang xem phim cùng nhau` : "🍿 Đang xem phim",
         sleep: n > 1 ? `🌙 Cả ${n} người đang ngủ cùng nhau` : "🌙 Đang ngủ ngon"}[ar];
       $("#togetherTime").textContent = fmtTime(t - togetherSince);
     } else if (togetherSince != null) { togetherSince = null; $("#together").classList.add("hidden"); }
@@ -1882,7 +1980,7 @@ function frame() {
     Sound.ensure();                // mở khoá âm thanh trong lúc người dùng bấm
     connect();
   };
-  $("#joinBtn").onclick = () => { wantKind = ["study", "park"].includes(params.get("area")) ? params.get("area") : "sleep"; go($("#roomInput").value); };
+  $("#joinBtn").onclick = () => { wantKind = ["study", "park", "cinema"].includes(params.get("area")) ? params.get("area") : "sleep"; go($("#roomInput").value); };
   const newRoom = kind => {
     const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s = "";
     for (let i = 0; i < 5; i++) s += A[Math.random() * A.length | 0];
@@ -1891,6 +1989,7 @@ function frame() {
   $("#newBtn").onclick = () => newRoom("sleep");
   $("#newStudyBtn").onclick = () => newRoom("study");
   $("#newParkBtn").onclick = () => newRoom("park");
+  $("#newCinemaBtn").onclick = () => newRoom("cinema");
   $("#roomInput").addEventListener("keydown", e => { if (e.key === "Enter") $("#joinBtn").click(); });
 })();
 

@@ -1,10 +1,11 @@
 """Ngủ Cùng Nhau - server multiplayer (aiohttp + WebSocket).
 
-Mỗi mã phòng là một "căn nhà" gồm 3 khu thông nhau bằng cửa:
-  - sleep: phòng ngủ (giường)
-  - study: phòng học (bàn học + Pomodoro)
-  - park:  công viên (ghế đá, màn chiếu phim ngoài trời, ngày/đêm)
-Mỗi khu có TV, nhạc, đèn (công viên: ngày/đêm), hẹn giờ riêng.
+Mỗi mã phòng là một "căn nhà" gồm 4 khu thông nhau bằng cửa:
+  - sleep:  phòng ngủ (giường)
+  - study:  phòng học (bàn học + Pomodoro)
+  - park:   công viên (ghế đá, hồ, ngày/đêm)
+  - cinema: phòng chiếu phim (màn chiếu lớn: YouTube + kênh có sẵn)
+Mỗi khu có nhạc, đèn (công viên: ngày/đêm) riêng; TV chỉ dùng ở phòng chiếu phim.
 
 Chạy:  python server.py      rồi mở http://localhost:8080
 """
@@ -21,11 +22,15 @@ from aiohttp import WSMsgType, web
 ROOT = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(ROOT, "static")
 
-AREAS = ("sleep", "study", "park")
-# Cửa của mỗi khu: (khu đang đứng, khu bên kia) -> cửa nằm bên trái hay phải
-DOOR_SIDE = {("sleep", "study"): "right", ("sleep", "park"): "left",
-             ("study", "sleep"): "right", ("study", "park"): "left",
-             ("park", "sleep"): "left", ("park", "study"): "right"}
+AREAS = ("sleep", "study", "park", "cinema")
+# SPAWN[(khu đến, khu vừa rời)] = chỗ xuất hiện (ngay trong cánh cửa nối 2 khu)
+LEFT, RIGHT = (42.0, 545.0), (318.0, 545.0)
+SPAWN = {
+    ("sleep", "park"): LEFT, ("sleep", "study"): RIGHT, ("sleep", "cinema"): (184.0, 186.0),
+    ("study", "park"): LEFT, ("study", "sleep"): RIGHT, ("study", "cinema"): (276.0, 184.0),
+    ("park", "sleep"): LEFT, ("park", "study"): RIGHT, ("park", "cinema"): (274.0, 182.0),
+    ("cinema", "sleep"): LEFT, ("cinema", "study"): RIGHT, ("cinema", "park"): (180.0, 548.0),
+}
 BEDS = 6
 MAX_PLAYERS = 12
 TV_CHANNELS = 4
@@ -39,7 +44,6 @@ YT_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
 
 # World bounds (phải khớp với client)
 FLOOR = (16, 175, 344, 575)  # x1, y1, x2, y2
-DOOR_SPAWN = {"right": (318.0, 545.0), "left": (42.0, 545.0)}  # đứng ngay trong cửa khi sang khu khác
 
 rooms = {}
 
@@ -292,11 +296,11 @@ async def ws_handler(request):
 
             elif t == "area":                      # đi qua cửa sang phòng kia
                 to = d.get("area")
-                if (an, to) not in DOOR_SIDE:
+                if (to, an) not in SPAWN:
                     continue
                 free_bed(room, pid)
                 me["area"] = to
-                me["x"], me["y"] = DOOR_SPAWN[DOOR_SIDE[(to, an)]]
+                me["x"], me["y"] = SPAWN[(to, an)]
                 await broadcast(room, {"t": "area", "id": pid, "area": to, "x": me["x"], "y": me["y"]})
 
             elif t == "sleep":
