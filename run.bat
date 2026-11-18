@@ -6,5 +6,7 @@ echo  Mo tren may tinh:  http://localhost:8080
 echo  Mo tren dien thoai (cung wifi):  http://IP-may-tinh:8080
 ipconfig | findstr /i "IPv4"
 echo.
-python server.py
+echo  Che do phat trien: sua code la game tu cap nhat (khong can tai lai trang)
+echo.
+python dev.py
 pause

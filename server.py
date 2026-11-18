@@ -26,20 +26,25 @@ from aiohttp import WSMsgType, web
 import arcade
 import dating
 import economy
+import salon
 import stock
 import store
 
-for _m in (arcade, stock, dating):                  # các khu mới đăng ký hành động vào hệ thống kinh tế
+for _m in (arcade, stock, dating, salon):           # các khu mới đăng ký hành động vào hệ thống kinh tế
     economy.ACTIONS.update(_m.ACTIONS)
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(ROOT, "static")
+# Chế độ phát triển (chạy bằng dev.py / run.bat): sửa file trong static/ thì trình duyệt tự tải lại.
+# Lên mạng (Render) không đặt DEV nên không bật.
+DEV = os.environ.get("DEV") == "1"
+BOOT_ID = uuid.uuid4().hex[:8]          # mã lần chạy server: đổi khác nghĩa là server vừa khởi động lại
 
-AREAS = ("sleep", "study", "park", "cinema", "farm", "fishing", "mall", "home", "arcade", "stock", "dating")
-SHARED = ("park", "study", "cinema", "mall", "fishing", "arcade", "stock", "dating")   # khu chung chia kênh
+AREAS = ("sleep", "study", "park", "cinema", "farm", "fishing", "mall", "home", "arcade", "stock", "dating", "salon")
+SHARED = ("park", "study", "cinema", "mall", "fishing", "arcade", "stock", "dating", "salon")   # khu chung chia kênh
 PRIVATE = ("home", "farm")                                 # khu riêng theo playerId
 SEATS = {"sleep": 8, "study": 12, "park": 4, "cinema": 12, "farm": 2, "fishing": 4, "mall": 3, "home": 2,
-         "arcade": 4, "stock": 8, "dating": 6}
+         "arcade": 4, "stock": 8, "dating": 6, "salon": 3}
 CHANNEL_CAP = 25          # số người tối đa mỗi kênh khu chung
 MAX_CHANNELS = 50
 DORM_CAP = 12             # số người tối đa mỗi phòng ký túc xá (8 giường + ngồi sofa)
@@ -54,7 +59,7 @@ ENTRY = {
     "fishing": (560.0, 540.0),
     "mall": (500.0, 540.0),
     "home": (796.0, 545.0),      # cửa phải nhà riêng
-    "arcade": (560.0, 540.0), "stock": (500.0, 540.0), "dating": (560.0, 540.0),
+    "arcade": (560.0, 540.0), "stock": (500.0, 540.0), "dating": (560.0, 540.0), "salon": (500.0, 540.0),
 }
 TV_CHANNELS = 4
 MUSIC_TRACKS = 4
@@ -131,6 +136,7 @@ FLOORS = {
     "mall": (20, 175, 980, 585), "farm": (20, 175, 1100, 585), "fishing": (20, 352, 1100, 585),
     "home": (20, 175, 820, 585),
     "arcade": (20, 175, 1100, 585), "stock": (20, 175, 980, 585), "dating": (20, 262, 1100, 585),
+    "salon": (20, 175, 980, 585),
 }
 HOME_W = 840                 # bề ngang nhà riêng (khung cũ 360)
 
@@ -429,7 +435,7 @@ async def enter(sess, key, info):
     room["sockets"][sid] = sess["ws"]
     sess["room"] = room
     await sess["ws"].send_json({"t": "welcome", "id": sid, "uid": sess["uid"], "inst": info,
-                                "state": public_state(room), **online_counts()})
+                                "state": public_state(room), "boot": BOOT_ID if DEV else None, **online_counts()})
     await broadcast(room, {"t": "join", "p": p}, exclude=sid)
     if room.get("bc"):                                     # khu vui chơi: gửi ngay trạng thái bàn bầu cua
         await sess["ws"].send_json({"t": "bc", "state": arcade.bc_public(room["bc"], sid)})
@@ -667,6 +673,9 @@ async def ws_handler(request):
                 now = time.monotonic()
                 to = d.get("area")
                 if to not in AREAS:
+                    continue
+                if to == "salon" and salon.closed():   # tiệm tóc đóng cửa lúc đổi ngày
+                    await ws.send_json({"t": "error", "msg": "💇 Tiệm Làm Tóc đóng cửa 00:00–00:05 để đổi ngày, quay lại sau chút nhé", "go": True})
                     continue
                 if to == "dating":                     # khu hẹn hò: phải xác nhận tuổi, từ 16 tuổi
                     why = dating.can_enter(sess["data"])
@@ -943,14 +952,49 @@ async def ping(request):
     return web.Response(text="ok")
 
 
+def _static_stamp():
+    """Thời điểm sửa gần nhất của các file trong static/ (để biết có file vừa đổi)."""
+    newest = 0.0
+    for folder, _, files in os.walk(STATIC):
+        for f in files:
+            try:
+                newest = max(newest, os.path.getmtime(os.path.join(folder, f)))
+            except OSError:
+                pass
+    return newest
+
+
+async def dev_watch():
+    """Chế độ phát triển: thấy file trong static/ thay đổi thì bảo mọi trình duyệt đang mở tải lại trang."""
+    last = _static_stamp()
+    while True:
+        await asyncio.sleep(0.4)
+        now = _static_stamp()
+        if now != last:
+            last = now
+            print("🔄 static/ vừa thay đổi → tải lại trình duyệt")
+            for s in list(SESSIONS.values()):
+                await send_to(s, {"t": "reload"})
+
+
+@web.middleware
+async def no_cache(request, handler):
+    # Chế độ phát triển: không cho trình duyệt giữ bản cũ của file js/html
+    resp = await handler(request)
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
 async def start_background(app):
     app["online_task"] = asyncio.create_task(online_loop())
     app["stock_task"] = asyncio.create_task(stock_loop())
+    if DEV:
+        app["dev_task"] = asyncio.create_task(dev_watch())
     dating.SESSIONS, dating.FILTER = SESSIONS, filter_chat
 
 
 def make_app():
-    app = web.Application()
+    app = web.Application(middlewares=[no_cache] if DEV else [])
     app.router.add_get("/", index)
     app.router.add_get("/ping", ping)
     app.router.add_get("/static/catalog.js", catalog_js)
@@ -962,5 +1006,5 @@ def make_app():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    print(f"Ngủ Cùng Nhau đang chạy: http://localhost:{port}")
+    print(f"Ngủ Cùng Nhau đang chạy: http://localhost:{port}" + ("  (chế độ phát triển: tự tải lại)" if DEV else ""))
     web.run_app(make_app(), host="0.0.0.0", port=port, print=None)

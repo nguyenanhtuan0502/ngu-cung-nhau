@@ -25,9 +25,12 @@ BAITS = {b["id"]: b for b in CAT["BAITS"]}
 CLOTHES = {c["id"]: c for c in CAT["CLOTHES"]}
 FURN = {f["id"]: f for f in CAT["FURNITURE"]}
 PETS = {p["id"]: p for p in CAT["PET_SHOP"]}
-DEFAULT_OUTFIT = {"gender": "g_f", "hair": "hair_short", "hairColor": "hc_brown", "shirt": "", "hat": "hat_nightcap",
+DEFAULT_OUTFIT = {"gender": "g_f", "hair": "short", "hairColor": "nau", "shirt": "", "hat": "hat_nightcap",
                   "glasses": "gl_none", "neck": "neck_none", "back": "back_none"}
-ECO_KEYS = ("coins", "inv", "owned", "bait", "farm", "daily", "wheelDay", "wheelUsed")
+ECO_KEYS = ("coins", "inv", "owned", "bait", "farm", "daily", "wheelDay", "wheelUsed", "hairs", "salonFree")
+# Móc cho tiệm tóc (salon.py gắn vào lúc khởi động, tránh import vòng):
+ENSURE_HOOKS = []          # hàm(data) chạy đầu ensure(): chuyển tóc bản cũ, thêm data["hairs"]/["salonFree"]
+HAIR = None                # hàm(data, kiểu muốn để, outfit hiện tại) -> (kiểu, màu) hợp lệ
 LEGACY_COIN_CAP = 2000                          # dữ liệu cũ từ trình duyệt: chỉ nhận tối đa chừng này xu
 
 
@@ -46,6 +49,8 @@ def now_ms():
 # ---------------- Dữ liệu người chơi ----------------
 def ensure(data):
     """Bổ sung/sửa các trường kinh tế cho đúng kiểu (tài khoản mới, dữ liệu cũ, dữ liệu hỏng)."""
+    for hook in ENSURE_HOOKS:                       # chạy trước khi lọc "owned" (cần đọc tóc cũ đã mua)
+        hook(data)
     c = data.get("coins")
     data["coins"] = int(c) if isinstance(c, (int, float)) and not isinstance(c, bool) and c >= 0 else CAT["START_COINS"]
     inv = data.get("inv") if isinstance(data.get("inv"), dict) else {}
@@ -149,7 +154,10 @@ def valid_outfit(data, outfit):
     out = {}
     for slot, default in DEFAULT_OUTFIT.items():
         v = outfit.get(slot)
-        if slot == "shirt" and v == "":
+        if slot in ("hair", "hairColor"):            # tóc do tiệm tóc quản lý (salon.py): chỉ kiểu đã mua, màu đang nhuộm
+            out["hair"], out["hairColor"] = HAIR(data, outfit.get("hair"), data.get("outfit")) if HAIR else \
+                (DEFAULT_OUTFIT["hair"], DEFAULT_OUTFIT["hairColor"])
+        elif slot == "shirt" and v == "":
             out[slot] = ""
         elif isinstance(v, str) and v in CLOTHES and CLOTHES[v]["slot"] == slot and owns(data, v):
             out[slot] = v

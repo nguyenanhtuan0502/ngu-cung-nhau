@@ -33,7 +33,7 @@ const Life = (() => {
     bagSeen = bagCounts();                      // đồ có sẵn lúc vào game không tính là "mới"
   }
   // ---------- Kinh tế: mọi giao dịch xu/đồ do SERVER xử lý ----------
-  const ECO = ["coins", "inv", "owned", "bait", "farm", "daily", "wheelDay", "wheelUsed"];
+  const ECO = ["coins", "inv", "owned", "bait", "farm", "daily", "wheelDay", "wheelUsed", "hairs", "salonFree"];
   const waiting = new Map(); let rid = 0;
   function applyEco(e) { if (e) for (const k of ECO) if (k in e) S[k] = e[k]; bagBadge(); }
   // Chấm đỏ 🎒: số món mới nhận kể từ lần mở túi đồ gần nhất

@@ -25,9 +25,9 @@ const Areas = (() => {
     farm:    {ww: 1120, wh: 600, floor: {x1: 20, y1: 175, x2: 1100, y2: 585},
               beds: [{x: 450, y: 470}, {x: 610, y: 470}], bw: 56, bh: 36, sitY: 26,                       // 2 kiện rơm để ngồi
               tvr: null, scr: null, radio: {x: 796, y: 398, w: 44, h: 26}, sw: OFF, moon: {x: 700, y: 40}},
-    fishing: {ww: 1120, wh: 600, floor: {x1: 20, y1: 352, x2: 1100, y2: 585},
-              beds: [{x: 170, y: 290}, {x: 330, y: 290}, {x: 730, y: 290}, {x: 890, y: 290}], bw: 70, bh: 56, sitY: 44, minY: 352,
-              tvr: null, scr: null, radio: {x: 122, y: 412, w: 44, h: 26}, sw: OFF, moon: {x: 200, y: 30}},
+    fishing: {ww: 1120, wh: 600, floor: {x1: 20, y1: 386, x2: 1100, y2: 585},
+              beds: [{x: 170, y: 346}, {x: 330, y: 346}, {x: 730, y: 346}, {x: 890, y: 346}], bw: 70, bh: 56, sitY: 44, minY: 386,
+              tvr: null, scr: null, radio: {x: 122, y: 442, w: 44, h: 26}, sw: OFF, moon: {x: 200, y: 30}},
     mall:    {ww: 1000, wh: 600, floor: {x1: 20, y1: 175, x2: 980, y2: 585},
               beds: [{x: 200, y: 450}, {x: 455, y: 450}, {x: 710, y: 450}], bw: 90, bh: 40, sitY: 30,
               tvr: null, scr: null, radio: {x: 478, y: 372, w: 44, h: 26}, sw: OFF, moon: null},
@@ -39,7 +39,7 @@ const Areas = (() => {
   const bottomExit = cx => ({x: cx - 24, y: 538, w: 48, h: 37, side: "bottom", spot: {x: cx, y: 556}, to: "map"});
   Object.assign(AREA_DOORS, {
     farm: [bottomExit(560)], fishing: [bottomExit(560)], mall: [bottomExit(500)],
-    home: [{x: 812, y: 513, w: 28, h: 62, side: "right", spot: {x: 816, y: 546}, to: "map"}],
+    home: [{x: 812, y: 513, w: 28, h: 62, side: "right", spot: {x: 420, y: 380}, to: "map"}],
   });
   Object.assign(AREA_NAME, {farm: "🌾 Nông trại", fishing: "🎣 Hồ câu cá", mall: "🛍️ Khu mua sắm", home: "🏠 Nhà riêng"});
   // Chữ hiển thị riêng cho từng khu (nút ngồi, thông báo…)
@@ -158,71 +158,7 @@ const Areas = (() => {
       ctx.strokeStyle = "rgba(255,77,141,.88)"; ctx.lineWidth = .7; ctx.beginPath(); ctx.moveTo(x - 1, ey - 1); ctx.lineTo(x + 1, ey - 1); ctx.stroke();
     }
   }
-  // Tóc sau đầu (lớp dưới cùng): tóc dài buông tới hông; các kiểu khác: phần tóc gáy làm đầu tròn đầy hơn
-  function hairBack(style, c, x, hy, hipY) {
-    ctx.fillStyle = tone(c, -.1); ctx.strokeStyle = tone(c, -.45); ctx.lineWidth = .8;
-    if (style === "hair_long") {
-      ctx.beginPath(); ctx.moveTo(x - 11, hy - 3);
-      ctx.bezierCurveTo(x - 14.5, hy + 9, x - 12.5, hipY - 3, x - 8.5, hipY);
-      ctx.quadraticCurveTo(x - 4, hipY - 2.4, x, hipY - .6); ctx.quadraticCurveTo(x + 4, hipY - 2.4, x + 8.5, hipY);
-      ctx.bezierCurveTo(x + 12.5, hipY - 3, x + 14.5, hy + 9, x + 11, hy - 3); ctx.closePath(); ctx.fill(); ctx.stroke();
-    } else {
-      ctx.beginPath(); ctx.ellipse(x, hy + .5, 12, 10.6, 0, 0, Math.PI); ctx.fill(); ctx.stroke();
-    }
-  }
-  // Tóc trước: vòm tóc phồng + mái răng cưa mềm + vòng sáng anime + sợi vểnh
-  function hairFront(style, c, x, hy, male) {
-    const hi = tone(c, .4), sh = tone(c, -.18), line = tone(c, -.45), side = style === "hair_long" ? 8.5 : male ? 1.8 : 4;
-    const messy = style === "hair_spiky" || (male && style === "hair_short");                                // nam tóc ngắn: mái rối nhọn
-    ctx.lineWidth = .85; ctx.strokeStyle = line; ctx.lineJoin = "round";
-    if (style === "hair_bun") for (const s of [-1, 1]) {           // 2 búi tròn hai bên đỉnh đầu
-      ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x + s * 9.4, hy - 9.6, 4.4, 0, 7); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = hi; ctx.beginPath(); ctx.arc(x + s * 9.4 - 1.3, hy - 11, 1.2, 0, 7); ctx.fill();
-    }
-    if (style === "hair_spiky") {                                     // tóc dựng: các mũi nhọn trên đỉnh
-      ctx.fillStyle = c; ctx.beginPath();
-      for (const [dx, h, w] of [[-8, 4, 3.2], [-4, 6.5, 3.4], [.5, 7.5, 3.4], [5, 6, 3.2], [8.6, 3.5, 3]]) {
-        ctx.moveTo(x + dx - w, hy - 10.4 + Math.abs(dx) * .2); ctx.lineTo(x + dx + .8, hy - 12 - h); ctx.lineTo(x + dx + w, hy - 10.4 + Math.abs(dx) * .2);
-      }
-      ctx.fill(); ctx.stroke();
-    }
-    // vòm tóc + 2 lọn mai + mái
-    ctx.fillStyle = c; ctx.beginPath();
-    ctx.moveTo(x - 11.8, hy + side);
-    ctx.bezierCurveTo(x - 13.6, hy - 8.8, x - 7.4, hy - 13.6, x, hy - 13.4);
-    ctx.bezierCurveTo(x + 7.4, hy - 13.6, x + 13.6, hy - 8.8, x + 11.8, hy + side);
-    ctx.quadraticCurveTo(x + 10.6, hy, x + 9.6, hy - 2.2);
-    const tips = messy ? [[6.4, -1.4], [3.2, -.2], [0, -1.8], [-3.2, -.4], [-6.4, -1.6], [-9.6, -2.2]]
-                                        : [[6.6, -.8], [3.6, -.1], [.4, -1.4], [-2.8, -.2], [-6, -1], [-9.6, -2.2]];
-    let px = 9.6;
-    for (const [tx, ty] of tips) { ctx.quadraticCurveTo(x + (px + tx) / 2, hy - (messy ? 6.8 : 5.6), x + tx, hy + ty); px = tx; }
-    ctx.quadraticCurveTo(x - 10.6, hy, x - 11.8, hy + side);
-    ctx.closePath(); ctx.fill(); ctx.stroke();
-    // bóng dưới mái (mềm)
-    ctx.fillStyle = sh; ctx.globalAlpha = .55;
-    ctx.beginPath(); ctx.moveTo(x + 11.8, hy + side); ctx.quadraticCurveTo(x + 13, hy - 6, x + 6, hy - 12); ctx.quadraticCurveTo(x + 10, hy - 6, x + 9.6, hy - 2.2); ctx.closePath(); ctx.fill();
-    ctx.globalAlpha = 1;
-    // vòng sáng anime trên tóc
-    ctx.strokeStyle = hi; ctx.lineWidth = 1.5; ctx.lineCap = "round";
-    ctx.beginPath(); ctx.arc(x, hy - 2.5, 9.4, Math.PI * 1.16, Math.PI * 1.38); ctx.stroke();
-    ctx.beginPath(); ctx.arc(x, hy - 2.5, 9.4, Math.PI * 1.5, Math.PI * 1.62); ctx.stroke();
-    ctx.fillStyle = "rgba(255,255,255,.7)"; ctx.beginPath(); ctx.arc(x - 6.3, hy - 9.6, .7, 0, 7); ctx.fill();
-    if (style === "hair_short" || style === "hair_long") {            // sợi tóc vểnh trên đỉnh
-      ctx.strokeStyle = c; ctx.lineWidth = 1.3;
-      ctx.beginPath(); ctx.moveTo(x + .5, hy - 13); ctx.quadraticCurveTo(x + 2, hy - 17.5, x + 5.2, hy - 15.6); ctx.stroke();
-    }
-  }
-  function hairBackView(style, c, x, hy, hipY) {                      // nhìn từ sau: tóc phủ kín đầu
-    const line = tone(c, -.45), hi = tone(c, .35);
-    ctx.lineWidth = .85; ctx.strokeStyle = line; ctx.fillStyle = c;
-    if (style === "hair_bun") for (const s of [-1, 1]) { ctx.beginPath(); ctx.arc(x + s * 9.4, hy - 9.6, 4.4, 0, 7); ctx.fill(); ctx.stroke(); }
-    if (style === "hair_long") { ctx.beginPath(); ctx.moveTo(x - 11.5, hy); ctx.bezierCurveTo(x - 13.5, hy + 10, x - 11, hipY - 2, x - 7, hipY); ctx.lineTo(x + 7, hipY); ctx.bezierCurveTo(x + 11, hipY - 2, x + 13.5, hy + 10, x + 11.5, hy); ctx.closePath(); ctx.fill(); ctx.stroke(); }
-    ctx.beginPath(); ctx.ellipse(x, hy - .6, 12, 11.4, 0, 0, 7); ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = tone(c, -.2); ctx.lineWidth = .7;                // đường rẽ tóc sau gáy
-    for (const dx of [-4, 0, 4]) { ctx.beginPath(); ctx.moveTo(x + dx * .4, hy - 9); ctx.quadraticCurveTo(x + dx, hy, x + dx * 1.3, hy + 9); ctx.stroke(); }
-    ctx.strokeStyle = hi; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(x, hy - 1, 9.5, Math.PI * 1.2, Math.PI * 1.45); ctx.stroke();
-    if (style === "hair_spiky") { ctx.fillStyle = c; ctx.strokeStyle = line; ctx.beginPath(); for (const dx of [-6, -1, 4]) { ctx.moveTo(x + dx - 3, hy - 10); ctx.lineTo(x + dx, hy - 17); ctx.lineTo(x + dx + 3.4, hy - 10); } ctx.fill(); ctx.stroke(); }
-  }
+  // Tóc (kiểu + màu nhuộm) vẽ trong hair.js: Hair.back / Hair.front / Hair.view
   // Mặt chibi: mắt to long lanh, miệng ω, má hồng; chớp mắt (cong như cười), thỉnh thoảng liếc
   function drawFace(x, hy, t, seed, happy, male) {
     const blink = happy || (t + seed) % 4.3 < .13;
@@ -272,14 +208,14 @@ const Areas = (() => {
     const shirt = CL[o.shirt], pj = !shirt, top = shirt ? shirt.color : p.color;
     const pants = pj ? tone(p.color, .15) : shirt.id === "shirt_suit" ? "#2b2d42" : "#4a6fa5";
     const shoe = pj ? tone(p.color, .5) : shirt.id === "shirt_suit" ? "#2a2a2a" : "#ffffff";
-    const hairC = (CL[o.hairColor] || CL.hc_brown).color, back = CL[o.back], hasBack = back && back.id !== "back_none";
+    const back = CL[o.back], hasBack = back && back.id !== "back_none";
     const male = o.gender === "g_m";
     ctx.lineJoin = "round"; ctx.lineCap = "round";
     // bóng đổ
     ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.beginPath(); ctx.ellipse(x, y, 8.5 - Math.abs(sw) * .6, 2.8, 0, 0, 7); ctx.fill();
     // cánh / áo choàng / ba lô sau lưng
     if (hasBack && !up) { ctx.save(); ctx.translate(x, shY + 1); ctx.scale(.7, .72); drawBack(back, 0, 0, t, false); ctx.restore(); }
-    if (!up) hairBack(o.hair, hairC, x, hy, hipY);
+    if (!up) Hair.back(ctx, o.hair, o.hairColor, x, hy, hipY, male);
     // chân ngắn + giày tròn
     for (const s of [-1, 1]) {
       const lx = x + s * 2.7;
@@ -342,8 +278,8 @@ const Areas = (() => {
     hg.addColorStop(0, "#fff1e4"); hg.addColorStop(1, SKIN);
     ctx.fillStyle = hg; ctx.strokeStyle = tone(SKIN, -.32); ctx.lineWidth = .9;
     ctx.beginPath(); ctx.ellipse(x, hy, 11.2, 10.3, 0, 0, 7); ctx.fill(); ctx.stroke();
-    if (up) hairBackView(o.hair, hairC, x, hy, hipY);
-    else { drawFace(x, hy, t, seed, p.happy, male); hairFront(o.hair, hairC, x, hy, male); glassesChibi(o.glasses, x, hy); }
+    if (up) Hair.view(ctx, o.hair, o.hairColor, x, hy, hipY, male);
+    else { drawFace(x, hy, t, seed, p.happy, male); Hair.front(ctx, o.hair, o.hairColor, x, hy, hipY, male); glassesChibi(o.glasses, x, hy); }
     ctx.save(); ctx.translate(x, hy - 2.4); ctx.scale(1.04, 1.04); drawHat(o.hat, 0, 0, top, up); ctx.restore();   // mũ: đồ cũ vẽ theo đầu bán kính 10
   }
 
@@ -382,7 +318,7 @@ const Areas = (() => {
   function drawSeason(t) {
     if (!SEASON || !["park", "cinema"].includes(myArea)) return;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    if (myArea === "park") {                                             // công viên ngang 1120x600
+    if (myArea === "park") {                                             // công viên ngang 1120x600 (ngoài trời)
       const gy = 160;
       ctx.strokeStyle = "rgba(60,40,30,.6)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, gy);       // dây treo đồ trang trí
       for (let x = 0; x <= W; x += 20) ctx.lineTo(x, gy + Math.sin(x / 40 * Math.PI) * 6); ctx.stroke();
@@ -394,7 +330,7 @@ const Areas = (() => {
       ctx.font = "18px system-ui";
       [[22, 410], [W - 22, 410], [W / 2, 418], [340, 470], [660, 470]].forEach(([x, y], k) => ctx.fillText(SEASON.deco[k % SEASON.deco.length], x, y));
     }
-    if (SEASON.fall) {                                                   // lá/hoa/tuyết rơi (24 hạt)
+    if (SEASON.fall && myArea === "park") {                              // lá/hoa/tuyết rơi chỉ ở công viên (ngoài trời)
       ctx.font = "10px system-ui";
       for (let k = 0; k < 24; k++) {
         const ph = ((t * (14 + k % 5 * 3) + k * 97) % (H - 120)), x = (k * 53 * W / 360 + Math.sin(t * .8 + k) * 18 + W) % W;
@@ -404,8 +340,8 @@ const Areas = (() => {
     }
   }
 
-  // ---------- 5. Nông trại (NGANG 1120x600) ----------
-  const PLOTS = Array.from({length: FARM_PLOTS}, (_, i) => ({x: 330 + (i % 4) * 92, y: 200 + (i / 4 | 0) * 88, w: 74, h: 70}));
+  // ---------- 5. Nông trại (NGANG 1120x600: ruộng giữa màn hình, cảnh vật nền sau) ----------
+  const PLOTS = Array.from({length: FARM_PLOTS}, (_, i) => ({x: 320 + (i % 4) * 94, y: 260 + (i / 4 | 0) * 88, w: 76, h: 72}));
   const S = () => Life.S();
   function plotInfo(pl) {
     if (!pl) return {st: "empty"};
@@ -446,8 +382,30 @@ const Areas = (() => {
     // nền cỏ
     ctx.fillStyle = "#7cb76b"; ctx.fillRect(L, 160, wv, B - 160);
     ctx.fillStyle = "#6aa55a"; for (let k = 0; k < 360; k++) ctx.fillRect(((k * 71) % (W + 200)) - 100, 160 + (k * 137) % 460, 2, 5);
-    // ruộng 8 ô ở giữa
-    ctx.fillStyle = "#8d6346"; rr(ctx, 318, 190, 380, 182, 8); ctx.fill();
+
+    // GÀ VÀ BÒ ĐI LẠI Ở NỀN SAU (ven đường làng / sườn cỏ y: 170-210)
+    // 1. Chú bò sữa gặm cỏ ở nền sau (gần cối xay gió)
+    const cowX = 850 + Math.sin(t * .4) * 12, cowY = 186;
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(cowX, cowY, 14, 9, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#222"; ctx.beginPath(); ctx.arc(cowX - 5, cowY - 3, 3.5, 0, 7); ctx.arc(cowX + 6, cowY + 2, 3, 0, 7); ctx.fill();
+    ctx.fillStyle = "#f4d0c1"; ctx.beginPath(); ctx.ellipse(cowX + 14, cowY - 2 + Math.sin(t * 1.8) * 1.5, 5.5, 4.5, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#222"; ctx.fillRect(cowX - 10, cowY + 7, 2.5, 6); ctx.fillRect(cowX + 8, cowY + 7, 2.5, 6);
+    // 2. Đàn gà mẹ con đi lon ton ở nền sau (phía sau ruộng)
+    for (let k = 0; k < 4; k++) {
+      const chick = k > 0, gcx = 250 + ((t * (chick ? 8 : 5) + k * 35) % 200), gcy = 184 + (k % 2) * 6;
+      const sz = chick ? .55 : .9, flip = Math.sin(t * .4 + k) > 0 ? 1 : -1;
+      ctx.save(); ctx.translate(gcx, gcy); ctx.scale(sz * flip, sz);
+      ctx.fillStyle = chick ? "#ffd60a" : "#fff"; ctx.beginPath(); ctx.ellipse(0, 0, 6, 5, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(5, -5, 3.5, 0, 7); ctx.fill();
+      if (!chick) { ctx.fillStyle = "#e63946"; ctx.fillRect(4, -10, 3, 3); }
+      ctx.fillStyle = "#f4a261"; ctx.fillRect(8, -5, 3, 1.6); ctx.restore();
+    }
+
+    // hàng rào trắng ngăn cách nền sau và khu ruộng
+    ctx.fillStyle = "#f8f9fa"; ctx.fillRect(L, 215, 460 - L, 3); ctx.fillRect(L, 225, 460 - L, 3); ctx.fillRect(660, 215, R - 660, 3); ctx.fillRect(660, 225, R - 660, 3);
+    for (let x = Math.floor(L / 18) * 18 + 4; x < R; x += 18) { if (x > 454 && x < 660) continue; rr(ctx, x, 210, 5, 22, 2); ctx.fill(); }
+
+    // ruộng 8 ô Ở CHÍNH GIỮA MÀN HÌNH (y: 250..430)
+    ctx.fillStyle = "#8d6346"; rr(ctx, 308, 250, 394, 182, 8); ctx.fill();
     PLOTS.forEach((r, i) => {
       const inf = plotInfo(S().farm[i]);
       ctx.fillStyle = inf.st === "grow" || inf.st === "ripe" ? "#5c3d2a" : "#7a5236"; rr(ctx, r.x, r.y, r.w, r.h, 6); ctx.fill();   // đất ướt sẫm màu
@@ -479,13 +437,13 @@ const Areas = (() => {
       ctx.strokeStyle = "#4f7942"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y + 20); ctx.lineTo(x + sw, y); ctx.stroke();
       ctx.fillStyle = "#ffc300"; ctx.beginPath(); ctx.arc(x + sw, y, 6, 0, 7); ctx.fill(); ctx.fillStyle = "#7f4f24"; ctx.beginPath(); ctx.arc(x + sw, y, 2.6, 0, 7); ctx.fill();
     }
-    // hàng rào trắng (có lối vào ở giữa)
-    ctx.fillStyle = "#f8f9fa"; ctx.fillRect(L, 390, 520 - L, 4); ctx.fillRect(L, 402, 520 - L, 4); ctx.fillRect(600, 390, R - 600, 4); ctx.fillRect(600, 402, R - 600, 4);
-    for (let x = Math.floor(L / 18) * 18 + 4; x < R; x += 18) { if (x > 514 && x < 600) continue; rr(ctx, x, 382, 6, 30, 2); ctx.fill(); }
-    // bù nhìn rơm cạnh ruộng
-    ctx.save(); ctx.translate(540, -10);
-    ctx.fillStyle = "#6b4a35"; ctx.fillRect(178, 330, 4, 34); ctx.fillRect(166, 340 + Math.sin(t * 2) * 1, 28, 3);
-    ctx.fillStyle = "#e9c46a"; ctx.beginPath(); ctx.arc(180, 328, 7, 0, 7); ctx.fill(); ctx.fillStyle = "#9c6644"; ctx.fillRect(172, 318, 16, 4); ctx.fillRect(175, 312, 10, 6);
+    // hàng rào trắng phía trước ruộng (có lối vào ở giữa)
+    ctx.fillStyle = "#f8f9fa"; ctx.fillRect(L, 442, 520 - L, 4); ctx.fillRect(L, 454, 520 - L, 4); ctx.fillRect(600, 442, R - 600, 4); ctx.fillRect(600, 454, R - 600, 4);
+    for (let x = Math.floor(L / 18) * 18 + 4; x < R; x += 18) { if (x > 514 && x < 600) continue; rr(ctx, x, 436, 6, 28, 2); ctx.fill(); }
+    // bù nhìn rơm đứng cạnh ruộng (bên phải)
+    ctx.save(); ctx.translate(720, -50);
+    ctx.fillStyle = "#6b4a35"; ctx.fillRect(0, 330, 4, 34); ctx.fillRect(-12, 340 + Math.sin(t * 2) * 1, 28, 3);
+    ctx.fillStyle = "#e9c46a"; ctx.beginPath(); ctx.arc(2, 328, 7, 0, 7); ctx.fill(); ctx.fillStyle = "#9c6644"; ctx.fillRect(-6, 318, 16, 4); ctx.fillRect(-3, 312, 10, 6);
     ctx.restore();
     // tổ ong cạnh nhà kho + ong bay
     ctx.fillStyle = "#f4a261"; rr(ctx, 190, 128, 22, 26, 6); ctx.fill(); ctx.fillStyle = "#6b4a35"; ctx.fillRect(199, 154, 4, 12);
@@ -602,10 +560,10 @@ const Areas = (() => {
     ctx.fillStyle = night ? "#1b2a3a" : "#c08497"; ctx.beginPath(); ctx.moveTo(L - 400, 84);
     for (let x = L - 400; x <= R + 400; x += 20) ctx.lineTo(x, 60 + Math.sin(x * .025) * 12); ctx.lineTo(R + 400, 84); ctx.fill();
     ctx.restore();
-    // mặt hồ phản chiếu trời
-    const wg = ctx.createLinearGradient(0, 80, 0, 334);
+    // mặt hồ phản chiếu trời — mở rộng xuống giữa màn hình
+    const wg = ctx.createLinearGradient(0, 80, 0, 390);
     if (night) { wg.addColorStop(0, "#1b2a5a"); wg.addColorStop(1, "#0d1b3a"); } else { wg.addColorStop(0, "#f7b2a0"); wg.addColorStop(.35, "#7ec8e3"); wg.addColorStop(1, "#3a86c8"); }
-    ctx.fillStyle = wg; ctx.fillRect(L, 80, wv, 254);
+    ctx.fillStyle = wg; ctx.fillRect(L, 80, wv, 310);
     ctx.fillStyle = night ? "rgba(255,246,200,.25)" : "rgba(255,183,3,.35)";
     for (let k2 = 0; k2 < 7; k2++) ctx.fillRect(M.x - 16 + Math.sin(t * 2 + k2) * 4, 96 + k2 * 10, 32 - k2 * 3, 2);
     ctx.strokeStyle = "rgba(255,255,255,.25)"; ctx.lineWidth = 1;
@@ -625,13 +583,34 @@ const Areas = (() => {
       ctx.fillStyle = "#52b788"; ctx.beginPath(); ctx.arc(x, y, 9, .3, 6); ctx.lineTo(x, y); ctx.fill();
       if (i % 2 === 0) { ctx.fillStyle = "#ffafcc"; ctx.beginPath(); ctx.ellipse(x + 2, y - 3, 3, 5, 0, 0, 7); ctx.ellipse(x - 2, y - 2, 3, 5, -.5, 0, 7); ctx.ellipse(x + 5, y - 2, 3, 5, .5, 0, 7); ctx.fill(); }
     });
-    // lau sậy lay theo gió
-    for (const rx of [6, 14, 22, 620, 628, 1084, 1092, 1100]) { ctx.strokeStyle = "#6a994e"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(rx, 336); ctx.quadraticCurveTo(rx + Math.sin(t + rx) * 4, 300, rx + Math.sin(t + rx) * 6, 270); ctx.stroke(); ctx.fillStyle = "#7f4f24"; ctx.fillRect(rx + Math.sin(t + rx) * 6 - 2, 266, 4, 10); }
-    // cầu gỗ dài ra giữa hồ
-    ctx.save(); ctx.translate(380, 0);
-    ctx.fillStyle = "#6b4a35"; for (const px of [162, 196]) for (let py = 150; py < 330; py += 44) ctx.fillRect(px, py, 4, 14);
-    ctx.fillStyle = "#a47148"; ctx.fillRect(160, 138, 42, 196);
-    ctx.fillStyle = "rgba(0,0,0,.15)"; for (let py = 142; py < 334; py += 9) ctx.fillRect(160, py, 42, 1.5);
+    // lau sậy lay theo gió ven bờ nước mới
+    for (const rx of [6, 14, 22, 60, 620, 628, 640, 1084, 1092, 1100]) {
+      ctx.strokeStyle = "#588157"; ctx.lineWidth = 2.2; ctx.beginPath();
+      ctx.moveTo(rx, 390); ctx.quadraticCurveTo(rx + Math.sin(t * 1.5 + rx) * 5, 345, rx + Math.sin(t * 1.5 + rx) * 8, 310); ctx.stroke();
+      ctx.fillStyle = "#7f4f24"; ctx.fillRect(rx + Math.sin(t * 1.5 + rx) * 8 - 2, 305, 4, 14);
+    }
+    // cầu gỗ dài nối từ bờ ra giữa hồ (rộng rãi, có lan can và cọc gỗ)
+    ctx.save(); ctx.translate(370, 0);
+    // cọc trụ cầu dưới nước
+    ctx.fillStyle = "#4a3428";
+    for (const px of [160, 212]) for (let py = 150; py < 385; py += 42) ctx.fillRect(px, py, 5, 18);
+    // mặt ván cầu gỗ
+    ctx.fillStyle = "#a47148"; ctx.fillRect(156, 138, 60, 252);
+    // vân gỗ ván ngang
+    ctx.fillStyle = "rgba(0,0,0,.18)"; for (let py = 142; py < 390; py += 8) ctx.fillRect(156, py, 60, 1.5);
+    // lan can gỗ 2 bên
+    ctx.fillStyle = "#6b4a35";
+    ctx.fillRect(156, 138, 3, 252); ctx.fillRect(213, 138, 3, 252);
+    for (let py = 140; py < 390; py += 36) { ctx.fillRect(155, py, 5, 6); ctx.fillRect(212, py, 5, 6); }
+    // đèn bão / đèn lồng nhỏ treo đầu cầu
+    ctx.fillStyle = night ? "#ffd166" : "#e9ecef"; ctx.beginPath(); ctx.arc(156, 142, 3.5, 0, 7); ctx.arc(215, 142, 3.5, 0, 7); ctx.fill();
+    if (night) {
+      for (const lx of [156, 215]) {
+        const cg = ctx.createRadialGradient(lx, 142, 0, lx, 142, 22);
+        cg.addColorStop(0, "rgba(255,210,120,.5)"); cg.addColorStop(1, "rgba(255,210,120,0)");
+        ctx.fillStyle = cg; ctx.fillRect(lx - 22, 120, 44, 44);
+      }
+    }
     ctx.restore();
     // chuồn chuồn + vịt trời
     for (let k2 = 0; k2 < 4; k2++) { const dx = 120 + k2 * 260 + Math.sin(t * .7 + k2 * 3) * 50, dy = 200 + Math.sin(t * 1.3 + k2) * 30; ctx.fillStyle = "#4361ee"; ctx.fillRect(dx - 5, dy, 10, 1.6); ctx.fillStyle = "rgba(200,230,255,.7)"; ctx.fillRect(dx - 2, dy - 3, 4, 2); ctx.fillRect(dx - 2, dy + 2, 4, 2); }
@@ -640,11 +619,22 @@ const Areas = (() => {
       ctx.save(); ctx.translate(dx, dy); ctx.scale(-1, 1); ctx.fillStyle = "#8d6346"; ctx.beginPath(); ctx.ellipse(0, 0, 7, 4, 0, 0, 7); ctx.fill();
       ctx.fillStyle = "#2d6a4f"; ctx.beginPath(); ctx.arc(-5, -4, 3, 0, 7); ctx.fill(); ctx.restore();
     }
-    // bờ cát + cỏ
-    ctx.fillStyle = "#e9d8a6"; ctx.fillRect(L, 330, wv, 26);
-    ctx.fillStyle = "rgba(255,255,255,.4)"; ctx.fillRect(L, 330, wv, 2 + Math.sin(t * 2));
-    ctx.fillStyle = "#74b566"; ctx.fillRect(L, 356, wv, B - 356);
-    ctx.fillStyle = "#64a456"; for (let k2 = 0; k2 < 260; k2++) ctx.fillRect(((k2 * 71) % (W + 200)) - 100, 360 + (k2 * 137) % 240, 2, 5);
+    // bờ cát + cỏ — dời xuống thấp hơn
+    ctx.fillStyle = "#e9d8a6"; ctx.fillRect(L, 386, wv, 26);
+    ctx.fillStyle = "rgba(255,255,255,.4)"; ctx.fillRect(L, 386, wv, 2 + Math.sin(t * 2));
+    ctx.fillStyle = "#74b566"; ctx.fillRect(L, 412, wv, B - 412);
+    ctx.fillStyle = "#64a456"; for (let k2 = 0; k2 < 260; k2++) ctx.fillRect(((k2 * 71) % (W + 200)) - 100, 416 + (k2 * 137) % 190, 2, 5);
+    // đom đóm ban đêm ven hồ
+    if (night) {
+      for (let k = 0; k < 18; k++) {
+        const fx = (k * 73 + Math.sin(t * .7 + k) * 30) % W, fy = 350 + Math.sin(t * 1.1 + k * 1.4) * 60;
+        const a = (.35 + .55 * Math.sin(t * 2.5 + k * 1.9)) * .9;
+        if (a < 0.05) continue;
+        const gg = ctx.createRadialGradient(fx, fy, 0, fx, fy, 7);
+        gg.addColorStop(0, `rgba(200,255,100,${a})`); gg.addColorStop(1, "rgba(200,255,100,0)");
+        ctx.fillStyle = gg; ctx.fillRect(fx - 7, fy - 7, 14, 14);
+      }
+    }
     // quầy bán mồi + mua cá (cô Lan)
     ctx.save(); ctx.translate(600, 0);
     ctx.fillStyle = "#9c6644"; ctx.fillRect(256, 404, 4, 46); ctx.fillRect(342, 404, 4, 46);
@@ -653,11 +643,15 @@ const Areas = (() => {
     ctx.fillStyle = "#c9a36b"; rr(ctx, 258, 444, 86, 14, 3); ctx.fill();
     ctx.fillStyle = "#264653"; ctx.font = "800 8px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🐛 MỒI CÂU · MUA CÁ", 300, 386);
     ctx.restore();
-    // bảng kỷ lục cá lớn nhất tuần
+    // bảng kỷ lục cá lớn nhất tuần + cá hiếm vừa câu
     ctx.fillStyle = "#6b4a35"; ctx.fillRect(1004, 440, 4, 20); ctx.fillRect(1052, 440, 4, 20);
-    ctx.fillStyle = "#f3e9dc"; rr(ctx, 994, 396, 72, 46, 4); ctx.fill(); ctx.strokeStyle = "#6b4a35"; ctx.lineWidth = 2; ctx.stroke();
-    ctx.fillStyle = "#264653"; ctx.font = "800 7px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🏆 KỶ LỤC TUẦN", 1030, 405);
-    ctx.font = "9px system-ui"; ctx.fillText("🐟 🐠 🐡", 1030, 422);
+    ctx.fillStyle = "#f3e9dc"; rr(ctx, 988, 376, 84, 66, 4); ctx.fill(); ctx.strokeStyle = "#6b4a35"; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = "#264653"; ctx.font = "800 7px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🏆 KỶ LỤC TUẦN", 1030, 386);
+    ctx.font = "9px system-ui"; ctx.fillText("🐟 🐠 🐡", 1030, 400);
+    if (fishState && fishState.lastRare) {
+      ctx.fillStyle = "#e63946"; rr(ctx, 988, 412, 84, 26, 3); ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.font = "700 7px system-ui"; ctx.fillText("⭐ " + fishState.lastRare, 1030, 425);
+    }
     // ghế xếp + xô cá + bàn để radio
     ctx.save(); ctx.translate(200, 0);
     ctx.fillStyle = "#4361ee"; rr(ctx, 98, 410, 30, 6, 2); ctx.fill(); ctx.strokeStyle = "#adb5bd"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(100, 432); ctx.lineTo(126, 412); ctx.moveTo(126, 432); ctx.lineTo(100, 412); ctx.stroke();
@@ -722,7 +716,7 @@ const Areas = (() => {
         if (r.r === "late") return end(`<div class="wheelBig">🌊</div><div class="pomoSub">Chậm quá, cá ăn mồi rồi bơi mất…</div>`);
         const fish = FISH[r.fish];
         Life.apply({fun: 6, xp: fish.rare ? 8 : 3}); Life.commit();
-        if (fish.rare) send({t: "emote", e: "😂"});
+        if (fish.rare) { send({t: "emote", e: "😂"}); if (fishState) fishState.lastRare = fish.name; }
         end(`<div class="wheelBig">${fish.e}</div><div class="pomoSub">Câu được <b style="color:var(--accent)">${fish.name}</b>${fish.rare ? " ✨ hiếm!" : ""} · bán được ${fish.price} 💰</div>`);
       };
       timers.push(setTimeout(() => {
@@ -766,25 +760,100 @@ const Areas = (() => {
       ctx.strokeStyle = "#c9a227"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, -10); ctx.lineTo(x, 4); ctx.stroke();
       for (let k = 0; k < 5; k++) { ctx.fillStyle = `rgba(255,236,170,${.7 + Math.sin(t * 2 + k + x) * .2})`; ctx.beginPath(); ctx.arc(x - 12 + k * 6, 8 + (k % 2) * 3, 2.2, 0, 7); ctx.fill(); }
     }
-    STORE_R.forEach(s => {                                               // mặt tiền từng cửa hàng
-      ctx.fillStyle = "#fff"; ctx.fillRect(s.x + 2, s.y, s.w - 4, s.h);
-      ctx.fillStyle = s.c1; ctx.fillRect(s.x + 2, s.y, s.w - 4, 22);
-      ctx.fillStyle = "#fff"; ctx.font = "800 9px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(`${s.e} ${s.name.toUpperCase()}`, s.x + s.w / 2, s.y + 11);
-      const g = ctx.createLinearGradient(0, s.y + 26, 0, s.y + s.h); g.addColorStop(0, s.c2); g.addColorStop(1, "#ffffff");
-      ctx.fillStyle = g; ctx.fillRect(s.x + 6, s.y + 26, s.w - 12, s.h - 30);
-      ctx.fillStyle = `rgba(255,255,255,${.35 + Math.sin(t * 1.5 + s.x) * .1})`; ctx.beginPath(); ctx.moveTo(s.x + 14, s.y + 30); ctx.lineTo(s.x + 34, s.y + 30); ctx.lineTo(s.x + 22, s.y + 130); ctx.lineTo(s.x + 10, s.y + 130); ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.fillRect(s.x + 16, s.y + 92, s.w - 32, 3); ctx.fillRect(s.x + 16, s.y + 122, s.w - 32, 3);   // kệ sáng đèn
-      ctx.font = "26px system-ui"; ctx.fillStyle = "#333";
-      const show = {fashion: "👗", acc: "👒", pet: "🐹", hair: "💈", deco: "🛋️"}[s.id];
-      ctx.fillText(show, s.x + s.w / 2, s.y + 66 + Math.sin(t * 2 + s.x) * 2);
-      ctx.font = "15px system-ui";
-      const row = {fashion: "👕👚🧥👖", acc: "🕶️🎀👜💍", pet: "🐱🐶🐰🦴", hair: "✂️💇🧴💄", deco: "🖼️🛏️🪴🧸"}[s.id];
-      ctx.fillText(row, s.x + s.w / 2, s.y + 110);
-      if ((s.id === "fashion" || s.id === "deco") && Math.floor(t * 1.5) % 2) {   // biển giảm giá nhấp nháy
-        ctx.fillStyle = "#e63946"; rr(ctx, s.x + s.w - 46, s.y + 28, 40, 14, 4); ctx.fill();
-        ctx.fillStyle = "#fff"; ctx.font = "800 7px system-ui"; ctx.fillText("SALE", s.x + s.w - 26, s.y + 35);
+    STORE_R.forEach(s => {                                               // mặt tiền từng cửa hàng (thiết kế cao cấp 3D)
+      // tường nền cửa hàng
+      ctx.fillStyle = "#ffffff"; rr(ctx, s.x + 2, s.y, s.w - 4, s.h, 6); ctx.fill();
+      ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 1.5; ctx.stroke();
+
+      // mái hiên sọc (Awning) đổ bóng
+      const awnH = 18, awnSt = 8;
+      for (let ai = 0; ai < awnSt; ai++) {
+        ctx.fillStyle = ai % 2 ? s.c1 : "#ffffff";
+        const ax = s.x + 2 + ai * (s.w - 4) / awnSt, aw = (s.w - 4) / awnSt;
+        ctx.beginPath(); ctx.moveTo(ax, s.y); ctx.lineTo(ax + aw, s.y); ctx.lineTo(ax + aw + 2, s.y + awnH); ctx.lineTo(ax - 2, s.y + awnH); ctx.fill();
+        ctx.fillStyle = ai % 2 ? s.c1 : "#f1f5f9";
+        ctx.beginPath(); ctx.arc(ax + aw / 2, s.y + awnH, aw / 2, 0, Math.PI); ctx.fill(); // viền bèo lượn sóng
       }
-      ctx.fillStyle = "rgba(0,0,0,.08)"; ctx.fillRect(s.x + 6, s.y + s.h - 6, s.w - 12, 4);
+
+      // biển tên tiệm có đèn LED
+      ctx.fillStyle = s.c1; rr(ctx, s.x + 12, s.y + awnH + 2, s.w - 24, 20, 4); ctx.fill();
+      ctx.fillStyle = "#ffffff"; ctx.font = "800 9.5px Nunito, system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(`${s.e} ${s.name.toUpperCase()}`, s.x + s.w / 2, s.y + awnH + 12);
+
+      // tủ kính trưng bày (Showcase) có khung kim loại
+      const gx = s.x + 6, gy = s.y + awnH + 26, gw = s.w - 12, gh = s.h - awnH - 32;
+      ctx.fillStyle = "#f8fafc"; rr(ctx, gx, gy, gw, gh, 5); ctx.fill();
+      ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 2; ctx.strokeRect(gx, gy, gw, gh);
+
+      // ánh sáng phản chiếu mặt kính chéo
+      const glG = ctx.createLinearGradient(gx, gy, gx + gw, gy + gh);
+      glG.addColorStop(0, "rgba(255,255,255,.45)"); glG.addColorStop(.3, "rgba(255,255,255,.15)"); glG.addColorStop(.6, "rgba(255,255,255,.02)"); glG.addColorStop(1, "rgba(255,255,255,.2)");
+      ctx.fillStyle = glG; ctx.fillRect(gx + 1, gy + 1, gw - 2, gh - 2);
+
+      // NỘI DUNG TỪNG CỬA HÀNG
+      if (s.id === "hair") {
+        // CỘT BARBER POLE XOAY XOAY (đỏ trắng xanh)
+        const bx = gx + 14, by = gy + 12, bh = 46, bw = 10;
+        ctx.fillStyle = "#333"; ctx.fillRect(bx - 2, by - 4, bw + 4, 4); ctx.fillRect(bx - 2, by + bh, bw + 4, 4);
+        ctx.save(); ctx.beginPath(); ctx.rect(bx, by, bw, bh); ctx.clip();
+        ctx.fillStyle = "#fff"; ctx.fillRect(bx, by, bw, bh);
+        for (let si = -10; si < bh + 10; si += 8) {
+          const sy = by + ((si + t * 20) % (bh + 16));
+          ctx.fillStyle = "#e63946"; ctx.beginPath(); ctx.moveTo(bx, sy); ctx.lineTo(bx + bw, sy - 6); ctx.lineTo(bx + bw, sy - 2); ctx.lineTo(bx, sy + 4); ctx.fill();
+          ctx.fillStyle = "#1d3557"; ctx.beginPath(); ctx.moveTo(bx, sy + 4); ctx.lineTo(bx + bw, sy - 2); ctx.lineTo(bx + bw, sy + 2); ctx.lineTo(bx, sy + 8); ctx.fill();
+        }
+        ctx.restore();
+        // gương đèn LED + ghế salon
+        const mirX = gx + 45, mirY = gy + 14;
+        ctx.strokeStyle = "#ffd166"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(mirX + 20, mirY + 18, 16, 0, 7); ctx.stroke();
+        ctx.fillStyle = "rgba(230,245,255,.8)"; ctx.beginPath(); ctx.arc(mirX + 20, mirY + 18, 14, 0, 7); ctx.fill();
+        // ghế cắt tóc xoay
+        ctx.fillStyle = "#1e293b"; rr(ctx, mirX + 10, mirY + 28, 20, 14, 4); ctx.fill();
+        ctx.fillStyle = "#64748b"; ctx.fillRect(mirX + 18, mirY + 42, 4, 8); ctx.fillRect(mirX + 14, mirY + 50, 12, 3);
+        // ma-nơ-canh tóc mẫu bên phải
+        const mx = s.x + s.w - 36, my = gy + 42;
+        ctx.fillStyle = "#ffb703"; ctx.beginPath(); ctx.arc(mx, my - 14, 8, 0, 7); ctx.fill(); // tóc vàng
+        ctx.fillStyle = SKIN; ctx.beginPath(); ctx.arc(mx, my - 12, 6.5, 0, 7); ctx.fill();
+        ctx.fillStyle = "#6d6875"; rr(ctx, mx - 6, my - 5, 12, 16, 3); ctx.fill();
+        // biển gợi ý
+        ctx.fillStyle = "#4361ee"; ctx.font = "800 7px system-ui"; ctx.fillText("💈 SALON RIÊNG V6", s.x + s.w / 2, gy + gh - 8);
+      } else if (s.id === "fashion") {
+        // MA-NƠ-CANH MẶC ĐỒ THỜI TRANG ĐANG BÁN
+        const mx = s.x + s.w / 2, my = gy + 40;
+        // đế gỗ
+        ctx.fillStyle = "#8a5a3c"; ctx.beginPath(); ctx.ellipse(mx, my + 14, 14, 4, 0, 0, 7); ctx.fill();
+        ctx.fillRect(mx - 1.5, my + 2, 3, 12);
+        // áo đầm / vest thời trang
+        ctx.fillStyle = "#e63946"; rr(ctx, mx - 10, my - 12, 20, 16, 4); ctx.fill();
+        ctx.fillStyle = "#ffd166"; ctx.beginPath(); ctx.moveTo(mx - 6, my - 12); ctx.lineTo(mx, my - 2); ctx.lineTo(mx + 6, my - 12); ctx.stroke();
+        ctx.fillStyle = "#f4a261"; ctx.beginPath(); ctx.moveTo(mx - 10, my + 4); ctx.lineTo(mx - 14, my + 14); ctx.lineTo(mx + 14, my + 14); ctx.lineTo(mx + 10, my + 4); ctx.fill(); // váy xoè
+        // giá treo quần áo bên cạnh
+        ctx.font = "14px system-ui"; ctx.fillText("👗 🧥 👚", mx, gy + 12);
+      } else if (s.id === "acc") {
+        // TỦ KÍNH PHỤ KIỆN LẤP LÁNH
+        const mx = s.x + s.w / 2;
+        ctx.fillStyle = "rgba(255,236,170,.4)"; ctx.fillRect(gx + 10, gy + 32, gw - 20, 3);
+        ctx.font = "16px system-ui"; ctx.fillText("👒 🕶️ 🎀", mx, gy + 22);
+        ctx.font = "16px system-ui"; ctx.fillText("👜 💍 👑", mx, gy + 48);
+        ctx.fillStyle = "#e63946"; ctx.font = "800 7px system-ui"; ctx.fillText("✨ MẪU MỚI", mx, gy + gh - 8);
+      } else if (s.id === "pet") {
+        // TIỆM THÚ CƯNG CÓ CÁC BÉ MINI
+        const mx = s.x + s.w / 2;
+        ctx.font = "18px system-ui"; ctx.fillText("🐱 🐶 🐰", mx, gy + 24 + Math.sin(t * 2) * 2);
+        ctx.font = "13px system-ui"; ctx.fillText("🦴 🐟 🥕", mx, gy + 48);
+        ctx.fillStyle = "#06d6a0"; ctx.font = "800 7px system-ui"; ctx.fillText("🐾 NHẬN NUÔI", mx, gy + gh - 8);
+      } else if (s.id === "deco") {
+        // NỘI THẤT SHOWROOM MINI
+        const mx = s.x + s.w / 2;
+        ctx.font = "18px system-ui"; ctx.fillText("🛋️ 🛏️ 🪴", mx, gy + 24);
+        ctx.font = "14px system-ui"; ctx.fillText("🖼️ 🧸 💡", mx, gy + 48);
+        ctx.fillStyle = "#8338ec"; ctx.font = "800 7px system-ui"; ctx.fillText("🏡 TRANG TRÍ", mx, gy + gh - 8);
+      }
+
+      if ((s.id === "fashion" || s.id === "deco") && Math.floor(t * 1.5) % 2) {   // biển giảm giá nhấp nháy
+        ctx.fillStyle = "#e63946"; rr(ctx, s.x + s.w - 44, s.y + awnH + 4, 38, 14, 4); ctx.fill();
+        ctx.fillStyle = "#fff"; ctx.font = "800 7.5px system-ui"; ctx.fillText("SALE", s.x + s.w - 25, s.y + awnH + 11);
+      }
     });
     // sàn gạch bóng phản chiếu
     for (let y = 160, r = 0; y < B; y += 30, r++) for (let x = Math.floor(L / 30) * 30, c = (r + Math.floor(L / 30)) & 1; x < R; x += 30, c ^= 1) { ctx.fillStyle = c ? "#f8f0e3" : "#ece0cc"; ctx.fillRect(x, y, 30, 30); }
@@ -823,6 +892,8 @@ const Areas = (() => {
 
   // ---------- 8. Tủ đồ thời trang + cửa hàng ----------
   function owns(id) {
+    if (Hair.STY[id]) return id === CATALOG.SALON.default.hair || (S().hairs || []).includes(id);   // kiểu tóc: mua ở tiệm tóc
+    if (Hair.DYE[id]) return true;                                       // màu đang nhuộm (đổi màu chỉ ở tiệm tóc)
     const c = CL[id]; if (!c) return false;
     if (!c.price) return true;
     const v = S().owned[id];
@@ -862,7 +933,9 @@ const Areas = (() => {
     if (tab) wardTab = tab;
     cleanOutfit();
     const o = S().outfit;
-    const items = wardTab === "shirt" ? [{id: "", e: "🩱", name: "Bộ pyjama", price: 0}, ...CLOTHES.filter(c => c.slot === "shirt")] : CLOTHES.filter(c => c.slot === wardTab);
+    const items = wardTab === "shirt" ? [{id: "", e: "🩱", name: "Bộ pyjama", price: 0}, ...CLOTHES.filter(c => c.slot === "shirt")]
+      : wardTab === "hair" ? CATALOG.SALON.hairstyles.filter(h => owns(h.id)).map(h => ({id: h.id, e: "💇", name: h.name, price: 0}))   // kiểu đã mở khoá
+      : CLOTHES.filter(c => c.slot === wardTab);
     openSheet("👗 Tủ đồ",
       `<div style="display:flex;justify-content:center"><canvas id="pv" width="144" height="150" style="background:radial-gradient(#3a3470,#1d1a38);border-radius:16px"></canvas></div>
        <div class="tabs">${WARDROBE_TABS.map(tb => `<button class="${tb.slot === wardTab ? "cur" : ""}" data-tab="${tb.slot}">${tb.e}<span>${tb.name}</span></button>`).join("")}</div>
@@ -870,7 +943,7 @@ const Areas = (() => {
          const has = c.id === "" || owns(c.id), on = o[wardTab] === c.id;
          return `<button class="opt ${on ? "active" : ""} ${has ? "" : "poor"}" data-id="${c.id}">${c.e} ${c.name}<small>${on ? "✓ đang mặc" : has ? (c.price ? ownLabel(c.id) : "miễn phí") : `mua ở khu mua sắm · ${c.price} 💰`}</small></button>`;
        }).join("")}</div>
-       <div class="vol" style="font-size:12px">Mua thêm đồ ở 🛍️ Khu mua sắm (mở 🗺️ bản đồ để tới). Đồ thuê theo ngày tự cởi khi hết hạn.</div>`,
+       <div class="vol" style="font-size:12px">${wardTab === "hair" ? "Kiểu tóc mới và nhuộm màu: ghé 💇 Tiệm Làm Tóc (mở 🗺️ bản đồ), thử tóc miễn phí." : "Mua thêm đồ ở 🛍️ Khu mua sắm (mở 🗺️ bản đồ để tới). Đồ thuê theo ngày tự cởi khi hết hạn."}</div>`,
       el => {
         preview(el);
         el.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => openWardrobe(b.dataset.tab));
@@ -884,6 +957,12 @@ const Areas = (() => {
   function openStore(store) {
     if (store.id === "pet") return openPetShop();
     if (store.id === "deco") return openDecoShop();
+    if (store.id === "hair") {                                           // tóc đã chuyển sang khu riêng (V6)
+      openSheet("✂️ Salon tóc đã chuyển nhà", `<div class="pomoSub">Tiệm tóc giờ là khu riêng <b>💇 Tiệm Làm Tóc</b>: 16 kiểu tóc, 15 màu nhuộm, thử tóc miễn phí trước gương!</div>
+        <div class="grid"><button class="opt" id="goSalon" style="text-align:center">💇 Đi tới Tiệm Làm Tóc</button></div>`,
+        el => el.querySelector("#goSalon").onclick = () => { closeSheet(); travelTo("salon"); });
+      return;
+    }
     const items = CLOTHES.filter(c => store.slots.includes(c.slot) && c.price > 0);
     openSheet(`${store.e} ${store.name}`,
       `${Life.coinLine()}<div class="grid">${items.map(c => {
@@ -957,36 +1036,87 @@ const Areas = (() => {
 
   // ---------- 9. Nhà riêng: nội thất do cả nhóm bày, server lưu lại ----------
   let homeItems = [], placing = null;
-  function drawHome(t) {                             // 🏠 nhà riêng NGANG 840x600
-    drawWall("#f3e9dc");
-    ctx.fillStyle = "rgba(200,160,120,.12)"; for (let x = 0; x < W; x += 24) ctx.fillRect(x, -10, 10, 170);
-    drawWoodFloor("#c08552", "#b87c4a", "#c88d5a");
+  function drawHome(t) {                             // 🏠 nhà riêng NGANG 840x600: ấm cúng, có sẵn bộ đồ cơ bản
+    drawWall("#fbf6ee");
+    // hoa văn dán tường ấm áp
+    ctx.fillStyle = "rgba(210,180,150,.15)"; for (let x = 0; x < W; x += 20) ctx.fillRect(x, -10, 8, 170);
+    // nẹp chân tường gỗ và sàn gỗ cao cấp
+    drawWoodFloor("#b87c4a", "#af7341", "#c18553");
     const {L, R} = bleed();
-    ctx.fillStyle = "#8a5a3c"; ctx.fillRect(L, 156, R - L, 8);
-    const night = Life.darkness() > .5;                                  // cửa sổ nhìn ra trời theo giờ game
+    ctx.fillStyle = "#6b4226"; ctx.fillRect(L, 156, R - L, 8);
+    ctx.fillStyle = "#8a5a3c"; ctx.fillRect(L, 154, R - L, 2);
+
+    const night = Life.darkness() > .5;                                  // cửa sổ lớn nhìn ra trời theo giờ game
     ctx.save(); ctx.translate(240, 0);
-    ctx.fillStyle = "#6b4a35"; rr(ctx, 130, 26, 100, 88, 6); ctx.fill();
-    const g = ctx.createLinearGradient(0, 32, 0, 108); if (night) { g.addColorStop(0, "#0b1033"); g.addColorStop(1, "#2b2d6b"); } else { const [a, b] = Life.skyColors(); g.addColorStop(0, a); g.addColorStop(1, b); }
-    ctx.fillStyle = g; ctx.fillRect(136, 32, 88, 76);
-    ctx.fillStyle = night ? "#fff6c8" : "#ffe066"; ctx.beginPath(); ctx.arc(200, 54, 8, 0, 7); ctx.fill();
-    ctx.fillStyle = "#6b4a35"; ctx.fillRect(178, 32, 4, 76); ctx.fillRect(136, 68, 88, 4);
-    const sw = Math.sin(t * .8) * 2;                                     // rèm bay nhẹ
-    ctx.fillStyle = "#ffafcc"; ctx.beginPath(); ctx.moveTo(124, 22); ctx.lineTo(138, 22); ctx.quadraticCurveTo(132 + sw, 70, 138 + sw, 118); ctx.lineTo(124, 118); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(236, 22); ctx.lineTo(222, 22); ctx.quadraticCurveTo(228 - sw, 70, 222 - sw, 118); ctx.lineTo(236, 118); ctx.fill();
+    ctx.fillStyle = "#5e3d27"; rr(ctx, 126, 22, 108, 96, 6); ctx.fill();
+    const g = ctx.createLinearGradient(0, 28, 0, 114); if (night) { g.addColorStop(0, "#0b1033"); g.addColorStop(1, "#2b2d6b"); } else { const [a, b] = Life.skyColors(); g.addColorStop(0, a); g.addColorStop(1, b); }
+    ctx.fillStyle = g; ctx.fillRect(132, 28, 96, 84);
+    ctx.fillStyle = night ? "#fff6c8" : "#ffe066"; ctx.beginPath(); ctx.arc(196, 50, 9, 0, 7); ctx.fill();
+    ctx.fillStyle = "#5e3d27"; ctx.fillRect(178, 28, 4, 84); ctx.fillRect(132, 68, 96, 4);
+
+    // rèm vải nhung pastel buông dài 2 bên cửa sổ
+    const sw = Math.sin(t * .8) * 2.5;
+    ctx.fillStyle = "#ffafcc";
+    ctx.beginPath(); ctx.moveTo(118, 18); ctx.lineTo(136, 18); ctx.quadraticCurveTo(130 + sw, 70, 138 + sw, 124); ctx.lineTo(118, 124); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(242, 18); ctx.lineTo(224, 18); ctx.quadraticCurveTo(230 - sw, 70, 222 - sw, 124); ctx.lineTo(242, 124); ctx.fill();
+    // chậu hoa bệ cửa sổ
+    ctx.fillStyle = "#e76f51"; rr(ctx, 164, 104, 32, 8, 2); ctx.fill();
+    for (let fl = 0; fl < 3; fl++) {
+      ctx.fillStyle = ["#ffd166", "#ff8fab", "#a0c4ff"][fl];
+      ctx.beginPath(); ctx.arc(170 + fl * 10, 100, 3, 0, 7); ctx.fill();
+    }
     ctx.restore();
-    // đồng hồ chạy thật + tranh treo tường
+
+    // đồng hồ chạy thật + 2 tranh treo tường nghệ thuật
     drawClock(250, 60);
     [[60, "#a0c4ff", "#ffc6ff"], [640, "#ffd166", "#f4a261"]].forEach(([x, c1, c2]) => {
-      ctx.fillStyle = "#8a5a3c"; rr(ctx, x, 36, 56, 44, 3); ctx.fill();
-      const pg = ctx.createLinearGradient(0, 40, 0, 76); pg.addColorStop(0, c1); pg.addColorStop(1, c2);
-      ctx.fillStyle = pg; ctx.fillRect(x + 4, 40, 48, 36);
+      ctx.fillStyle = "#8a5a3c"; rr(ctx, x, 34, 56, 46, 4); ctx.fill();
+      const pg = ctx.createLinearGradient(0, 38, 0, 76); pg.addColorStop(0, c1); pg.addColorStop(1, c2);
+      ctx.fillStyle = pg; ctx.fillRect(x + 4, 38, 48, 38);
       ctx.fillStyle = "rgba(255,255,255,.7)"; ctx.beginPath(); ctx.moveTo(x + 8, 72); ctx.lineTo(x + 24, 54); ctx.lineTo(x + 36, 66); ctx.lineTo(x + 44, 58); ctx.lineTo(x + 50, 72); ctx.fill();
     });
     ctx.fillStyle = "#6b4a35"; ctx.fillRect(606, 140, 60, 6);                    // kệ để radio
     drawRadio(t); drawSwitch();
+
+    // VẼ NỘI THẤT CỦA PHÒNG
     for (const it of homeItems) { const f = FU[it.k]; if (f && f.rug) { ctx.fillStyle = f.rug; ctx.globalAlpha = .85; ctx.beginPath(); ctx.ellipse(it.x, it.y, f.size / 2 + 10, f.size / 4 + 4, 0, 0, 7); ctx.fill(); ctx.globalAlpha = 1; } }
+
+    // TẶNG NGƯỜI MỚI BỘ ĐỒ CƠ BẢN (nếu chưa đặt món đồ nào)
+    if (!homeItems.length) {
+      // 1. Thảm lông tròn êm ái giữa phòng
+      ctx.fillStyle = "#e9c46a"; ctx.globalAlpha = .4; ctx.beginPath(); ctx.ellipse(420, 380, 120, 45, 0, 0, 7); ctx.fill();
+      ctx.strokeStyle = "#f4a261"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.globalAlpha = 1;
+
+      // 2. Bàn trà gỗ nhỏ xinh ở giữa phòng
+      ctx.fillStyle = "rgba(0,0,0,.15)"; ctx.beginPath(); ctx.ellipse(420, 390, 42, 14, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = "#8a5a3c"; rr(ctx, 382, 360, 76, 26, 6); ctx.fill();
+      ctx.fillStyle = "#b27d52"; rr(ctx, 384, 362, 72, 22, 5); ctx.fill();
+      // laptop hoặc tách trà bốc khói trên bàn
+      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(400, 372, 4.5, 0, 7); ctx.fill();
+      ctx.fillStyle = "#6b4226"; ctx.beginPath(); ctx.arc(400, 372, 3, 0, 7); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = .9;
+      for (let k = 0; k < 2; k++) {
+        const ph = (t * .5 + k * .5) % 1; ctx.beginPath(); ctx.moveTo(399 + k * 3, 368 - ph * 8); ctx.quadraticCurveTo(402 + k * 3, 364 - ph * 8, 399 + k * 3, 360 - ph * 8); ctx.stroke();
+      }
+      // sách màu pastel trên bàn
+      ctx.fillStyle = "#2a9d8f"; ctx.fillRect(422, 366, 16, 5);
+      ctx.fillStyle = "#e76f51"; ctx.fillRect(424, 362, 14, 4);
+
+      // 3. Đèn cây đứng (floor lamp) phát sáng góc phòng
+      const lx = 280, ly = 320;
+      ctx.fillStyle = "#333"; ctx.fillRect(lx - 1, ly - 80, 3, 80); ctx.beginPath(); ctx.ellipse(lx, ly, 10, 3, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = "#ffd166"; ctx.beginPath(); ctx.moveTo(lx - 14, ly - 70); ctx.lineTo(lx + 14, ly - 70); ctx.lineTo(lx + 10, ly - 90); ctx.lineTo(lx - 10, ly - 90); ctx.fill();
+      // quầng sáng đèn ấm áp
+      const lampG = ctx.createRadialGradient(lx, ly - 65, 5, lx, ly - 50, 65);
+      lampG.addColorStop(0, "rgba(255,220,130,.4)"); lampG.addColorStop(1, "rgba(255,220,130,0)");
+      ctx.fillStyle = lampG; ctx.fillRect(lx - 65, ly - 115, 130, 130);
+
+      // 4. Giường nệm ấm cúng ở góc trái (đã có futon cơ bản)
+      ctx.fillStyle = "#ffd27a"; ctx.font = "800 11px Nunito, system-ui"; ctx.textAlign = "center";
+      ctx.fillText("🏠 Nhà ấm của bạn · bấm 🛋️ Bày đồ để thêm nội thất", 420, 440);
+    }
+
     if (placing) { ctx.fillStyle = "rgba(255,210,122,.15)"; ctx.fillRect(0, 165, W, 410); label("👆 Chạm sàn để đặt " + FU[placing].name, W / 2, 182, "#ffd27a"); }
-    if (!homeItems.length) { ctx.fillStyle = "rgba(90,60,40,.35)"; ctx.font = "700 12px system-ui"; ctx.textAlign = "center"; ctx.fillText("Nhà còn trống · bấm 🛋️ Bày đồ để trang trí", W / 2, 400); }
   }
   function futon(i, t) {
     const b = BEDS[i], o = bedOwner(i), lying = o && o.lying, cols = ["#a0c4ff", "#ffc6ff"];
@@ -996,7 +1126,7 @@ const Areas = (() => {
     if (lying) {
       const hx = b.x + BED_W / 2, hy = b.y + 18;
       ctx.fillStyle = "#f5d0a9"; ctx.beginPath(); ctx.arc(hx, hy, 9, 0, 7); ctx.fill();
-      ctx.fillStyle = (CL[outfitOf(o).hairColor] || CL.hc_brown).color; ctx.beginPath(); ctx.arc(hx, hy - 3, 9.5, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = Hair.dye(outfitOf(o).hairColor).hair; ctx.beginPath(); ctx.arc(hx, hy - 3, 9.5, Math.PI, 0); ctx.fill();
       ctx.strokeStyle = "#2a1d16"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(hx - 5, hy + 1); ctx.lineTo(hx - 2, hy + 1); ctx.moveTo(hx + 2, hy + 1); ctx.lineTo(hx + 5, hy + 1); ctx.stroke();
     }
     const br = lying ? Math.sin(t * 1.6 + i) * 1.2 : 0;
@@ -1033,12 +1163,26 @@ const Areas = (() => {
   // ---------- 10. Móc vào game chính ----------
   function draw(t) { ({farm: drawFarm, fishing: drawFishing, mall: drawMall, home: drawHome})[myArea](t); }
   function seat(i, t) { ({farm: haySeat, fishing: fishSeat, mall: mallBench, home: futon})[myArea](i, t); }
+  let _npcProximityLast = {};   // thời điểm lần cuối trigger bong bóng NPC theo khoảng cách
   function ents(t, list) {
-    for (const {n, p} of npcsHere()) list.push({y: p.y, f: () => {
-      drawAvatar({x: p.x, y: p.y, color: n.color, outfit: n.outfit, walking: p.walking, up: false, id: n.id}, t);
-      label(n.name, p.x, p.y - AV_TOP, "#b9fbc0");
-      const tk = npcTalk[n.id]; if (tk && t < tk.until) bubble(tk.text, p.x, p.y - AV_TOP - 7);
-    }});
+    for (const {n, p} of npcsHere()) {
+      // kiểm tra khoảng cách player - NPC, tự trigger bong bóng khi lại gần
+      const myP = me();
+      if (myP) {
+        const dist = Math.hypot(myP.x - p.x, myP.y - p.y);
+        const tk = npcTalk[n.id];
+        const lastProx = _npcProximityLast[n.id] || 0;
+        if (dist < 90 && (!tk || t > tk.until) && t - lastProx > 8) {
+          _npcProximityLast[n.id] = t;
+          npcTalk[n.id] = {text: pick(n.lines), until: t + 4};
+        }
+      }
+      list.push({y: p.y, f: () => {
+        drawAvatar({x: p.x, y: p.y, color: n.color, outfit: n.outfit, walking: p.walking, up: false, id: n.id}, t);
+        label(n.name, p.x, p.y - AV_TOP, "#b9fbc0");
+        const tk = npcTalk[n.id]; if (tk && t < tk.until) bubble(tk.text, p.x, p.y - AV_TOP - 7);
+      }});
+    }
     if (myArea === "home") for (const it of homeItems) {
       const f = FU[it.k]; if (!f || f.rug) continue;
       list.push({y: it.y, f: () => {
@@ -1084,5 +1228,6 @@ const Areas = (() => {
   function setHome(items) { homeItems = Array.isArray(items) ? items : []; }
 
   return {has: a => NEW.has(a), TXT, draw, seat, ents, tap, holes, act, over: drawSeason, drawAvatar, onJoin, onArea, setHome,
-          openWardrobe, owns, ownLabel, cleanOutfit, outfit: () => cleanOutfit()};
+          openWardrobe, owns, ownLabel, cleanOutfit, outfit: () => cleanOutfit(), npcPos,
+          say: (id, text, sec = 4) => { npcTalk[id] = {text, until: performance.now() / 1000 + sec}; }};   // NPC tự nói (tiệm tóc)
 })();

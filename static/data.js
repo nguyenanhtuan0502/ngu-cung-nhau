@@ -42,9 +42,9 @@ const LEVEL_K = 25;
 
 // ================== THỜI TRANG (tủ đồ) ==================
 // Danh sách quần áo + giá ở catalog.json (CLOTHES). Đây là bộ mặc mặc định + các tab của tủ đồ.
-const DEFAULT_OUTFIT = {gender: "g_f", hair: "hair_short", hairColor: "hc_brown", shirt: "", hat: "hat_nightcap", glasses: "gl_none", neck: "neck_none", back: "back_none"};
+const DEFAULT_OUTFIT = {gender: "g_f", hair: "short", hairColor: "nau", shirt: "", hat: "hat_nightcap", glasses: "gl_none", neck: "neck_none", back: "back_none"};
 const WARDROBE_TABS = [
-  {slot: "gender", e: "🚻", name: "Giới tính"}, {slot: "hair", e: "💇", name: "Kiểu tóc"}, {slot: "hairColor", e: "🎨", name: "Màu tóc"}, {slot: "shirt", e: "👕", name: "Áo"},
+  {slot: "gender", e: "🚻", name: "Giới tính"}, {slot: "hair", e: "💇", name: "Kiểu tóc"}, {slot: "shirt", e: "👕", name: "Áo"},
   {slot: "hat", e: "🎩", name: "Mũ"}, {slot: "glasses", e: "👓", name: "Kính"}, {slot: "neck", e: "🧣", name: "Cổ"}, {slot: "back", e: "🦋", name: "Cánh"},
 ];
 // Cửa hàng trong khu mua sắm: mỗi gian bán những slot nào

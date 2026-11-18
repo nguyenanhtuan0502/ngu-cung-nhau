@@ -441,15 +441,15 @@ const cam = {x: 0, y: 0, snap: true};
 const LAYOUTS = {
   sleep: {                                   // ký túc xá NGANG 1000x600: 8 giường 1 dãy, lò sưởi giữa tường
     ww: 1000, wh: 600, floor: {x1: 20, y1: 175, x2: 980, y2: 585},
-    beds: [{x: 40, y: 196}, {x: 120, y: 196}, {x: 200, y: 196}, {x: 280, y: 196},
-           {x: 658, y: 196}, {x: 738, y: 196}, {x: 818, y: 196}, {x: 898, y: 196}],
+    beds: [{x: 40, y: 270}, {x: 120, y: 270}, {x: 200, y: 270}, {x: 280, y: 270},
+           {x: 658, y: 270}, {x: 738, y: 270}, {x: 818, y: 270}, {x: 898, y: 270}],
     bw: 62, bh: 100,
     tvr: null, scr: null,
     radio: {x: 818, y: 82, w: 48, h: 28}, sw: {x: 534, y: 540, w: 13, h: 19}, moon: {x: 106, y: 62},
   },
   study: {                                   // phòng học NGANG 1000x600: 12 bàn (2 hàng x 6), bảng giữa tường
     ww: 1000, wh: 600, floor: {x1: 20, y1: 175, x2: 980, y2: 585},
-    beds: [130, 256, 382, 508, 634, 760].map(x => ({x, y: 192})).concat([130, 256, 382, 508, 634, 760].map(x => ({x, y: 318}))),
+    beds: [130, 256, 382, 508, 634, 760].map(x => ({x, y: 272})).concat([130, 256, 382, 508, 634, 760].map(x => ({x, y: 390}))),
     bw: 110, bh: 95,
     tvr: null, scr: null,
     radio: {x: 906, y: 104, w: 48, h: 28}, sw: {x: 152, y: 74, w: 13, h: 19}, moon: null,
@@ -495,6 +495,7 @@ const MAPBOARD = {x: 96, y: 236, w: 60, h: 46};              // bảng bản đ�
 const doorsHere = () => AREA_DOORS[myArea] || [];
 const LAMPS = [{x: 250, y: 326}, {x: 870, y: 326}, {x: 250, y: 396}, {x: 870, y: 396}, {x: 545, y: 560}, {x: 140, y: 326}];   // đèn đường công viên
 const FOUNTAIN = {x: 560, y: 350, r: 62};
+const BIG_LAMP = {x: 560, y: 350, h: 100};                  // cột đèn lớn mọc từ giữa đài phun nước (chân cột ở tâm đài)
 const PLAZA_R = 100, POND_P = {x: 190, y: 505, rx: 100, ry: 44}, STAGE_P = {x: 470, y: 112, w: 180, h: 62};
 const COLORS = ["#e76f51","#f4a261","#e9c46a","#2a9d8f","#4cc9f0","#7b2cbf","#f72585","#90be6d"];
 const TV_CH = [
@@ -956,7 +957,7 @@ const MAP_PINS = {
   study:   {kind: "shared"}, sleep: {kind: "dorm"}, park: {kind: "shared"}, cinema: {kind: "shared"},
   fishing: {kind: "shared"}, mall: {kind: "shared"},
   arcade:  {kind: "shared", name: "🎪 Khu vui chơi"}, stock: {kind: "shared", name: "📈 Khu chứng khoán"},
-  dating:  {kind: "shared", name: "💞 Khu hẹn hò"},
+  dating:  {kind: "shared", name: "💞 Khu hẹn hò"}, salon: {kind: "shared", name: "💇 Tiệm Làm Tóc"},
   home:    {kind: "private", name: "🏠 Nhà của bạn"}, farm: {kind: "private", name: "🌾 Nông trại của bạn"},
 };
 const FAST_KEY = "nc_fasttravel";
@@ -1000,7 +1001,8 @@ function openMap() {
        <div></div>${cell("study")}<div></div><div class="privhead">🔑 Khu riêng</div>
        ${cell("sleep")}${cell("park")}${cell("cinema")}${cell("home")}
        ${cell("fishing")}${cell("mall")}${cell("arcade")}${cell("farm")}
-       ${cell("stock")}<div class="mapgate">🚪 Cổng vào<small>người mới ở công viên</small></div>${cell("dating")}<div></div>
+       ${cell("stock")}${cell("salon")}${cell("dating")}<div></div>
+       <div></div><div class="mapgate">🚪 Cổng vào<small>người mới ở công viên</small></div><div></div><div></div>
      </div>
      <label class="fastrow"><input type="checkbox" id="fastT" ${fastTravel() ? "checked" : ""}> Bỏ hiệu ứng chuyển khu
        <span class="maphint">· Chạm ghim để đi thẳng tới khu đó · 👥 = người đang online (tối đa 25/kênh)</span></label>`,
@@ -1227,6 +1229,14 @@ function connect() {
   };
 }
 function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
+// Chế độ phát triển: nhớ khu/kênh đang ở rồi tải lại trang, trang mới tự vào lại đúng chỗ đó
+let bootId = null;
+function devReload() {
+  try {
+    if (joined && inst) sessionStorage.setItem("nc_dev_back", JSON.stringify({area: inst.area, ch: inst.ch || 0, room: inst.code || dormCode}));
+  } catch (e) {}
+  location.reload();
+}
 
 function addPlayer(d) {
   const p = {...d, tx: d.x, ty: d.y, lying: false, walking: false, up: false, bubble: null, emote: null};
@@ -1250,7 +1260,12 @@ function handle(m) {
       pendingDaily = m.daily || 0;                 // quà mỗi ngày do server cộng
       break;
     }
+    case "reload": devReload(); break;              // chế độ phát triển: vừa sửa file giao diện
     case "welcome": {                              // vào một khu (lần đầu, khi chuyển khu, hoặc khi kết nối lại)
+      if (m.boot) {                                // chế độ phát triển: server vừa khởi động lại (sửa .py/catalog) → tải bản mới
+        if (bootId && m.boot !== bootId) { devReload(); break; }
+        bootId = m.boot;
+      }
       const first = !joined;
       myId = m.id; joined = true; wantReconnect = false;
       inst = m.inst; online = {counts: m.counts || {}, chans: m.chans || {}};
@@ -1914,6 +1929,8 @@ function patternAt(kind, x, y, w, h) {
 function drawCozyBed(i, t) {
   const b = BEDS[i], o = bedOwner(i), lying = o && o.lying, st = BED_STYLE[i % 8];
   const x = b.x, y = b.y, w = BED_W, h = BED_H, cx = x + w / 2, br = lying ? Math.sin(t * 1.6 + i) * 1.2 : 0;
+  // tên chủ giường (hiển thị khi có người đặt giường)
+  if (o) label(o.name, cx, y - 24, "#ffd27a");
   // tủ đầu giường + đèn ngủ nấm / mặt trăng + ly nước + sách (bên trên đầu giường)
   ctx.fillStyle = "#8a5a3c"; rr(ctx, x + 1, y - 17, 24, 13, 2); ctx.fill();
   if (i % 2) { ctx.fillStyle = "#fff6c8"; ctx.beginPath(); ctx.arc(x + 8, y - 21, 4.5, 0, 7); ctx.fill(); ctx.fillStyle = "#8a5a3c"; ctx.beginPath(); ctx.arc(x + 10, y - 22, 3.6, 0, 7); ctx.fill(); }
@@ -1956,12 +1973,12 @@ function drawDorm(t) {                               // 🛏️ ký túc xá NGA
   ctx.fillStyle = "#8a5a3c"; ctx.fillRect(L, 97, wv, 5);
   ctx.fillStyle = "#6b4226"; ctx.fillRect(L, 10, wv, 7);
   for (let x = 0; x <= W; x += 200) ctx.fillRect(x - 4, -40, 8, 57);                      // cột gỗ
-  // sàn gỗ màu mật ong + thảm dài trước dãy giường
+  // sàn gỗ màu mật ong + thảm dài trước dãy giường (dời xuống khớp vị trí giường mới y:270)
   drawWoodFloor("#c99055", "#c18849", "#cd9659");
   ctx.fillStyle = "#7a5236"; ctx.fillRect(L, 158, wv, 8);
-  ctx.fillStyle = "#c1694f"; rr(ctx, 60, 316, W - 120, 36, 10); ctx.fill();
-  ctx.strokeStyle = "#f3d9b1"; ctx.lineWidth = 3; rr(ctx, 65, 321, W - 130, 26, 8); ctx.stroke();
-  ctx.fillStyle = "rgba(243,217,177,.5)"; for (let xx = 90; xx < W - 80; xx += 28) { ctx.beginPath(); ctx.arc(xx, 334, 3.5, 0, 7); ctx.fill(); }
+  ctx.fillStyle = "#c1694f"; rr(ctx, 60, 388, W - 120, 36, 10); ctx.fill();
+  ctx.strokeStyle = "#f3d9b1"; ctx.lineWidth = 3; rr(ctx, 65, 393, W - 130, 26, 8); ctx.stroke();
+  ctx.fillStyle = "rgba(243,217,177,.5)"; for (let xx = 90; xx < W - 80; xx += 28) { ctx.beginPath(); ctx.arc(xx, 406, 3.5, 0, 7); ctx.fill(); }
   // cửa sổ (trăng, sao, tuyết/mưa) + rèm be + đệm bậc cửa
   const win = (wx, moon) => {
     const wy = 24, ww = 92, wh = 62;
@@ -2154,6 +2171,26 @@ function drawStudyRoom(t) {
     ctx.fillStyle = ["#457b9d", "#2a9d8f", "#e76f51"][k]; rr(ctx, lx + k * 27, 452, 25, 52, 3); ctx.fill();
     ctx.fillStyle = "rgba(255,255,255,.3)"; ctx.fillRect(lx + k * 27 + 5, 460, 15, 2); ctx.fillStyle = "#ddd"; ctx.fillRect(lx + k * 27 + 18, 478, 3, 6);
   }
+  // đồng hồ Pomodoro lớn treo tường (trung tâm, trên cao)
+  ctx.save(); ctx.translate(500, 0);
+  ctx.fillStyle = "#1a2e3a"; rr(ctx, 0, 22, 100, 56, 8); ctx.fill();
+  ctx.strokeStyle = "#2a9d8f"; ctx.lineWidth = 2; ctx.strokeRect(2, 24, 96, 52);
+  ctx.fillStyle = "#39ff88"; ctx.font = "900 22px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const pomSec = Math.floor(t) % (25 * 60), pomM = String(Math.floor(pomSec / 60)).padStart(2, "0"), pomS = String(pomSec % 60).padStart(2, "0");
+  ctx.fillText(`${pomM}:${pomS}`, 50, 50);
+  ctx.fillStyle = "#ffd27a"; ctx.font = "700 7px system-ui"; ctx.fillText("🍅 POMODORO", 50, 70);
+  ctx.restore();
+  // bảng "ai đang học gì" (tường trái)
+  ctx.fillStyle = "#1d3557"; rr(ctx, 10, 170, 110, 90, 6); ctx.fill();
+  ctx.strokeStyle = "#4cc9f0"; ctx.lineWidth = 1.5; ctx.strokeRect(12, 172, 106, 86);
+  ctx.fillStyle = "#ffd27a"; ctx.font = "800 7px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("📚 ĐANG HỌC", 65, 182);
+  const studiers = here().filter(p => p.lying && p.bed != null);
+  studiers.slice(0, 5).forEach((p, k) => {
+    ctx.fillStyle = p.color || "#a0c4ff"; ctx.beginPath(); ctx.arc(26, 194 + k * 14, 4, 0, 7); ctx.fill();
+    ctx.fillStyle = "#e6edf3"; ctx.font = "700 7px system-ui"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText((p.name || "???").slice(0, 10), 34, 194 + k * 14);
+  });
+  if (!studiers.length) { ctx.fillStyle = "rgba(255,255,255,.4)"; ctx.font = "700 8px system-ui"; ctx.textAlign = "center"; ctx.fillText("chưa ai học", 65, 215); }
 }
 
 // ---- 🌳 công viên trung tâm ----
@@ -2242,6 +2279,20 @@ function drawPark(t) {                              // 🌳 công viên NGANG 11
     const a = k / 14 * Math.PI * 2, ph = (t * 1.2 + k * .07) % 1, d = 4 + ph * 22;
     ctx.fillStyle = `rgba(220,240,255,${.9 - ph * .7})`; ctx.beginPath(); ctx.arc(F.x + Math.cos(a) * d, F.y + Math.sin(a) * d * .8 - Math.sin(ph * Math.PI) * 14, 1.8, 0, 7); ctx.fill();
   }
+  // ---- cột đèn lớn giữa công viên: 3 bóng, ban đêm sáng cả quảng trường ----
+  const BL = BIG_LAMP, top = BL.y - BL.h;
+  ctx.fillStyle = "#4a4a58"; rr(ctx, BL.x - 8, BL.y - 14, 16, 10, 3); ctx.fill();               // đế cột
+  ctx.fillStyle = "#3a3a46"; ctx.fillRect(BL.x - 3, top + 4, 6, BL.h - 16);                     // thân cột
+  ctx.fillStyle = "#4a4a58"; ctx.fillRect(BL.x - 5, BL.y - 50, 10, 4);                          // khoanh trang trí
+  ctx.strokeStyle = "#3a3a46"; ctx.lineWidth = 3; ctx.lineCap = "round";                        // 2 cánh tay cong ra hai bên
+  ctx.beginPath(); ctx.moveTo(BL.x, top + 14); ctx.quadraticCurveTo(BL.x - 22, top + 4, BL.x - 24, top + 14);
+  ctx.moveTo(BL.x, top + 14); ctx.quadraticCurveTo(BL.x + 22, top + 4, BL.x + 24, top + 14); ctx.stroke();
+  const glow = .22 + Math.sin(t * 2.3) * .03;
+  for (const [lx, ly, r] of [[BL.x - 24, top + 22, 7], [BL.x + 24, top + 22, 7], [BL.x, top - 4, 9]]) {
+    if (!day) { ctx.fillStyle = `rgba(255,224,138,${glow})`; ctx.beginPath(); ctx.arc(lx, ly, r * 3.2, 0, 7); ctx.fill(); }   // quầng sáng
+    ctx.fillStyle = day ? "#d8dde3" : "#ffe08a"; ctx.beginPath(); ctx.arc(lx, ly, r, 0, 7); ctx.fill();
+    ctx.fillStyle = "#3a3a46"; rr(ctx, lx - r * .7, ly - r - 3, r * 1.4, 4, 2); ctx.fill();    // nắp chụp đèn
+  }
   // ---- hồ sen + đàn vịt (góc dưới trái) ----
   const P = POND_P;
   ctx.fillStyle = "#8d8f80"; ctx.beginPath(); ctx.ellipse(P.x, P.y, P.rx + 5, P.ry + 5, 0, 0, 7); ctx.fill();
@@ -2315,6 +2366,35 @@ function drawPark(t) {                              // 🌳 công viên NGANG 11
     ctx.fillStyle = "#3a3a46"; ctx.fillRect(l.x - 1.5, l.y - 40, 3, 40); ctx.fillRect(l.x - 5, l.y - 2, 10, 3);
     ctx.fillStyle = day ? "#d8dde3" : "#ffe08a"; ctx.beginPath(); ctx.arc(l.x, l.y - 43, 5, 0, 7); ctx.fill();
   });
+  // ---- bụi hoa dọc lối đi (thêm bụi lớn nhiều màu) ----
+  const bushSpots = [[160, 350], [310, 350], [460, 350], [720, 350], [870, 350], [1020, 350],
+                     [160, 220], [310, 230], [870, 220], [1020, 230], [560, 180], [730, 190]];
+  bushSpots.forEach(([bx, by], ki) => {
+    const cols = ["#ff8fab", "#ffd166", "#a0c4ff", "#90be6d", "#f4a261", "#cdb4db"][ki % 6];
+    ctx.fillStyle = "#3f8f47"; ctx.beginPath(); ctx.arc(bx, by + 2, 10, 0, 7); ctx.arc(bx - 7, by + 4, 7, 0, 7); ctx.arc(bx + 7, by + 4, 7, 0, 7); ctx.fill();
+    for (let fk = 0; fk < 5; fk++) {
+      const fa = fk / 5 * 6.28, fr = 6 + (fk % 2) * 3;
+      ctx.fillStyle = cols; ctx.beginPath(); ctx.arc(bx + Math.cos(fa) * fr, by + Math.sin(fa) * fr * 0.6 + 2, 2.5, 0, 7); ctx.fill();
+    }
+  });
+  // ---- đèn lồng giấy dọc lối đi (ban đêm sáng lên) ----
+  const lanternPts = [[200, 180], [400, 180], [600, 180], [800, 180], [1000, 180],
+                      [200, 362], [400, 362], [600, 362], [800, 362], [1000, 362]];
+  lanternPts.forEach(([lnx, lny], ki) => {
+    // dây treo
+    ctx.strokeStyle = "rgba(80,60,40,.5)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(lnx, lny - 18); ctx.lineTo(lnx, lny); ctx.stroke();
+    // thân đèn lồng
+    const lc = day ? "#f1c27d" : `rgba(255,180,60,${.7 + Math.sin(t * 2 + ki) * .2})`;
+    ctx.fillStyle = lc; ctx.beginPath(); ctx.ellipse(lnx, lny + 7, 6, 9, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = "rgba(140,80,0,.4)"; ctx.lineWidth = .8;
+    for (let sr = 0; sr < 3; sr++) ctx.strokeRect(lnx - 4, lny + sr * 5, 8, 1);
+    if (!day) {
+      const lg = ctx.createRadialGradient(lnx, lny + 7, 0, lnx, lny + 7, 28);
+      lg.addColorStop(0, `rgba(255,200,80,${.3 + Math.sin(t * 2 + ki) * .1})`); lg.addColorStop(1, "rgba(255,200,80,0)");
+      ctx.fillStyle = lg; ctx.fillRect(lnx - 28, lny - 21, 56, 56);
+    }
+  });
 }
 function drawFireflies(t) {
   for (const f of PARK.flies) {
@@ -2380,8 +2460,32 @@ function drawCinema(t) {                             // 🎬 rạp NGANG 1000x60
   // sảnh: sàn gạch bóng
   ctx.fillStyle = "#2e2a33"; ctx.fillRect(L, 384, wv, B - 384);
   ctx.fillStyle = "rgba(255,255,255,.05)"; for (let y = 384, r = 0; y < B; y += 20, r++) for (let x = Math.floor(L / 40) * 40 + (r % 2 ? 20 : 0); x < R; x += 40) ctx.fillRect(x, y, 20, 20);   // gạch caro
-  // poster phim + bảng giờ chiếu điện tử
-  [30, 74, 300, 660, 850, 920].forEach((px, k) => {
+  // thảm đỏ trung tâm chạy từ cửa vào giữa sảnh
+  const carpW = 80;
+  ctx.fillStyle = "#8b0000"; ctx.fillRect(W / 2 - carpW / 2, 384, carpW, B - 384);
+  ctx.fillStyle = "#a00000"; for (let ky = 390; ky < B; ky += 18) ctx.fillRect(W / 2 - carpW / 2 + 4, ky, carpW - 8, 2);
+  ctx.strokeStyle = "#ffd27a"; ctx.lineWidth = 2; ctx.strokeRect(W / 2 - carpW / 2, 384, carpW, B - 384);
+  // cột đèn vàng + dây nhung 2 bên thảm đỏ (hàng xếp)
+  for (const [px, side] of [[W / 2 - carpW / 2 - 14, -1], [W / 2 + carpW / 2 + 14, 1]]) {
+    for (let ky = 400; ky < B - 20; ky += 60) {
+      ctx.fillStyle = "#c9a227"; ctx.fillRect(px - 2, ky, 4, 46);
+      ctx.fillStyle = "#ffd166"; ctx.beginPath(); ctx.arc(px, ky - 1, 5, 0, 7); ctx.fill();
+      ctx.fillStyle = `rgba(255,210,80,${.6 + Math.sin(t * 2 + ky) * .2})`; ctx.beginPath(); ctx.arc(px, ky - 1, 8, 0, 7); ctx.fill();
+    }
+    if (side === 1) {
+      ctx.strokeStyle = "#7b1d1d"; ctx.lineWidth = 3;
+      ctx.beginPath();
+      for (let ky = 400; ky < B - 20; ky += 60) { const ny = Math.min(ky + 60, B - 20); ctx.moveTo(px, ky - 1); ctx.quadraticCurveTo(px + side * 6, (ky + ny) / 2, px, ny - 1); }
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = "#7b1d1d"; ctx.lineWidth = 3;
+      ctx.beginPath();
+      for (let ky = 400; ky < B - 20; ky += 60) { const ny = Math.min(ky + 60, B - 20); ctx.moveTo(px, ky - 1); ctx.quadraticCurveTo(px + side * 6, (ky + ny) / 2, px, ny - 1); }
+      ctx.stroke();
+    }
+  }
+  // poster phim + bảng giờ chiếu điện tử (dời các biển bên phải tránh bị nút HUD che)
+  [30, 74, 250, 670, 730, 790].forEach((px, k) => {
     const f = FILMS[k % FILMS.length], py = 390;
     ctx.fillStyle = "#e9e3d6"; rr(ctx, px, py, 40, 34, 2); ctx.fill();
     const pg = ctx.createLinearGradient(0, py, 0, py + 30); pg.addColorStop(0, f.c1); pg.addColorStop(1, f.c2);
@@ -2863,6 +2967,7 @@ function drawDarkness(t) {
   if (room.tv.on && TVR) hole(tc.x, tc.y, Math.max(260, TVR.w * .75),.85 + Math.sin(t * 7) * .05 + Math.sin(t * 13) * .04);
   if (room.music.on) hole(rc.x, rc.y, 55, .45);
   if (park()) LAMPS.forEach(l => hole(l.x, l.y - 30, 95, .75));    // đèn đường
+  if (park()) hole(BIG_LAMP.x, BIG_LAMP.y - 40, 250, .9);          // cột đèn lớn giữa công viên: sáng cả quảng trường
   Areas.holes(hole, t); Zones.holes(hole, t);
   if (myArea === "sleep") {                                         // lò sưởi + đèn ngủ từng giường
     hole(500, 140, 170, .9 + Math.sin(t * 8) * .04);
@@ -3083,11 +3188,18 @@ function frame() {
   };
   $("#newBtn").onclick = () => { const s = randomCode(); $("#roomInput").value = s; go("sleep", s); };
   $("#roomInput").addEventListener("keydown", e => { if (e.key === "Enter") $("#joinBtn").click(); });
+  // Vừa tự tải lại (chế độ phát triển): vào thẳng lại khu/kênh cũ, không cần bấm
+  let back = null;
+  try { back = JSON.parse(sessionStorage.getItem("nc_dev_back") || "null"); sessionStorage.removeItem("nc_dev_back"); } catch (e) {}
+  if (back && back.area && $("#nameInput").value.trim())          // đợi areas.js/zones.js nạp xong rồi mới vào
+    addEventListener("load", () => { wantCh = back.ch || undefined; go(back.area, back.room); });
 })();
 
 </script>
+<script src="/static/hair.js"></script>
 <script src="/static/areas.js"></script>
 <script src="/static/zones.js"></script>
+<script src="/static/salon.js"></script>
 <script>
 // Chạy vòng vẽ sau khi mọi file (kể cả areas.js) đã nạp xong
 resize();

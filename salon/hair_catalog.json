@@ -1,0 +1,290 @@
+{
+ "hairstyles": [
+  {
+   "id": "bob",
+   "name": "Bob",
+   "tier": "C",
+   "price": 5,
+   "free_try": true,
+   "tradable": false
+  },
+  {
+   "id": "short",
+   "name": "Ngắn gọn",
+   "tier": "C",
+   "price": 5,
+   "free_try": true,
+   "tradable": false
+  },
+  {
+   "id": "side",
+   "name": "Rẽ ngôi",
+   "tier": "C",
+   "price": 8,
+   "free_try": true,
+   "tradable": false
+  },
+  {
+   "id": "pony",
+   "name": "Đuôi ngựa",
+   "tier": "C",
+   "price": 10,
+   "free_try": true,
+   "tradable": false
+  },
+  {
+   "id": "twin",
+   "name": "Hai bím",
+   "tier": "C",
+   "price": 12,
+   "free_try": true,
+   "tradable": false
+  },
+  {
+   "id": "long",
+   "name": "Dài thẳng",
+   "tier": "B",
+   "price": 30,
+   "free_try": true,
+   "tradable": false
+  },
+  {
+   "id": "wavy",
+   "name": "Dài gợn sóng",
+   "tier": "B",
+   "price": 40,
+   "free_try": true,
+   "tradable": false
+  },
+  {
+   "id": "bun",
+   "name": "Búi cao",
+   "tier": "B",
+   "price": 35,
+   "free_try": true,
+   "tradable": false
+  },
+  {
+   "id": "mushroom",
+   "name": "Tóc nấm",
+   "tier": "B",
+   "price": 30,
+   "free_try": true,
+   "tradable": false
+  },
+  {
+   "id": "curlyb",
+   "name": "Xoăn ngắn",
+   "tier": "B",
+   "price": 50,
+   "free_try": true,
+   "tradable": false
+  },
+  {
+   "id": "twinbun",
+   "name": "Hai búi",
+   "tier": "A",
+   "price": 120,
+   "free_try": true,
+   "tradable": false
+  },
+  {
+   "id": "braid",
+   "name": "Tóc tết",
+   "tier": "A",
+   "price": 150,
+   "free_try": true,
+   "tradable": false
+  },
+  {
+   "id": "spiky",
+   "name": "Tóc nhọn",
+   "tier": "A",
+   "price": 180,
+   "free_try": true,
+   "tradable": false
+  },
+  {
+   "id": "slick",
+   "name": "Vuốt ngược",
+   "tier": "A",
+   "price": 220,
+   "free_try": true,
+   "tradable": false
+  },
+  {
+   "id": "curly",
+   "name": "Xoăn bồng",
+   "tier": "S",
+   "price": 500,
+   "free_try": true,
+   "tradable": false
+  },
+  {
+   "id": "mohawk",
+   "name": "Mohican",
+   "tier": "S",
+   "price": 600,
+   "free_try": true,
+   "tradable": false
+  }
+ ],
+ "dyes": [
+  {
+   "id": "den",
+   "name": "Đen",
+   "hair": "#26263a",
+   "hl": "#5a5a78",
+   "group": "co_ban",
+   "price": 3
+  },
+  {
+   "id": "naudam",
+   "name": "Nâu đậm",
+   "hair": "#5a3a2a",
+   "hl": "#8a6a4a",
+   "group": "co_ban",
+   "price": 3
+  },
+  {
+   "id": "nau",
+   "name": "Nâu",
+   "hair": "#7a4a30",
+   "hl": "#a8704c",
+   "group": "co_ban",
+   "price": 3
+  },
+  {
+   "id": "vang",
+   "name": "Vàng",
+   "hair": "#e8b04a",
+   "hl": "#f6d58a",
+   "group": "co_ban",
+   "price": 3
+  },
+  {
+   "id": "doruou",
+   "name": "Đỏ rượu",
+   "hair": "#b04a4a",
+   "hl": "#d98a8a",
+   "group": "co_ban",
+   "price": 3
+  },
+  {
+   "id": "xamkhoi",
+   "name": "Xám khói",
+   "hair": "#8a8a98",
+   "hl": "#c8c8d4",
+   "group": "co_ban",
+   "price": 3
+  },
+  {
+   "id": "hong",
+   "name": "Hồng pastel",
+   "hair": "#ffb3c6",
+   "hl": "#ffe0ea",
+   "group": "pastel",
+   "price": 15
+  },
+  {
+   "id": "xanh",
+   "name": "Xanh pastel",
+   "hair": "#9fd8ff",
+   "hl": "#d6f1ff",
+   "group": "pastel",
+   "price": 15
+  },
+  {
+   "id": "tim",
+   "name": "Tím pastel",
+   "hair": "#c7b8ff",
+   "hl": "#e8e0ff",
+   "group": "pastel",
+   "price": 15
+  },
+  {
+   "id": "mint",
+   "name": "Xanh mint",
+   "hair": "#9fe8c8",
+   "hl": "#d8f7e4",
+   "group": "pastel",
+   "price": 15
+  },
+  {
+   "id": "camdao",
+   "name": "Cam đào",
+   "hair": "#ffb08a",
+   "hl": "#ffd9bd",
+   "group": "pastel",
+   "price": 15
+  },
+  {
+   "id": "hongneon",
+   "name": "Hồng neon",
+   "hair": "#ff4fa3",
+   "hl": "#ff9ad0",
+   "group": "doc",
+   "price": 80
+  },
+  {
+   "id": "xanhneon",
+   "name": "Xanh neon",
+   "hair": "#2ad4ff",
+   "hl": "#9aeaff",
+   "group": "doc",
+   "price": 80
+  },
+  {
+   "id": "bac",
+   "name": "Bạc ánh kim",
+   "hair": "#d8dce8",
+   "hl": "#ffffff",
+   "group": "doc",
+   "price": 80
+  },
+  {
+   "id": "trang",
+   "name": "Trắng tuyết",
+   "hair": "#f4f4fa",
+   "hl": "#ffffff",
+   "group": "doc",
+   "price": 80
+  }
+ ],
+ "rules": {
+  "first_style_free_at_creation": true,
+  "preview_unlimited_free": true,
+  "dye_price_per_use": true,
+  "hairstyle_unlocked_forever": true
+ },
+ "_note": "Gia da chia 100 so voi spec V6 de khop kinh te game (thuong ngay 50 xu). Sua gia o day roi khoi dong lai server.",
+ "default": {
+  "hair": "short",
+  "hairColor": "nau"
+ },
+ "groups": {
+  "co_ban": "Cơ bản",
+  "pastel": "Pastel",
+  "doc": "Độc"
+ },
+ "tiers": {
+  "C": "#9aa5b1",
+  "B": "#52b788",
+  "A": "#4a90e2",
+  "S": "#9b5de5"
+ },
+ "npc_lines": {
+  "toc": [
+   "Đổi tóc là đổi vận, thử một kiểu mới đi!",
+   "Mái này mà nhuộm hồng thì hết sảy luôn.",
+   "Tóc xoăn bồng đang hot lắm nha.",
+   "Đừng lo, tóc hỏng mình cắt lại được."
+  ],
+  "guong": [
+   "Lần đầu tới? Thử tóc miễn phí, thoải mái chọn nhé!",
+   "Hôm nay màu pastel đang được ưa chuộng đó.",
+   "Ghế trống rồi, mời bạn ngồi!",
+   "Nhớ lưu kiểu tóc ưng ý lại nha."
+  ]
+ }
+}

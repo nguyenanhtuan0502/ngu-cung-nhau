@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(agy *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "PowerShell(agy *)",
+      "PowerShell(& \"$env:LOCALAPPDATA\\agy\\bin\\agy.exe\" *)",
+      "PowerShell(git add *)",
+      "PowerShell(git commit *)"
+    ]
+  }
+}

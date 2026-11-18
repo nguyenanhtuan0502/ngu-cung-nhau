@@ -8,3 +8,4 @@ game.db-journal
 game.db-wal
 game.db-shm
 *.db
+godot/.godot/
