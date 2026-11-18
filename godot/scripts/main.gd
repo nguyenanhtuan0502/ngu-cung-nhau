@@ -169,7 +169,7 @@ func _build_lobby() -> void:
 	margin.add_child(box)
 
 	var title := Label.new()
-	title.text = "🌙 Ngủ Cùng Nhau"
+	title.text = "🌙 Thành Phố Mộng Mơ"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 34)
 	box.add_child(title)

@@ -1,4 +1,4 @@
-"""Ngủ Cùng Nhau - server multiplayer (aiohttp + WebSocket).
+"""Thành Phố Mộng Mơ - server multiplayer (aiohttp + WebSocket).
 
 Bản 2 (giai đoạn 2): tài khoản + khu chia loại.
 - Mỗi người chơi có playerId (uid) cố định, đăng nhập bằng token lưu ở trình duyệt (xem store.py).
@@ -1053,5 +1053,5 @@ def make_app():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    print(f"Ngủ Cùng Nhau đang chạy: http://localhost:{port}" + ("  (chế độ phát triển: tự tải lại)" if DEV else ""))
+    print(f"Thành Phố Mộng Mơ đang chạy: http://localhost:{port}" + ("  (chế độ phát triển: tự tải lại)" if DEV else ""))
     web.run_app(make_app(), host="0.0.0.0", port=port, print=None)

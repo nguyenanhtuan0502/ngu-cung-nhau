@@ -37,7 +37,7 @@ Làm backend xong trước, rồi mới giao frontend để nó dùng đúng API
 5. Báo cho tôi biết việc nào đã giao, việc nào tự làm
 ## Project
 
-"Ngủ Cùng Nhau" is a browser-based 2D multiplayer "virtual life" game (Vietnamese UI). The player is a beginner and talks in Vietnamese. Reply in Vietnamese, explain things briefly, and write code comments in Vietnamese to match the existing code. The README is in Vietnamese and is the source of truth for gameplay features.
+"Thành Phố Mộng Mơ" (renamed from "Ngủ Cùng Nhau" on 2026-11-18; repo folder and localStorage keys keep the old name) is a browser-based 2D multiplayer "virtual life" game (Vietnamese UI). The player is a beginner and talks in Vietnamese. Reply in Vietnamese, explain things briefly, and write code comments in Vietnamese to match the existing code. The README is in Vietnamese and is the source of truth for gameplay features.
 
 ## Commands
 

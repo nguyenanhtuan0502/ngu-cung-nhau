@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#151229">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Ngủ Cùng Nhau</title>
+<title>Thành Phố Mộng Mơ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&display=swap&subset=vietnamese" rel="stylesheet">
 <style>
@@ -1101,7 +1101,7 @@
   <div class="lobby-content">
     <header class="lobby-header">
       <div class="lobby-emblem-wrap">
-        <svg class="lobby-emblem" viewBox="0 0 100 100" width="80" height="80" aria-label="Logo Ngủ Cùng Nhau">
+        <svg class="lobby-emblem" viewBox="0 0 100 100" width="80" height="80" aria-label="Logo Thành Phố Mộng Mơ">
           <defs>
             <radialGradient id="lbyHalo" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stop-color="#ffd56b" stop-opacity="0.85"/>
@@ -1142,8 +1142,8 @@
           <text x="76" y="28" font-family="system-ui, sans-serif" font-weight="900" font-size="13" fill="#ffd32a">Z</text>
         </svg>
       </div>
-      <h1 class="lobby-title">Ngủ Cùng Nhau</h1>
-      <p class="lobby-sub">Vào phòng, bật TV, mở nhạc rồi cùng nhau ngủ ngon</p>
+      <h1 class="lobby-title">Thành Phố Mộng Mơ</h1>
+      <p class="lobby-sub">Thành phố nhỏ để cùng nhau trồng rau, xem phim và ngủ ngon</p>
     </header>
 
     <div class="card lobby-card">
@@ -2798,7 +2798,7 @@ $("#shareBtn").onclick = async () => {
   const text = {study: `Vào phòng học cùng mình nè 📚${ch}`, park: `Ra công viên chơi với mình nè 🌳${ch}`,
     cinema: `Vào rạp xem phim cùng mình nè 🍿${ch}`, sleep: `Vào phòng ${inst && inst.code} ngủ cùng mình nè 🌙`}[myArea] || `${Areas.TXT[myArea].share}${ch}`;
   try {
-    if (navigator.share) { await navigator.share({title: "Ngủ Cùng Nhau", text, url}); return; }
+    if (navigator.share) { await navigator.share({title: "Thành Phố Mộng Mơ", text, url}); return; }
     await navigator.clipboard.writeText(url); toast("Đã copy link mời! 📋");
   } catch (e) { if (e && e.name !== "AbortError") prompt("Gửi link này cho bạn bè:", url); }
 };
