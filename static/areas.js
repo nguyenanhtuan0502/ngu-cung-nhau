@@ -341,8 +341,47 @@ const Areas = (() => {
   }
 
   // ---------- 5. Nông trại (NGANG 1120x600: ruộng giữa màn hình, cảnh vật nền sau) ----------
-  const PLOTS = Array.from({length: FARM_PLOTS}, (_, i) => ({x: 320 + (i % 4) * 94, y: 260 + (i / 4 | 0) * 88, w: 76, h: 72}));
+  // Bố cục 16 ô đất nông trại (8 cột x 2 hàng), kích thước 58x70, căn giữa khu đất y: 250..432
+  const PLOTS = Array.from({length: 16}, (_, i) => ({
+    x: 191 + (i % 8) * 64,
+    y: 260 + (i / 8 | 0) * 82,
+    w: 58,
+    h: 70
+  }));
   const S = () => Life.S();
+  function farmLandCfg() {
+    return (typeof CATALOG !== "undefined" && CATALOG.FARM_LAND)
+      ? CATALOG.FARM_LAND
+      : {start: 8, prices: [150, 250, 400, 600, 850, 1150, 1500, 2000]};
+  }
+  function nextLandPrice(land) {
+    const cfg = farmLandCfg();
+    const idx = land - cfg.start;
+    if (idx < 0 || idx >= cfg.prices.length) return null;
+    return cfg.prices[idx];
+  }
+  // Hiệu ứng lấp lánh (sparkle) khi mở thêm ô đất mới
+  let plotSparkles = [];
+  function addPlotSparkle(i) {
+    const r = PLOTS[i];
+    if (!r) return;
+    const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+    const now = performance.now() / 1000;
+    const colors = ["#ffd166", "#80ed99", "#ff9ebb", "#70d6ff", "#ffffff", "#f4a261"];
+    for (let k = 0; k < 28; k++) {
+      const angle = Math.random() * Math.PI * 2;
+      const spd = 20 + Math.random() * 50;
+      plotSparkles.push({
+        x: cx, y: cy,
+        vx: Math.cos(angle) * spd,
+        vy: Math.sin(angle) * spd - 16,
+        t0: now,
+        dur: 0.9 + Math.random() * 0.6,
+        size: 2 + Math.random() * 2.5,
+        color: colors[k % colors.length]
+      });
+    }
+  }
   function plotInfo(pl) {
     if (!pl) return {st: "empty"};
     const c = CR[pl.c]; if (!c) return {st: "empty"};
@@ -791,7 +830,7 @@ const Areas = (() => {
   const FARM_LAMPS = [
     {x: 40, y: 435},   // Bên trái chuồng gà, sát hàng rào trước
     {x: 170, y: 435},  // Bên phải chuồng gà, dọc hàng rào trước
-    {x: 290, y: 235},  // Góc trên bên trái ruộng rau, cạnh hàng rào sau
+    {x: 168, y: 235},  // Góc trên bên trái ruộng rau, cạnh hàng rào sau
     {x: 725, y: 235},  // Góc trên bên phải ruộng rau, cạnh hàng rào sau & bù nhìn
     {x: 735, y: 440},  // Góc dưới bên phải ruộng rau, cạnh lối đi & máy radio
     {x: 940, y: 465},  // Bên cạnh chuồng bò, gần giếng nước
@@ -1006,6 +1045,173 @@ const Areas = (() => {
     });
   }
 
+  // ---------- Dây đèn trang trí & đèn lồng quanh ruộng rau (fairy lights & lamp posts) ----------
+  // Bố trí quanh viền ruộng (180..708, 250..432) không che lấp ô đất
+  const FIELD_POSTS = [
+    {x: 180, y: 245, corner: true},
+    {x: 312, y: 245},
+    {x: 444, y: 245},
+    {x: 576, y: 245},
+    {x: 708, y: 245, corner: true},
+    {x: 180, y: 430, corner: true},
+    {x: 708, y: 430, corner: true},
+  ];
+
+  const FIELD_BULBS = (() => {
+    const bulbs = [];
+    let idx = 0;
+    // Dây đèn dọc mép trên ruộng (4 nhịp uốn cong nhẹ)
+    const topXs = [180, 312, 444, 576, 708];
+    for (let s = 0; s < topXs.length - 1; s++) {
+      const x1 = topXs[s], x2 = topXs[s + 1], y0 = 244;
+      const count = 4;
+      for (let k = 1; k <= count; k++) {
+        const u = k / (count + 1);
+        const bx = x1 + (x2 - x1) * u;
+        const by = y0 + Math.sin(u * Math.PI) * 4.5;
+        bulbs.push({x: Math.round(bx * 10) / 10, y: Math.round(by * 10) / 10, k: idx++});
+      }
+    }
+    // Dây đèn 2 bên mép ruộng (trái & phải)
+    for (const sx of [180, 708]) {
+      const y1 = 246, y2 = 428, count = 3;
+      for (let k = 1; k <= count; k++) {
+        const u = k / (count + 1);
+        const by = y1 + (y2 - y1) * u;
+        const bx = sx + (sx === 180 ? -2 : 2) * Math.sin(u * Math.PI);
+        bulbs.push({x: Math.round(bx * 10) / 10, y: Math.round(by * 10) / 10, k: idx++});
+      }
+    }
+    return bulbs;
+  })();
+
+  function drawFieldLights(t, night) {
+    // 1. Dây điện treo đèn ở mép ruộng
+    const topXs = [180, 312, 444, 576, 708];
+    ctx.strokeStyle = night ? "rgba(45, 35, 25, 0.7)" : "rgba(70, 50, 30, 0.8)";
+    ctx.lineWidth = 1.1;
+    for (let s = 0; s < topXs.length - 1; s++) {
+      const x1 = topXs[s], x2 = topXs[s + 1];
+      ctx.beginPath();
+      ctx.moveTo(x1, 244);
+      ctx.quadraticCurveTo((x1 + x2) / 2, 248.5, x2, 244);
+      ctx.stroke();
+    }
+    for (const sx of [180, 708]) {
+      ctx.beginPath();
+      ctx.moveTo(sx, 246);
+      ctx.quadraticCurveTo(sx + (sx === 180 ? -2 : 2), 337, sx, 428);
+      ctx.stroke();
+    }
+
+    // 2. Các bóng đèn tròn nhỏ (fairy lights)
+    FIELD_BULBS.forEach(b => {
+      ctx.fillStyle = "#2d3142";
+      ctx.fillRect(b.x - 1, b.y - 2, 2, 2);
+
+      if (night) {
+        const tw = Math.sin(t * 4.2 + b.k * 1.4) * 0.08;
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        const fg = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, 16);
+        fg.addColorStop(0, `rgba(255, 225, 145, ${0.45 + tw})`);
+        fg.addColorStop(0.5, `rgba(255, 175, 75, ${(0.25 + tw) * 0.6})`);
+        fg.addColorStop(1, "rgba(255, 150, 50, 0)");
+        ctx.fillStyle = fg;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        ctx.fillStyle = FAIRY_WARM_COLORS[b.k % FAIRY_WARM_COLORS.length];
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 2.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+        ctx.beginPath();
+        ctx.arc(b.x - 0.5, b.y - 0.6, 0.8, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = FAIRY_DAY_COLORS[b.k % FAIRY_DAY_COLORS.length];
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(0,0,0,0.15)";
+        ctx.lineWidth = 0.6;
+        ctx.stroke();
+      }
+    });
+
+    // 3. Cọc gỗ và đèn lồng ở 4 góc ruộng
+    FIELD_POSTS.forEach(p => {
+      ctx.fillStyle = "rgba(0,0,0,0.15)";
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y + 6, 3.5, 1.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#6d4a2d";
+      ctx.fillRect(p.x - 2, p.y - 8, 4, 14);
+      ctx.fillStyle = "#8d6346";
+      ctx.fillRect(p.x - 2, p.y - 8, 1, 14);
+      ctx.fillStyle = "#523720";
+      ctx.fillRect(p.x - 3, p.y - 10, 6, 2);
+
+      if (p.corner) {
+        const lx = p.x + (p.x < 300 ? -4 : 4), ly = p.y - 7;
+        ctx.strokeStyle = "#374151";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y - 6);
+        ctx.lineTo(lx, ly - 4);
+        ctx.lineTo(lx, ly);
+        ctx.stroke();
+
+        ctx.fillStyle = "#374151";
+        ctx.beginPath();
+        ctx.moveTo(lx - 4, ly);
+        ctx.lineTo(lx, ly - 3);
+        ctx.lineTo(lx + 4, ly);
+        ctx.closePath();
+        ctx.fill();
+
+        if (night) {
+          const flicker = Math.sin(t * 6 + p.x * 0.1) * 0.05;
+          ctx.save();
+          ctx.globalCompositeOperation = "lighter";
+          const glowR = 40;
+          const gGlow = ctx.createRadialGradient(lx, ly + 4, 0, lx, ly + 4, glowR);
+          const a = Math.max(0.1, 0.45 + flicker);
+          gGlow.addColorStop(0, `rgba(255, 230, 130, ${a})`);
+          gGlow.addColorStop(0.35, `rgba(255, 185, 60, ${a * 0.6})`);
+          gGlow.addColorStop(0.7, `rgba(255, 130, 25, ${a * 0.2})`);
+          gGlow.addColorStop(1, "rgba(255, 100, 0, 0)");
+          ctx.fillStyle = gGlow;
+          ctx.beginPath();
+          ctx.arc(lx, ly + 4, glowR, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+
+          ctx.fillStyle = "#ffe066";
+          ctx.beginPath();
+          ctx.arc(lx, ly + 3.5, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#fffbeb";
+          ctx.beginPath();
+          ctx.arc(lx, ly + 3, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillStyle = "#e9ecef";
+          ctx.beginPath();
+          ctx.arc(lx, ly + 3.5, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "rgba(0,0,0,0.18)";
+          ctx.lineWidth = 0.6;
+          ctx.stroke();
+        }
+      }
+    });
+  }
+
   function drawFarm(t) {
     const {L, R, T, B} = bleed(), wv = R - L;
     const night = Life.darkness() > .5, [s0, s1] = night ? ["#060a22", "#27316b"] : Life.skyColors();
@@ -1059,31 +1265,118 @@ const Areas = (() => {
     ctx.fillStyle = "#f8f9fa"; ctx.fillRect(L, 215, 460 - L, 3); ctx.fillRect(L, 225, 460 - L, 3); ctx.fillRect(660, 215, R - 660, 3); ctx.fillRect(660, 225, R - 660, 3);
     for (let x = Math.floor(L / 18) * 18 + 4; x < R; x += 18) { if (x > 454 && x < 660) continue; rr(ctx, x, 210, 5, 22, 2); ctx.fill(); }
 
-    // ruộng 8 ô Ở CHÍNH GIỮA MÀN HÌNH (y: 250..430)
-    ctx.fillStyle = "#8d6346"; rr(ctx, 308, 250, 394, 182, 8); ctx.fill();
+    // Ruộng 16 ô đất ở giữa màn hình (8 cột x 2 hàng, y: 250..432)
+    ctx.fillStyle = "#8d6346"; rr(ctx, 180, 250, 528, 182, 8); ctx.fill();
+    const farm = (S() && Array.isArray(S().farm)) ? S().farm : [];
+    const land = farm.length;
     PLOTS.forEach((r, i) => {
-      const inf = plotInfo(S().farm[i]);
+      const owned = i < land;
+      const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+
+      // 1. Ô đất chưa mở khóa: vẽ đất cỏ có hàng rào bao quanh
+      if (!owned) {
+        const isNext = (i === land);
+        // Nền cỏ ô đất chưa mở
+        ctx.fillStyle = isNext ? "#689f53" : "#547f43";
+        rr(ctx, r.x, r.y, r.w, r.h, 6);
+        ctx.fill();
+
+        // Khóm cỏ dại mọc tự nhiên
+        ctx.fillStyle = isNext ? "#7dbb65" : "#497138";
+        ctx.fillRect(r.x + 8, r.y + 12, 2, 5);
+        ctx.fillRect(r.x + 11, r.y + 10, 2, 7);
+        ctx.fillRect(r.x + r.w - 12, r.y + r.h - 16, 2, 6);
+        ctx.fillRect(r.x + r.w - 9, r.y + r.h - 18, 2, 8);
+
+        // Hàng rào gỗ bao quanh ô đất
+        ctx.strokeStyle = isNext ? "rgba(90, 55, 30, 0.75)" : "rgba(60, 40, 25, 0.55)";
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(r.x + 3.5, r.y + 3.5, r.w - 7, r.h - 7);
+
+        // Cọc gỗ nhỏ ở 4 góc ô đất
+        ctx.fillStyle = isNext ? "#7a4e2b" : "#5a3a20";
+        ctx.fillRect(r.x + 2, r.y + 2, 4, 5);
+        ctx.fillRect(r.x + r.w - 6, r.y + 2, 4, 5);
+        ctx.fillRect(r.x + 2, r.y + r.h - 7, 4, 5);
+        ctx.fillRect(r.x + r.w - 6, r.y + r.h - 7, 4, 5);
+
+        if (isNext) {
+          // Ô tiếp theo có thể mua: Biển gỗ cắm đất ghi 🔒 và giá xu
+          const price = nextLandPrice(land) || 150;
+          // Cọc gỗ cắm biển
+          ctx.fillStyle = "#5c3d2a";
+          ctx.fillRect(cx - 2, cy - 2, 4, 18);
+
+          // Tấm biển gỗ
+          const sw = 48, sh = 28, sx = cx - sw / 2, sy = cy - 14;
+          // Bóng đổ biển gỗ
+          ctx.fillStyle = "rgba(0,0,0,0.22)";
+          rr(ctx, sx + 1, sy + 2, sw, sh, 4);
+          ctx.fill();
+          // Mặt gỗ
+          ctx.fillStyle = "#8d5b34";
+          rr(ctx, sx, sy, sw, sh, 4);
+          ctx.fill();
+          // Viền gỗ
+          ctx.strokeStyle = "#5a381e";
+          ctx.lineWidth = 1.2;
+          ctx.strokeRect(sx, sy, sw, sh);
+          // Vân sáng mép trên biển
+          ctx.fillStyle = "rgba(255,255,255,0.18)";
+          ctx.fillRect(sx + 2, sy + 2, sw - 4, 2);
+
+          // Chữ trên biển gỗ: 🔒 và giá xu
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.font = "11px system-ui";
+          ctx.fillText("🔒", cx, sy + 8);
+          ctx.font = "bold 9.5px system-ui";
+          ctx.fillStyle = "#ffe066";
+          ctx.fillText(`${price} xu`, cx, sy + 20);
+        } else {
+          // Các ô bị khóa khác: mờ đi (dim) và có biểu tượng khóa mờ
+          ctx.fillStyle = "rgba(20, 30, 20, 0.42)";
+          rr(ctx, r.x, r.y, r.w, r.h, 6);
+          ctx.fill();
+
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.font = "14px system-ui";
+          ctx.fillStyle = "rgba(255, 255, 255, 0.28)";
+          ctx.fillText("🔒", cx, cy);
+        }
+        return;
+      }
+
+      // 2. Ô đất đã sở hữu: vẽ đất trồng cây
+      const inf = plotInfo(farm[i]);
       ctx.fillStyle = inf.st === "grow" || inf.st === "ripe" ? "#5c3d2a" : "#7a5236"; rr(ctx, r.x, r.y, r.w, r.h, 6); ctx.fill();   // đất ướt sẫm màu
       ctx.strokeStyle = "rgba(0,0,0,.18)"; ctx.lineWidth = 1.5;
       for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(r.x + 6, r.y + k * r.h / 4); ctx.lineTo(r.x + r.w - 6, r.y + k * r.h / 4); ctx.stroke(); }
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
       if (inf.st === "empty") { ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.font = "700 18px system-ui"; ctx.fillText("+", cx, cy); }
       else if (inf.st === "dry") {
-        ctx.fillStyle = "#e9c46a"; for (let k = 0; k < 6; k++) { ctx.beginPath(); ctx.arc(r.x + 14 + (k % 3) * 22, r.y + 22 + (k / 3 | 0) * 24, 2, 0, 7); ctx.fill(); }
+        ctx.fillStyle = "#e9c46a";
+        const stepX = (r.w - 24) / 2;
+        for (let k = 0; k < 6; k++) {
+          ctx.beginPath();
+          ctx.arc(r.x + 12 + (k % 3) * stepX, r.y + 20 + (k / 3 | 0) * 20, 2, 0, 7);
+          ctx.fill();
+        }
         ctx.font = "14px system-ui"; ctx.fillText("💧", cx, r.y + 10 + Math.sin(t * 4) * 2);
       } else {
         const k = inf.k, sway = Math.sin(t * 2 + i) * 1.5;
+        const stepX = (r.w - 24) / 2;
         for (let j = 0; j < 3; j++) {
-          const px = r.x + 16 + j * 21, py = r.y + r.h - 12;
+          const px = r.x + 12 + j * stepX, py = r.y + r.h - 12;
           if (k < .25) { ctx.font = "13px system-ui"; ctx.fillText("🌱", px, py - 4); continue; }
-          const hgt = 10 + Math.min(1, k) * 26;
+          const hgt = 10 + Math.min(1, k) * 24;
           ctx.strokeStyle = inf.c.leaf; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + sway, py - hgt); ctx.stroke();
-          ctx.fillStyle = inf.c.leaf; ctx.beginPath(); ctx.ellipse(px - 4 + sway, py - hgt * .55, 5, 2.5, -.6, 0, 7); ctx.ellipse(px + 4 + sway, py - hgt * .75, 5, 2.5, .6, 0, 7); ctx.fill();
-          if (k >= .6) { ctx.font = `${inf.st === "ripe" ? 18 : 10}px system-ui`; ctx.fillText(inf.c.e, px + sway, py - hgt - 4); }
+          ctx.fillStyle = inf.c.leaf; ctx.beginPath(); ctx.ellipse(px - 4 + sway, py - hgt * .55, 4.5, 2.3, -.6, 0, 7); ctx.ellipse(px + 4 + sway, py - hgt * .75, 4.5, 2.3, .6, 0, 7); ctx.fill();
+          if (k >= .6) { ctx.font = `${inf.st === "ripe" ? 17 : 10}px system-ui`; ctx.fillText(inf.c.e, px + sway, py - hgt - 4); }
         }
         if (inf.st === "ripe") { ctx.font = "10px system-ui"; ctx.fillStyle = `rgba(255,255,200,${.5 + Math.sin(t * 5 + i) * .5})`; ctx.fillText("✨", r.x + r.w - 8, r.y + 8); }
-        else { ctx.fillStyle = "rgba(0,0,0,.35)"; rr(ctx, r.x + 8, r.y + r.h - 6, r.w - 16, 4, 2); ctx.fill(); ctx.fillStyle = "#80ed99"; rr(ctx, r.x + 8, r.y + r.h - 6, (r.w - 16) * k, 4, 2); ctx.fill(); }
+        else { ctx.fillStyle = "rgba(0,0,0,.35)"; rr(ctx, r.x + 6, r.y + r.h - 6, r.w - 12, 4, 2); ctx.fill(); ctx.fillStyle = "#80ed99"; rr(ctx, r.x + 6, r.y + r.h - 6, (r.w - 12) * k, 4, 2); ctx.fill(); }
       }
     });
     // ruộng hướng dương trang trí bên phải (rạp theo gió)
@@ -1161,6 +1454,33 @@ const Areas = (() => {
     ctx.restore();
     // Đèn nông trại mộc mạc (cột gỗ, bóng vàng ấm, bướm đêm/đom đóm) & dây đèn fairy lights
     drawFarmLamps(t, night);
+    // Dây đèn và đèn lồng chiếu sáng cánh đồng rau ban đêm
+    drawFieldLights(t, night);
+    // Hiệu ứng lấp lánh (sparkles) khi mua ô đất mới
+    if (plotSparkles.length) {
+      const curT = performance.now() / 1000;
+      plotSparkles = plotSparkles.filter(s => curT - s.t0 < s.dur);
+      ctx.save();
+      for (const s of plotSparkles) {
+        const p = (curT - s.t0) / s.dur;
+        const alpha = 1 - p;
+        const px = s.x + s.vx * p;
+        const py = s.y + s.vy * p + 30 * p * p;
+        ctx.globalAlpha = Math.max(0, alpha);
+        ctx.fillStyle = s.color;
+        const sz = s.size * (1 - p * 0.3);
+        ctx.beginPath();
+        ctx.arc(px, py, sz, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(px - sz * 2, py); ctx.lineTo(px + sz * 2, py);
+        ctx.moveTo(px, py - sz * 2); ctx.lineTo(px, py + sz * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
     for (let k = 0; k < 6; k++) {                                        // bướm
       const bx = (t * 18 + k * 190) % (W + 40) - 20, byy = 220 + (k % 3) * 60 + Math.sin(t * 2 + k) * 20, f = Math.abs(Math.sin(t * 10 + k)) * 3 + 1;
       ctx.fillStyle = ["#ff8fab", "#ffd166", "#a0c4ff"][k % 3]; ctx.beginPath(); ctx.ellipse(bx - 2, byy, f, 3, 0, 0, 7); ctx.ellipse(bx + 2, byy, f, 3, 0, 0, 7); ctx.fill();
@@ -1174,7 +1494,45 @@ const Areas = (() => {
     ctx.fillStyle = "#9c6644"; ctx.fillRect(b.x + 14, b.y + 14, 3, 22); ctx.fillRect(b.x + BED_W - 17, b.y + 14, 3, 22);
   }
   async function tapPlot(i) {
-    const pl = S().farm[i], inf = plotInfo(pl);
+    const farm = (S() && Array.isArray(S().farm)) ? S().farm : [];
+    const land = farm.length;
+
+    // 1. Ô đất chưa mở khóa (locked)
+    if (i >= land) {
+      if (i === land) {
+        // Ô đất tiếp theo có thể mua
+        const price = nextLandPrice(land);
+        if (price == null) {
+          toast("Bạn đã mở rộng toàn bộ đất nông trại rồi! 🌾");
+          return;
+        }
+        openSheet("🌱 Mở rộng ruộng",
+          `${Life.coinLine()}<div class="vol" style="margin:0 0 12px">Mở rộng ruộng: mua thêm 1 ô đất với giá <b>${price} xu</b>?</div>
+           <div class="grid"><button class="primary" id="btnBuyLand">Mua ngay (${price} 💰)</button><button class="opt" id="btnCancelLand" style="text-align:center">Hủy</button></div>`,
+          el => {
+            const btnCancel = el.querySelector("#btnCancelLand");
+            if (btnCancel) btnCancel.onclick = closeSheet;
+            const btnBuy = el.querySelector("#btnBuyLand");
+            if (btnBuy) btnBuy.onclick = async () => {
+              btnBuy.disabled = true;
+              const r = await Life.eco("buyLand");
+              if (!r) { btnBuy.disabled = false; return; }
+              closeSheet();
+              toast("🌱 Đã mở thêm ô đất mới!");
+              if (typeof log === "function") log(`🌱 Đã mở thêm 1 ô đất mới! (-${price} 💰)`);
+              addPlotSparkle(i);
+            };
+          }
+        );
+      } else {
+        // Ô đất bị khóa phía sau: báo cần mở ô trước đó trước
+        toast("Hãy mở ô đất trước đó trước nhé! 🔒");
+      }
+      return;
+    }
+
+    // 2. Ô đất đã sở hữu
+    const pl = farm[i], inf = plotInfo(pl);
     if (inf.st === "empty") return openSeeds(i);
     if (inf.st === "dry") {
       if (await Life.eco("water", {i})) { Life.apply({xp: 1}); Life.commit(); toast(`💧 Đã tưới ${inf.c.name}! Chín sau ${fmtTime(inf.c.time)}`); }
@@ -2295,6 +2653,15 @@ const Areas = (() => {
       // Vùng sáng cho các cột đèn nông trại và chuỗi bóng đèn fairy lights
       FARM_LAMPS.forEach(l => hole(l.x, l.y, 90, .75));
       FAIRY_BULBS.forEach(b => hole(b.x, b.y, 24, .45));
+      // Vùng sáng cho đèn ruộng: 4 góc và bao phủ toàn bộ cánh đồng cây trồng
+      hole(180, 250, 75, .8);
+      hole(708, 250, 75, .8);
+      hole(180, 430, 75, .8);
+      hole(708, 430, 75, .8);
+      for (let hx = 225; hx <= 665; hx += 70) {
+        hole(hx, 295, 75, .8);
+        hole(hx, 377, 75, .8);
+      }
     }
     if (myArea === "home") {
       // Vùng sáng cho đèn ngủ đầu giường
