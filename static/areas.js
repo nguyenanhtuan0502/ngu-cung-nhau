@@ -350,6 +350,442 @@ const Areas = (() => {
     const k = Math.min(1, (nowS() - pl.w) / c.time);
     return {st: k >= 1 ? "ripe" : "grow", c, k, left: c.time * (1 - k)};
   }
+
+  // Chú bò sữa chibi: bóng đổ mờ, thân trắng tròn đốm đen, đầu mõm hồng, sừng, tai, mắt long lanh, 4 chân guốc bước, đuôi vẫy, bầu sữa, cúi đầu gặm cỏ
+  function drawCow(x, y, s, t, flip, k = 0) {
+    ctx.save();
+    ctx.translate(x, y);
+    const dir = flip < 0 ? -1 : 1;
+    ctx.scale(dir * s, s);
+
+    // 1. Bóng đổ dưới chân
+    ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
+    ctx.beginPath();
+    ctx.ellipse(0, 12, 17, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Chu kỳ bước chân
+    const walkPhase = t * 4 + k * 1.7;
+    const legSwing1 = Math.sin(walkPhase) * 2;
+    const legSwing2 = -legSwing1;
+
+    // 2. Chân phía xa (vẽ trước thân để tạo chiều sâu)
+    ctx.fillStyle = "#dde2e6";
+    ctx.fillRect(-10 + legSwing2, 4, 3, 7.5);
+    ctx.fillRect(7 + legSwing1, 4, 3, 7.5);
+    // Móng guốc tối màu phía xa
+    ctx.fillStyle = "#343a40";
+    ctx.fillRect(-10 + legSwing2, 10.5, 3, 1.8);
+    ctx.fillRect(7 + legSwing1, 10.5, 3, 1.8);
+
+    // 3. Đuôi vẫy phe phẩy với chỏm lông đen
+    const tailSwish = Math.sin(t * 3.2 + k * 2) * 0.35;
+    ctx.save();
+    ctx.translate(-14, 0);
+    ctx.rotate(tailSwish);
+    ctx.strokeStyle = "#f8f9fa";
+    ctx.lineWidth = 1.8;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-4, 5, -2, 10);
+    ctx.stroke();
+    // Chỏm lông đuôi
+    ctx.fillStyle = "#212529";
+    ctx.beginPath();
+    ctx.ellipse(-2, 10.5, 2.5, 3.8, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 4. Bầu sữa hồng hào phía dưới bụng
+    ctx.fillStyle = "#ffb4c2";
+    ctx.beginPath();
+    ctx.ellipse(-5, 9, 4.5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Núm sữa
+    ctx.fillStyle = "#ff94a8";
+    ctx.beginPath();
+    ctx.arc(-6.5, 12, 1, 0, Math.PI * 2);
+    ctx.arc(-3.5, 12, 1, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 5. Thân tròn trắng với đổ bóng nhẹ & đốm đen cắt theo thân (clipped)
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(0, 1.5, 15, 9.5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+    // Bóng đổ nhẹ dưới bụng
+    ctx.fillStyle = "rgba(195, 205, 218, 0.32)";
+    ctx.beginPath();
+    ctx.ellipse(0, 6.5, 14, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Cắt (clip) để các đốm đen nằm trọn trong thân bò
+    ctx.clip();
+    ctx.fillStyle = "#212529";
+    // Đốm lưng
+    ctx.beginPath();
+    ctx.arc(-5, -4, 6.5, 0, Math.PI * 2);
+    ctx.arc(-1, -7, 5, 0, Math.PI * 2);
+    ctx.fill();
+    // Đốm sườn và mông
+    ctx.beginPath();
+    ctx.arc(6, 4, 5.5, 0, Math.PI * 2);
+    ctx.arc(4, 7, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(-13, 2, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 6. Chân phía gần
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(-6 + legSwing1, 4, 3.2, 7.5);
+    ctx.fillRect(10 + legSwing2, 4, 3.2, 7.5);
+    // Móng guốc chân gần
+    ctx.fillStyle = "#212529";
+    ctx.fillRect(-6 + legSwing1, 10.5, 3.2, 1.8);
+    ctx.fillRect(10 + legSwing2, 10.5, 3.2, 1.8);
+
+    // 7. Cử động cúi đầu gặm cỏ định kỳ
+    const grazeCycle = (t * 0.75 + k * 1.9) % 6;
+    let graze = 0;
+    if (grazeCycle >= 2.0 && grazeCycle < 2.5) {
+      graze = (grazeCycle - 2.0) / 0.5;
+      graze = 0.5 - 0.5 * Math.cos(graze * Math.PI);
+    } else if (grazeCycle >= 2.5 && grazeCycle < 4.8) {
+      graze = 1;
+    } else if (grazeCycle >= 4.8 && grazeCycle < 5.3) {
+      graze = (5.3 - grazeCycle) / 0.5;
+      graze = 0.5 - 0.5 * Math.cos(graze * Math.PI);
+    }
+    const chew = graze > 0.5 ? Math.sin(t * 8 + k) * 0.7 : 0;
+    const headAngle = graze * 0.48 + Math.sin(t * 2 + k) * 0.03;
+    const hx = 13 + graze * 1.5;
+    const hy = -5 + graze * 9;
+
+    // Cổ nối thân với đầu
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.moveTo(8, -2);
+    ctx.lineTo(hx - 2, hy);
+    ctx.lineTo(hx + 1, hy + 6);
+    ctx.lineTo(10, 6);
+    ctx.closePath();
+    ctx.fill();
+
+    // 8. Đầu bò và các chi tiết khuôn mặt
+    ctx.save();
+    ctx.translate(hx, hy);
+    ctx.rotate(headAngle);
+
+    // Sừng nhỏ xinh xắn
+    ctx.fillStyle = "#f3dfbe";
+    ctx.beginPath();
+    ctx.moveTo(-3, -5.5); ctx.quadraticCurveTo(-4, -9.5, -2, -10.5); ctx.quadraticCurveTo(-1, -8.5, 0, -5.5);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(2, -5.5); ctx.quadraticCurveTo(4, -9.5, 5, -10.5); ctx.quadraticCurveTo(4, -8.5, 4, -5.5);
+    ctx.fill();
+
+    // Tai bò
+    ctx.fillStyle = "#212529";
+    ctx.beginPath();
+    ctx.ellipse(-5.5, -3.5, 4, 2, -0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.ellipse(5.5, -3.5, 4, 2, 0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffb4c2";
+    ctx.beginPath();
+    ctx.ellipse(5.2, -3.5, 2.5, 1.2, 0.35, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Khối đầu tròn
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 7.5, 7, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+    // Đốm đen trên đầu
+    ctx.clip();
+    ctx.fillStyle = "#212529";
+    ctx.beginPath();
+    ctx.arc(-2, -3, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Mắt long lanh có đốm sáng
+    const blink = graze < 0.2 && (Math.sin(t * 1.8 + k) > 0.94);
+    if (blink) {
+      ctx.strokeStyle = "#212529";
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.arc(2.5, -1, 2, 0.2, Math.PI - 0.2);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = "#1b1d20";
+      ctx.beginPath();
+      ctx.arc(2.5, -1, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(3.2, -1.8, 0.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Mõm hồng tròn bầu bĩnh + 2 lỗ mũi
+    ctx.fillStyle = "#ffb4c2";
+    ctx.beginPath();
+    ctx.ellipse(4.5 + chew, 2.6, 4.6, 3.2, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#7a3e4a";
+    ctx.beginPath();
+    ctx.arc(3.6 + chew, 2.8, 0.75, 0, Math.PI * 2);
+    ctx.arc(6.0 + chew, 2.8, 0.75, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore(); // Kết thúc đầu bò
+    ctx.restore(); // Kết thúc chú bò
+  }
+
+  // Gà mái chibi: bóng đổ, thân tròn đẫy đà, cánh xếp lớp, đuôi xòe, mào và yếm đỏ, mỏ cam, mắt long lanh, chân bước, đầu gật gù và thỉnh thoảng mổ thóc
+  function drawHen(x, y, s, t, flip, k = 0) {
+    ctx.save();
+    ctx.translate(x, y);
+    const dir = flip < 0 ? -1 : 1;
+    ctx.scale(dir * s, s);
+
+    // 1. Bóng đổ dưới chân gà
+    ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+    ctx.beginPath();
+    ctx.ellipse(0, 12, 10, 3.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Chân cam bước đi lon ton
+    const step = Math.sin(t * 8 + k * 2.2);
+    ctx.strokeStyle = "#f48c06";
+    ctx.lineWidth = 1.8;
+    ctx.lineCap = "round";
+    // Chân xa
+    ctx.beginPath();
+    ctx.moveTo(-2, 6);
+    ctx.lineTo(-2 - step * 2.5, 11);
+    ctx.lineTo(-0.5 - step * 2.5, 12);
+    ctx.stroke();
+    // Chân gần
+    ctx.strokeStyle = "#e85d04";
+    ctx.beginPath();
+    ctx.moveTo(2.5, 6);
+    ctx.lineTo(2.5 + step * 2.5, 11);
+    ctx.lineTo(4.5 + step * 2.5, 12);
+    ctx.stroke();
+
+    // 3. Lông đuôi xòe dựng đứng phía sau
+    ctx.fillStyle = "#edf2f7";
+    ctx.beginPath();
+    ctx.moveTo(-7, 3);
+    ctx.quadraticCurveTo(-14, 0, -13, -7);
+    ctx.quadraticCurveTo(-9, -4, -6, -1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.moveTo(-6, 4);
+    ctx.quadraticCurveTo(-13, 2, -11, -4);
+    ctx.quadraticCurveTo(-7, -1, -4, 1);
+    ctx.closePath();
+    ctx.fill();
+
+    // 4. Thân gà đẫy đà tròn trịa
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.ellipse(-1, 3, 9, 7.5, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    // Đổ bóng mềm dưới bụng
+    ctx.fillStyle = "rgba(203, 213, 225, 0.35)";
+    ctx.beginPath();
+    ctx.ellipse(-1, 7, 7.8, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 5. Cánh xếp lớp xinh xắn
+    ctx.fillStyle = "#f1f5f9";
+    ctx.beginPath();
+    ctx.ellipse(-1, 3.5, 6.2, 4.5, -0.15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(160, 174, 192, 0.55)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(-1, 3.2, 4.2, 0.3, Math.PI - 0.3);
+    ctx.stroke();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.ellipse(-0.5, 2.5, 4.2, 2.8, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 6. Cử động đầu gật gù khi đi & thỉnh thoảng cúi mổ thóc
+    const peckCycle = (t * 0.9 + k * 1.6) % 4.5;
+    let peck = 0;
+    if (peckCycle >= 1.8 && peckCycle < 2.6) {
+      peck = Math.max(0, Math.sin((peckCycle - 1.8) / 0.8 * Math.PI * 2)) * 6.5;
+    }
+    const bobX = peck > 0 ? peck * 0.55 : Math.sin(t * 8 + k * 2.2) * 1.3;
+    const bobY = peck > 0 ? peck : Math.abs(Math.cos(t * 8 + k * 2.2)) * 0.8;
+    const hx = 5.5 + bobX;
+    const hy = -4.5 + bobY;
+
+    // Cổ gà
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.moveTo(1, 0);
+    ctx.lineTo(hx - 2, hy + 2);
+    ctx.lineTo(hx + 2, hy + 4);
+    ctx.lineTo(5, 5);
+    ctx.closePath();
+    ctx.fill();
+
+    // 7. Đầu, mắt, mào và yếm
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(hx, hy, 5.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Mào đỏ 3 múi nhấp nhô trên đỉnh đầu
+    ctx.fillStyle = "#e63946";
+    ctx.beginPath();
+    ctx.arc(hx - 2.2, hy - 5.5, 2, 0, Math.PI * 2);
+    ctx.arc(hx + 0.4, hy - 6.6, 2.4, 0, Math.PI * 2);
+    ctx.arc(hx + 3.0, hy - 5.5, 1.9, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Yếm đỏ dưới mỏ
+    ctx.fillStyle = "#e63946";
+    ctx.beginPath();
+    ctx.ellipse(hx + 3.2, hy + 3.4, 1.6, 2.3, 0.25, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Mỏ cam nhọn
+    ctx.fillStyle = "#f77f00";
+    ctx.beginPath();
+    ctx.moveTo(hx + 3.8, hy - 1.2);
+    ctx.lineTo(hx + 8, hy + 0.4);
+    ctx.lineTo(hx + 3.8, hy + 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Mắt long lanh có đốm sáng
+    ctx.fillStyle = "#1e293b";
+    ctx.beginPath();
+    ctx.arc(hx + 1.8, hy - 1.2, 1.7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(hx + 2.3, hy - 1.7, 0.65, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  // Gà con chibi: bóng đổ, thân tròn vàng bông xù, cánh nhỏ, mỏ cam, mắt to tròn, má hồng, chân bé xíu, cử động nhảy nhót lon ton
+  function drawChick(x, y, s, t, flip, k = 0) {
+    ctx.save();
+    ctx.translate(x, y);
+    const dir = flip < 0 ? -1 : 1;
+    ctx.scale(dir * s, s);
+
+    // Cử động nhún nhảy tung tăng của gà con
+    const hop = Math.abs(Math.sin(t * 10 + k * 2)) * 3.5;
+    const rock = Math.sin(t * 10 + k * 2) * 0.08;
+
+    // 1. Bóng đổ dưới chân (co giãn nhẹ theo nhịp nhảy)
+    const shadowShrink = Math.max(0.65, 1 - hop * 0.09);
+    ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+    ctx.beginPath();
+    ctx.ellipse(0, 12, 6.5 * shadowShrink, 2.2 * shadowShrink, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Đôi chân nhỏ màu cam bước nhảy
+    const cy = 2 - hop;
+    ctx.strokeStyle = "#f77f00";
+    ctx.lineWidth = 1.4;
+    ctx.lineCap = "round";
+    // Chân xa
+    ctx.beginPath();
+    ctx.moveTo(-1.6, cy + 4.5);
+    ctx.lineTo(-1.6, 11 - hop * 0.3);
+    ctx.lineTo(-0.2, 12 - hop * 0.3);
+    ctx.stroke();
+    // Chân gần
+    ctx.beginPath();
+    ctx.moveTo(1.6, cy + 4.5);
+    ctx.lineTo(1.6, 11 - hop * 0.15);
+    ctx.lineTo(3.2, 12 - hop * 0.15);
+    ctx.stroke();
+
+    // 3. Thân tròn lông vàng mềm mại
+    ctx.save();
+    ctx.translate(0, cy);
+    ctx.rotate(rock);
+
+    // Lông tơ nhỏ trên đỉnh đầu
+    ctx.fillStyle = "#ffe042";
+    ctx.beginPath();
+    ctx.arc(0.4, -6.2, 1.8, 0, Math.PI * 2);
+    ctx.arc(-1.2, -5.7, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Khối thân tròn xoe
+    ctx.fillStyle = "#ffd60a";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 6.8, 6.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Đổ bóng vàng ấm dưới bụng
+    ctx.fillStyle = "rgba(247, 127, 0, 0.22)";
+    ctx.beginPath();
+    ctx.ellipse(0, 3.2, 5.2, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 4. Cánh nhỏ bé xíu vỗ nhẹ
+    const wingFlap = Math.sin(t * 14 + k * 2) * 0.25;
+    ctx.save();
+    ctx.translate(-1.8, 0.5);
+    ctx.rotate(wingFlap);
+    ctx.fillStyle = "#ffc300";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 3.5, 2.2, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 5. Mỏ cam nhỏ xinh
+    ctx.fillStyle = "#fb8500";
+    ctx.beginPath();
+    ctx.moveTo(4.8, -1.2);
+    ctx.lineTo(7.5, 0.2);
+    ctx.lineTo(4.8, 1.2);
+    ctx.closePath();
+    ctx.fill();
+
+    // 6. Mắt to tròn đen láy có highlight
+    ctx.fillStyle = "#1e293b";
+    ctx.beginPath();
+    ctx.arc(3.0, -1.6, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(3.4, -2.0, 0.55, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 7. Má hồng chúm chím dễ thương
+    ctx.fillStyle = "rgba(255, 112, 166, 0.55)";
+    ctx.beginPath();
+    ctx.ellipse(2.2, 0.9, 1.7, 1.1, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore(); // Kết thúc xoay/dịch theo thân
+    ctx.restore(); // Kết thúc gà con
+  }
+
   function drawFarm(t) {
     const {L, R, T, B} = bleed(), wv = R - L;
     const night = Life.darkness() > .5, [s0, s1] = night ? ["#060a22", "#27316b"] : Life.skyColors();
@@ -386,18 +822,17 @@ const Areas = (() => {
     // GÀ VÀ BÒ ĐI LẠI Ở NỀN SAU (ven đường làng / sườn cỏ y: 170-210)
     // 1. Chú bò sữa gặm cỏ ở nền sau (gần cối xay gió)
     const cowX = 850 + Math.sin(t * .4) * 12, cowY = 186;
-    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(cowX, cowY, 14, 9, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = "#222"; ctx.beginPath(); ctx.arc(cowX - 5, cowY - 3, 3.5, 0, 7); ctx.arc(cowX + 6, cowY + 2, 3, 0, 7); ctx.fill();
-    ctx.fillStyle = "#f4d0c1"; ctx.beginPath(); ctx.ellipse(cowX + 14, cowY - 2 + Math.sin(t * 1.8) * 1.5, 5.5, 4.5, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = "#222"; ctx.fillRect(cowX - 10, cowY + 7, 2.5, 6); ctx.fillRect(cowX + 8, cowY + 7, 2.5, 6);
+    // Hướng nhìn (flip) tính theo đạo hàm vận tốc d(cowX)/dt = 12 * 0.4 * cos(0.4*t)
+    const cowFlip = Math.cos(t * .4) >= 0 ? 1 : -1;
+    drawCow(cowX, cowY, 0.85, t, cowFlip, 0);
+
     // 2. Đàn gà mẹ con đi lon ton ở nền sau (phía sau ruộng)
     for (let k = 0; k < 4; k++) {
-      const chick = k > 0, gcx = 250 + ((t * (chick ? 8 : 5) + k * 35) % 200), gcy = 184 + (k % 2) * 6;
-      const sz = chick ? .55 : .9, flip = Math.sin(t * .4 + k) > 0 ? 1 : -1;
-      ctx.save(); ctx.translate(gcx, gcy); ctx.scale(sz * flip, sz);
-      ctx.fillStyle = chick ? "#ffd60a" : "#fff"; ctx.beginPath(); ctx.ellipse(0, 0, 6, 5, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(5, -5, 3.5, 0, 7); ctx.fill();
-      if (!chick) { ctx.fillStyle = "#e63946"; ctx.fillRect(4, -10, 3, 3); }
-      ctx.fillStyle = "#f4a261"; ctx.fillRect(8, -5, 3, 1.6); ctx.restore();
+      const isChick = k > 0, gcx = 250 + ((t * (isChick ? 8 : 5) + k * 35) % 200), gcy = 184 + (k % 2) * 6;
+      // Đạo hàm dx/dt > 0 do t tăng tuyến tính trong hàm modulo, hướng nhìn luôn quay sang phải (1)
+      const flip = 1;
+      if (isChick) drawChick(gcx, gcy, 0.65, t, flip, k);
+      else drawHen(gcx, gcy, 0.8, t, flip, k);
     }
 
     // hàng rào trắng ngăn cách nền sau và khu ruộng
@@ -464,26 +899,44 @@ const Areas = (() => {
     drawRadio(t);
     // chuồng gà (trái dưới) + gà, gà con chạy lon ton
     ctx.save(); ctx.translate(30, 0);
-    ctx.fillStyle = "#c9a36b"; rr(ctx, 8, 474, 84, 50, 4); ctx.fill(); ctx.fillStyle = "#9c6644"; ctx.beginPath(); ctx.moveTo(4, 478); ctx.lineTo(50, 456); ctx.lineTo(96, 478); ctx.fill();
+    // Nhà chuồng gỗ
+    ctx.fillStyle = "#c9a36b"; rr(ctx, 8, 474, 84, 50, 4); ctx.fill();
+    ctx.strokeStyle = "rgba(100, 60, 20, 0.18)"; ctx.lineWidth = 1;
+    for (let py = 484; py <= 516; py += 10) { ctx.beginPath(); ctx.moveTo(9, py); ctx.lineTo(91, py); ctx.stroke(); }
+    // Mái ngói chuồng gà
+    ctx.fillStyle = "#9c6644"; ctx.beginPath(); ctx.moveTo(4, 478); ctx.lineTo(50, 456); ctx.lineTo(96, 478); ctx.fill();
+    ctx.fillStyle = "#7f4f24"; ctx.beginPath(); ctx.moveTo(2, 478); ctx.lineTo(50, 453); ctx.lineTo(98, 478); ctx.lineTo(96, 481); ctx.lineTo(50, 456); ctx.lineTo(4, 481); ctx.closePath(); ctx.fill();
+    // Cửa chuồng + cọng rơm vàng ở lối ra vào
     ctx.fillStyle = "#5c3d2a"; rr(ctx, 40, 498, 20, 26, 3); ctx.fill();
+    ctx.fillStyle = "#e9c46a"; ctx.fillRect(38, 521, 24, 3);
+    // Đàn gà mái và gà con chạy lon ton
     for (let k = 0; k < 6; k++) {
-      const chick = k > 2, cx = 30 + ((t * (chick ? 9 : 6) + k * 47) % 170), cy = 540 + Math.sin(t + k * 2) * 10 - (k % 2) * 8;
-      const sz = chick ? .6 : 1, flip = Math.sin(t * .5 + k) > 0 ? 1 : -1;
-      ctx.save(); ctx.translate(cx, cy); ctx.scale(sz * flip, sz);
-      ctx.fillStyle = chick ? "#ffd60a" : "#fff"; ctx.beginPath(); ctx.ellipse(0, 0, 6, 5, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(5, -5, 3.5, 0, 7); ctx.fill();
-      if (!chick) { ctx.fillStyle = "#e63946"; ctx.fillRect(4, -10, 3, 3); }
-      ctx.fillStyle = "#f4a261"; ctx.fillRect(8, -5, 3, 1.6); ctx.restore();
+      const isChick = k > 2, cx = 30 + ((t * (isChick ? 9 : 6) + k * 47) % 170), cy = 540 + Math.sin(t + k * 2) * 10 - (k % 2) * 8;
+      // Đạo hàm dx/dt > 0 do t tăng tuyến tính trong hàm modulo, hướng nhìn quay sang phải (1)
+      const flip = 1;
+      if (isChick) drawChick(cx, cy, 0.75, t, flip, k);
+      else drawHen(cx, cy, 0.95, t, flip, k);
     }
     ctx.restore();
     // chuồng bò (phải dưới) + bò gặm cỏ
     ctx.save(); ctx.translate(700, 40);
-    ctx.strokeStyle = "#f8f9fa"; ctx.lineWidth = 2; ctx.strokeRect(262, 438, 92, 76);
+    // Nền rơm lót chuồng bò
+    ctx.fillStyle = "rgba(233, 196, 106, 0.28)";
+    ctx.beginPath(); ctx.ellipse(308, 476, 40, 26, 0, 0, Math.PI * 2); ctx.fill();
+    // Hàng rào trắng quanh chuồng bò + cọc rào ở góc
+    ctx.strokeStyle = "#f8f9fa"; ctx.lineWidth = 2.5; ctx.strokeRect(262, 438, 92, 76);
+    ctx.lineWidth = 1.5; ctx.strokeRect(262, 448, 92, 56);
+    ctx.fillStyle = "#f8f9fa";
+    rr(ctx, 260, 434, 5, 12, 1); ctx.fill();
+    rr(ctx, 351, 434, 5, 12, 1); ctx.fill();
+    rr(ctx, 260, 506, 5, 12, 1); ctx.fill();
+    rr(ctx, 351, 506, 5, 12, 1); ctx.fill();
+    // Hai chú bò sữa gặm cỏ trong chuồng
     for (let k = 0; k < 2; k++) {
       const cx = 286 + k * 42 + Math.sin(t * .3 + k * 3) * 6, cy = 470 + k * 22;
-      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(cx, cy, 13, 8, 0, 0, 7); ctx.fill();
-      ctx.fillStyle = "#222"; ctx.beginPath(); ctx.arc(cx - 4, cy - 2, 3, 0, 7); ctx.arc(cx + 5, cy + 2, 2.5, 0, 7); ctx.fill();
-      ctx.fillStyle = "#f4d0c1"; ctx.beginPath(); ctx.ellipse(cx + 13, cy - 3 + Math.sin(t * 1.5 + k) * 1, 5, 4, 0, 0, 7); ctx.fill();
-      ctx.fillStyle = "#222"; ctx.fillRect(cx - 9, cy + 6, 2, 5); ctx.fillRect(cx + 7, cy + 6, 2, 5);
+      // Đạo hàm dx/dt = 6 * 0.3 * cos(0.3*t + 3*k), quay mặt theo hướng di chuyển
+      const flip = Math.cos(t * .3 + k * 3) >= 0 ? 1 : -1;
+      drawCow(cx, cy, 0.95, t, flip, k + 1);
     }
     ctx.restore();
     for (let k = 0; k < 6; k++) {                                        // bướm
