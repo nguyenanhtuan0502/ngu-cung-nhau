@@ -2139,54 +2139,213 @@ function drawCozyBed(i, t) {
   // rèm mỏng ở đầu giường (buông 2 bên)
   ctx.fillStyle = "rgba(255,244,235,.42)"; rr(ctx, x - 1, y - 2, 6, 34, 3); ctx.fill(); rr(ctx, x + w - 5, y - 2, 6, 34, 3); ctx.fill();
 }
+// ---- 🛏️ Các đồ trang trí ký túc xá ----
+function drawDormShoeRack(x, y) {                    // Kệ để giày dép gỗ 2 tầng cạnh cửa
+  ctx.fillStyle = "#8a5a3c"; rr(ctx, x, y, 46, 26, 3); ctx.fill();              // Khung kệ
+  ctx.fillStyle = "#5c3a21"; ctx.fillRect(x + 2, y + 2, 42, 10); ctx.fillRect(x + 2, y + 14, 42, 10);
+  // Tầng trên: 2 đôi dép thỏ bông pastel cute đi trong nhà
+  [["#ffb5c2", "#ff8fa3"], ["#a2d2ff", "#70b8ff"]].forEach(([c1, c2], si) => {
+    const sx = x + 6 + si * 20;
+    [0, 8].forEach(dx => {
+      ctx.fillStyle = c1; rr(ctx, sx + dx, y + 4, 7, 7, 3); ctx.fill();
+      ctx.fillStyle = c2; ctx.fillRect(sx + dx + 1, y + 2.5, 2, 2.5); ctx.fillRect(sx + dx + 4, y + 2.5, 2, 2.5);
+    });
+  });
+  // Tầng dưới: 2 đôi giày thể thao / slip-on
+  [["#e9ecef", "#495057"], ["#ffcbf2", "#e0aaff"]].forEach(([c1, c2], si) => {
+    const sx = x + 6 + si * 20;
+    [0, 8].forEach(dx => {
+      ctx.fillStyle = c1; rr(ctx, sx + dx, y + 16, 7, 7, 2); ctx.fill();
+      ctx.fillStyle = c2; ctx.fillRect(sx + dx + 1, y + 19, 5, 2);
+    });
+  });
+}
+
+function drawDormLaundryRack(x, y) {                 // Giá treo / phơi quần áo chữ A bằng gỗ
+  ctx.strokeStyle = "#8a5a3c"; ctx.lineWidth = 2.5; ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x + 6, y + 48); ctx.lineTo(x + 18, y + 4); ctx.lineTo(x + 30, y + 48);
+  ctx.moveTo(x + 10, y + 36); ctx.lineTo(x + 26, y + 36);
+  ctx.stroke();
+  ctx.fillStyle = "#6b4226"; ctx.fillRect(x + 2, y + 2, 34, 3);
+  const clothes = [
+    {x: x + 6, w: 9, h: 22, c: "#74c69d", hood: true},
+    {x: x + 16, w: 8, h: 18, c: "#ffd166", hood: false},
+    {x: x + 25, w: 7, h: 24, c: "#a8dadc", hood: false}
+  ];
+  clothes.forEach(cl => {
+    ctx.strokeStyle = "#bbb"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cl.x + cl.w / 2, y + 5); ctx.lineTo(cl.x + cl.w / 2, y + 7); ctx.stroke();
+    ctx.fillStyle = cl.c; rr(ctx, cl.x, y + 8, cl.w, cl.h, 2); ctx.fill();
+    if (cl.hood) { ctx.fillStyle = "rgba(0,0,0,.12)"; ctx.fillRect(cl.x + 2, y + 10, cl.w - 4, 4); }
+  });
+  ctx.fillStyle = "#d4a373"; rr(ctx, x + 8, y + 34, 22, 14, 3); ctx.fill();
+  ctx.strokeStyle = "#b08968"; ctx.lineWidth = 1;
+  for (let yy = y + 37; yy < y + 46; yy += 3) {
+    ctx.beginPath(); ctx.moveTo(x + 8, yy); ctx.lineTo(x + 30, yy); ctx.stroke();
+  }
+  ctx.fillStyle = "#ffccd5"; rr(ctx, x + 10, y + 31, 8, 4, 1.5); ctx.fill();
+  ctx.fillStyle = "#caffbf"; rr(ctx, x + 17, y + 31, 9, 4, 1.5); ctx.fill();
+}
+
+function drawDormNightstand(x, y, lamp) {            // Tab đầu giường nhỏ gọn giữa các giường
+  ctx.fillStyle = "#8a5a3c"; rr(ctx, x, y, 14, 22, 2); ctx.fill();
+  ctx.fillStyle = "#6b4226"; ctx.fillRect(x + 1, y + 10, 12, 1);
+  ctx.fillStyle = "#f4a261"; ctx.beginPath(); ctx.arc(x + 7, y + 6, 1.2, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + 7, y + 16, 1.2, 0, 7); ctx.fill();
+  if (lamp) {
+    ctx.fillStyle = "#555"; ctx.fillRect(x + 5, y - 2, 4, 2);
+    ctx.fillStyle = "#c58f5c"; ctx.fillRect(x + 6, y - 6, 2, 4);
+    ctx.fillStyle = "#ffeaa7"; ctx.beginPath();
+    ctx.moveTo(x + 3, y - 6); ctx.lineTo(x + 11, y - 6); ctx.lineTo(x + 13, y - 12); ctx.lineTo(x + 1, y - 12);
+    ctx.closePath(); ctx.fill();
+    const on = room.light ? .35 : .8;
+    ctx.fillStyle = `rgba(255, 234, 167, ${on * .35})`;
+    ctx.beginPath(); ctx.arc(x + 7, y - 9, 8, 0, 7); ctx.fill();
+  } else {
+    ctx.fillStyle = "#f3f0ea"; ctx.fillRect(x + 4, y - 5, 5, 5);
+    ctx.fillStyle = "#68b984"; ctx.beginPath(); ctx.arc(x + 6.5, y - 6, 2.5, 0, 7); ctx.fill();
+  }
+}
+
 function drawDorm(t) {                               // 🛏️ ký túc xá NGANG 1000x600: 8 giường 1 dãy, lò sưởi giữa tường
   const {L, R, T} = bleed(), wv = R - L;
-  // tường: nửa trên kem hồng, nửa dưới ốp gỗ sáng, xà gỗ trần
-  ctx.fillStyle = "#ecd2c4"; ctx.fillRect(L, T, wv, 102 - T);
+  // tường: nửa trên giấy dán tường kem hồng ấm cúng, họa tiết tinh tế
+  ctx.fillStyle = "#fdf3eb"; ctx.fillRect(L, T, wv, 102 - T);
+  ctx.fillStyle = "rgba(224, 180, 160, .22)";
+  for (let x = Math.floor(L / 16) * 16; x < R; x += 16) ctx.fillRect(x, T, 1.5, 102 - T);
+  ctx.fillStyle = "rgba(215, 165, 145, .25)";
+  for (let y = Math.floor(T / 24) * 24; y < 96; y += 24)
+    for (let x = Math.floor(L / 32) * 32 + ((y / 24) % 2 ? 16 : 0); x < R; x += 32) {
+      ctx.fillRect(x - 1, y, 3, 1); ctx.fillRect(x, y - 1, 1, 3);
+    }
+  // nửa dưới ốp gỗ sồi ấm áp + phào chỉ gỗ
   ctx.fillStyle = "#c58f5c"; ctx.fillRect(L, 100, wv, 62);
   ctx.fillStyle = "rgba(0,0,0,.08)"; for (let x = Math.floor(L / 18) * 18; x < R; x += 18) ctx.fillRect(x, 100, 1.5, 62);
   ctx.fillStyle = "#8a5a3c"; ctx.fillRect(L, 97, wv, 5);
   ctx.fillStyle = "#6b4226"; ctx.fillRect(L, 10, wv, 7);
-  for (let x = 0; x <= W; x += 200) ctx.fillRect(x - 4, -40, 8, 57);                      // cột gỗ
-  // sàn gỗ màu mật ong + thảm dài trước dãy giường (dời xuống khớp vị trí giường mới y:270)
+  for (let x = 0; x <= W; x += 200) ctx.fillRect(x - 4, -40, 8, 57);                      // cột gỗ trần
+
+  // sàn gỗ màu mật ong
   drawWoodFloor("#c99055", "#c18849", "#cd9659");
-  ctx.fillStyle = "#7a5236"; ctx.fillRect(L, 158, wv, 8);
+  ctx.fillStyle = "#7a5236"; ctx.fillRect(L, 158, wv, 8);                                // nẹp chân tường
+
+  // thảm dài chạy dọc lối đi giữa 2 dãy giường (từ x: 420 đến 580, y: 175 đến 440)
+  const rgw = 140, rgx = 500 - rgw / 2;
+  ctx.fillStyle = "#cf7858"; rr(ctx, rgx, 175, rgw, 255, 6); ctx.fill();
+  ctx.strokeStyle = "#faeedd"; ctx.lineWidth = 2.5; rr(ctx, rgx + 5, 180, rgw - 10, 245, 4); ctx.stroke();
+  ctx.fillStyle = "rgba(250, 238, 221, .6)";
+  for (let y = 198; y < 415; y += 28) {
+    ctx.beginPath();
+    ctx.moveTo(500, y - 8); ctx.lineTo(500 + 16, y); ctx.lineTo(500, y + 8); ctx.lineTo(500 - 16, y);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#cf7858"; ctx.beginPath(); ctx.arc(500, y, 3, 0, 7); ctx.fill();
+    ctx.fillStyle = "rgba(250, 238, 221, .6)";
+  }
+  ctx.fillStyle = "#faeedd";
+  for (let xx = rgx + 6; xx < rgx + rgw - 6; xx += 6) { ctx.fillRect(xx, 172, 2.5, 3); ctx.fillRect(xx, 430, 2.5, 3); }
+
+  // thảm dài nằm ngang trước dãy giường (y: 388)
   ctx.fillStyle = "#c1694f"; rr(ctx, 60, 388, W - 120, 36, 10); ctx.fill();
   ctx.strokeStyle = "#f3d9b1"; ctx.lineWidth = 3; rr(ctx, 65, 393, W - 130, 26, 8); ctx.stroke();
   ctx.fillStyle = "rgba(243,217,177,.5)"; for (let xx = 90; xx < W - 80; xx += 28) { ctx.beginPath(); ctx.arc(xx, 406, 3.5, 0, 7); ctx.fill(); }
-  // cửa sổ (trăng, sao, tuyết/mưa) + rèm be + đệm bậc cửa
+
+  // cửa sổ lớn có rèm vải xinh xắn, thể hiện ngày/đêm theo Life.darkness()
+  const dark = typeof Life !== "undefined" ? Life.darkness() : (room.light ? 0 : 1);
+  const isDay = typeof Life !== "undefined" ? Life.isDay() : (dark < .5);
   const win = (wx, moon) => {
-    const wy = 24, ww = 92, wh = 62;
+    const wy = 24, ww = 96, wh = 62;
     ctx.fillStyle = "#f3e4cf"; rr(ctx, wx - 5, wy - 5, ww + 10, wh + 10, 5); ctx.fill();
-    const g = ctx.createLinearGradient(0, wy, 0, wy + wh); g.addColorStop(0, "#0a0f2e"); g.addColorStop(1, "#2b3a78");
-    ctx.fillStyle = g; ctx.fillRect(wx, wy, ww, wh);
-    winStars.forEach(st => { ctx.fillStyle = `rgba(255,255,255,${.4 + .5 * Math.sin(t * 2 + st.p + wx)})`; ctx.fillRect(wx + st.x * ww, wy + st.y * wh * .8, 1.5, 1.5); });
-    if (moon) {
-      ctx.fillStyle = "rgba(255,246,200,.2)"; ctx.beginPath(); ctx.arc(wx + 46, wy + 22, 15, 0, 7); ctx.fill();
-      ctx.fillStyle = "#fff6c8"; ctx.beginPath(); ctx.arc(wx + 46, wy + 22, 9, 0, 7); ctx.fill();
-      ctx.fillStyle = "#18245a"; ctx.beginPath(); ctx.arc(wx + 50, wy + 19, 8, 0, 7); ctx.fill();
+    const g = ctx.createLinearGradient(0, wy, 0, wy + wh);
+    if (isDay) {
+      const sky = (typeof Life !== "undefined" && Life.skyColors) ? Life.skyColors() : ["#8ecae6", "#d8f3dc"];
+      g.addColorStop(0, sky[0]); g.addColorStop(1, sky[1]);
+    } else {
+      g.addColorStop(0, "#0a0f2e"); g.addColorStop(1, "#2b3a78");
     }
+    ctx.fillStyle = g; ctx.fillRect(wx, wy, ww, wh);
+
+    if (isDay) {
+      ctx.fillStyle = "rgba(255,255,255,.85)";
+      const mX = wx + ((t * 4 + wx * .5) % (ww + 40)) - 20;
+      ctx.beginPath(); ctx.arc(mX, wy + 20, 9, 0, 7); ctx.arc(mX + 10, wy + 16, 12, 0, 7); ctx.arc(mX + 22, wy + 20, 8, 0, 7); ctx.fill();
+    } else {
+      winStars.forEach(st => {
+        ctx.fillStyle = `rgba(255,255,255,${.4 + .5 * Math.sin(t * 2 + st.p + wx)})`;
+        ctx.fillRect(wx + st.x * ww, wy + st.y * wh * .8, 1.5, 1.5);
+      });
+      if (moon) {
+        ctx.fillStyle = "rgba(255,246,200,.25)"; ctx.beginPath(); ctx.arc(wx + 48, wy + 22, 16, 0, 7); ctx.fill();
+        ctx.fillStyle = "#fff6c8"; ctx.beginPath(); ctx.arc(wx + 48, wy + 22, 9, 0, 7); ctx.fill();
+        ctx.fillStyle = "#18245a"; ctx.beginPath(); ctx.arc(wx + 52, wy + 19, 8, 0, 7); ctx.fill();
+      }
+    }
+
     ctx.save(); ctx.beginPath(); ctx.rect(wx, wy, ww, wh); ctx.clip();
     const snow = Math.floor(Date.now() / 600000) % 2 === 0;                  // đổi tuyết/mưa mỗi 10 phút
-    for (let k = 0; k < 26; k++) {
+    for (let k = 0; k < 22; k++) {
       const px = wx + ((k * 37 + t * (snow ? 6 : 14)) % ww), py = wy + ((k * 53 + t * (snow ? 14 : 90)) % wh);
       if (snow) { ctx.fillStyle = "rgba(255,255,255,.85)"; ctx.beginPath(); ctx.arc(px + Math.sin(t + k) * 2, py, 1.2, 0, 7); ctx.fill(); }
       else { ctx.strokeStyle = "rgba(180,200,240,.6)"; ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - 1.5, py + 5); ctx.stroke(); }
     }
     ctx.restore();
-    ctx.fillStyle = "#f3e4cf"; ctx.fillRect(wx + ww / 2 - 1.5, wy, 3, wh);
-    ctx.fillStyle = "#d8c3a5"; ctx.fillRect(wx - 10, wy - 9, 14, wh + 18); ctx.fillRect(wx + ww - 4, wy - 9, 14, wh + 18);
+
+    ctx.fillStyle = "#f3e4cf";
+    ctx.fillRect(wx + ww / 2 - 1.5, wy, 3, wh);
+    ctx.fillRect(wx, wy + wh / 2 - 1.5, ww, 3);
+
+    // thanh treo rèm gỗ + núm tròn 2 đầu
+    ctx.fillStyle = "#8a5a3c"; ctx.fillRect(wx - 14, wy - 9, ww + 28, 4);
+    ctx.beginPath(); ctx.arc(wx - 14, wy - 7, 3.5, 0, 7); ctx.arc(wx + ww + 14, wy - 7, 3.5, 0, 7); ctx.fill();
+
+    // rèm cửa vải kem mềm mại 2 bên buông nhẹ có dây buộc nơ
+    const swL = Math.sin(t * .8 + wx) * 1.5;
+    ctx.fillStyle = "#fff3ea";
+    ctx.beginPath();
+    ctx.moveTo(wx - 12, wy - 6); ctx.lineTo(wx + 16, wy - 6);
+    ctx.quadraticCurveTo(wx + 10 + swL, wy + wh * .5, wx + 6, wy + wh + 12);
+    ctx.lineTo(wx - 14, wy + wh + 12); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(wx + ww + 12, wy - 6); ctx.lineTo(wx + ww - 16, wy - 6);
+    ctx.quadraticCurveTo(wx + ww - 10 - swL, wy + wh * .5, wx + ww - 6, wy + wh + 12);
+    ctx.lineTo(wx + ww + 14, wy + wh + 12); ctx.closePath(); ctx.fill();
+
+    ctx.fillStyle = "#f4a261";
+    ctx.fillRect(wx - 13, wy + wh * .55, 14, 3); ctx.fillRect(wx + ww - 1, wy + wh * .55, 14, 3);
+    ctx.beginPath(); ctx.arc(wx + 1, wy + wh * .55 + 1.5, 2.5, 0, 7); ctx.arc(wx + ww - 1, wy + wh * .55 + 1.5, 2.5, 0, 7); ctx.fill();
+
+    // bệ cửa sổ + chậu cây mọng nước nhỏ
     ctx.fillStyle = "#e9a87c"; rr(ctx, wx + 6, wy + wh + 2, ww - 12, 8, 4); ctx.fill();
+    ctx.fillStyle = "#c17a56"; rr(ctx, wx + 20, wy + wh - 4, 10, 7, 2); ctx.fill();
+    ctx.fillStyle = "#68b984"; ctx.beginPath(); ctx.arc(wx + 25, wy + wh - 6, 4.5, 0, 7); ctx.arc(wx + 22, wy + wh - 5, 3.5, 0, 7); ctx.arc(wx + 28, wy + wh - 5, 3.5, 0, 7); ctx.fill();
   };
   win(60, true); win(600, false);
-  // 2 tranh treo tường
-  [[262, "#f4a6c4", "#a8d8ea"], [336, "#ffd166", "#90be6d"]].forEach(([x, c1, c2]) => {
-    ctx.fillStyle = "#8a5a3c"; rr(ctx, x, 34, 50, 58, 3); ctx.fill();
-    const pg = ctx.createLinearGradient(0, 38, 0, 88); pg.addColorStop(0, c1); pg.addColorStop(1, c2);
-    ctx.fillStyle = pg; ctx.fillRect(x + 4, 38, 42, 50);
-    ctx.fillStyle = "rgba(255,255,255,.7)"; ctx.beginPath(); ctx.arc(x + 25, 58, 8, 0, 7); ctx.fill();
+
+  // 3 tranh đóng khung gỗ treo tường
+  [
+    {x: 236, w: 42, h: 52, c1: "#b8c0ff", c2: "#ffd6e0", icon: "🌙"},
+    {x: 300, w: 42, h: 52, c1: "#ffd166", c2: "#f4a261", icon: "☕"},
+    {x: 364, w: 42, h: 52, c1: "#a8dadc", c2: "#457b9d", icon: "🌿"}
+  ].forEach(p => {
+    ctx.fillStyle = "#8a5a3c"; rr(ctx, p.x, 36, p.w, p.h, 3); ctx.fill();
+    const pg = ctx.createLinearGradient(0, 39, 0, 39 + p.h - 6); pg.addColorStop(0, p.c1); pg.addColorStop(1, p.c2);
+    ctx.fillStyle = pg; ctx.fillRect(p.x + 3, 39, p.w - 6, p.h - 6);
+    ctx.font = "14px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(p.icon, p.x + p.w / 2, 36 + p.h / 2);
+    ctx.fillStyle = "rgba(255,255,255,.2)";
+    ctx.beginPath(); ctx.moveTo(p.x + 5, 39); ctx.lineTo(p.x + 18, 39); ctx.lineTo(p.x + 7, 39 + p.h - 6); ctx.lineTo(p.x + 3, 39 + p.h - 6); ctx.fill();
   });
-  // lò sưởi giữa tường + nến + ảnh polaroid (vẽ lại khối cũ, dời ra giữa phòng)
+
+  // giá sách treo tường nhỏ cạnh tranh
+  ctx.fillStyle = "#8a5a3c"; rr(ctx, 180, 56, 44, 5, 2); ctx.fill();
+  ["#e76f51", "#2a9d8f", "#e9c46a", "#4cc9f0"].forEach((bc, bi) => {
+    ctx.fillStyle = bc; ctx.fillRect(184 + bi * 8, 41, 6, 15);
+  });
+  ctx.fillStyle = "#c17a56"; rr(ctx, 215, 48, 8, 8, 2); ctx.fill();
+  ctx.fillStyle = "#52b788";
+  for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.ellipse(217 + (k % 2) * 5, 58 + k * 4, 2.5, 4, .2, 0, 7); ctx.fill(); }
+
+  // lò sưởi giữa tường + nến + ảnh polaroid
   ctx.save(); ctx.translate(320, 0);
   ctx.fillStyle = "#b9a89a"; rr(ctx, 140, 74, 80, 88, 4); ctx.fill();
   ctx.fillStyle = "rgba(0,0,0,.08)"; for (let yy = 80; yy < 160; yy += 9) for (let xx = 142 + (yy % 18 ? 0 : 6); xx < 218; xx += 12) ctx.fillRect(xx, yy, 10, 1);
@@ -2204,6 +2363,7 @@ function drawDorm(t) {                               // 🛏️ ký túc xá NGA
   for (let k = 0; k < 5; k++) { ctx.fillStyle = "#fff"; ctx.fillRect(156 + k * 10, 46 + Math.sin(k) * 2, 8, 9); ctx.fillStyle = ["#e76f51", "#2a9d8f", "#e9c46a", "#9b5de5", "#4cc9f0"][k]; ctx.fillRect(157 + k * 10, 47 + Math.sin(k) * 2, 6, 6); }
   ctx.strokeStyle = "#8a5a3c"; ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(150, 44); ctx.quadraticCurveTo(180, 50, 210, 44); ctx.stroke();
   ctx.restore();
+
   // góc lò sưởi trên sàn: thảm tròn + 2 ghế bành + bàn trà bốc khói
   ctx.save(); ctx.translate(320, -30);
   ctx.fillStyle = "#9cb380"; ctx.beginPath(); ctx.ellipse(180, 484, 110, 36, 0, 0, 7); ctx.fill();
@@ -2214,21 +2374,41 @@ function drawDorm(t) {                               // 🛏️ ký túc xá NGA
   ctx.strokeStyle = "rgba(255,255,255,.4)"; ctx.lineWidth = 1;
   for (let k = 0; k < 2; k++) { const ph = (t * .5 + k * .5) % 1; ctx.globalAlpha = Math.sin(ph * Math.PI); ctx.beginPath(); ctx.moveTo(177 + k * 3, 478 - ph * 10); ctx.quadraticCurveTo(180 + k * 3, 474 - ph * 10, 177 + k * 3, 470 - ph * 10); ctx.stroke(); }
   ctx.globalAlpha = 1; ctx.restore();
+
   // kệ sách thấp bên phải: sách, đĩa than, đèn muối (radio đặt trên kệ)
   ctx.save(); ctx.translate(522, 0);
   ctx.fillStyle = "#8a5a3c"; rr(ctx, 248, 110, 104, 50, 3); ctx.fill();
   ctx.fillStyle = "#5e3d27"; ctx.fillRect(252, 114, 96, 20); ctx.fillRect(252, 137, 96, 20);
   BOOKS[0].slice(0, 10).forEach(bk => { ctx.fillStyle = bk.c; ctx.fillRect(254 + bk.x * .9, 134 - bk.h * .7, bk.w * .8, bk.h * .7); });
   for (let k = 0; k < 4; k++) { ctx.fillStyle = "#151515"; ctx.beginPath(); ctx.arc(266 + k * 22, 147, 8, 0, 7); ctx.fill(); ctx.fillStyle = ["#e63946", "#ffd166", "#06d6a0", "#118ab2"][k]; ctx.beginPath(); ctx.arc(266 + k * 22, 147, 2.5, 0, 7); ctx.fill(); }
+  // Đèn đá muối Himalaya phát sáng ấm áp
   ctx.fillStyle = `rgba(255,140,60,${.7 + Math.sin(t * 1.3) * .1})`; ctx.beginPath(); ctx.moveTo(256, 110); ctx.lineTo(262, 96); ctx.lineTo(270, 98); ctx.lineTo(274, 110); ctx.fill();
   ctx.restore();
   drawRadio(t);
-  // tủ khóa cá nhân + giá treo áo (góc phải)
+
+  // tủ khóa cá nhân (góc phải tường)
   for (let k = 0; k < 3; k++) {
     const x = 900 + k * 27; ctx.fillStyle = ["#7fb7be", "#e9c46a", "#f4a6b8"][k]; rr(ctx, x, 96, 25, 64, 3); ctx.fill();
     ctx.fillStyle = "rgba(0,0,0,.18)"; for (let s = 0; s < 3; s++) ctx.fillRect(x + 5, 104 + s * 5, 15, 1.5);
     ctx.fillStyle = "#555"; ctx.fillRect(x + 19, 128, 3, 6);
   }
+
+  // giá treo quần áo (dưới tủ khóa, sát tường phải)
+  drawDormLaundryRack(938, 196);
+
+  // kệ để giày dép và thảm chào đón cạnh cửa ra vào
+  drawDormShoeRack(420, 544);
+  ctx.fillStyle = "#e6ccb2"; rr(ctx, 474, 552, 52, 22, 5); ctx.fill();
+  ctx.strokeStyle = "#b08968"; ctx.lineWidth = 1.5; rr(ctx, 476, 554, 48, 18, 4); ctx.stroke();
+  ctx.fillStyle = "#7f5539"; ctx.font = "800 6.5px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("WELCOME", 500, 563);
+
+  // chi tiết đầu giường: tab đầu giường và đèn ngủ giữa các cặp giường
+  drawDormNightstand(103, 272, true);
+  drawDormNightstand(263, 272, false);
+  drawDormNightstand(721, 272, true);
+  drawDormNightstand(881, 272, false);
+
   // cây xanh, chậu treo, đèn lồng giấy
   ctx.save(); ctx.translate(60, 0);
   ctx.fillStyle = "#8a5a3c"; rr(ctx, 118, 140, 16, 16, 3); ctx.fill();
@@ -2260,76 +2440,229 @@ function drawFairyLights(t) {                     // dây đèn vàng chạy d�
   });
 }
 
+// ---- 📚 Các đồ dùng phòng học / thư viện ----
+function drawMotivationalBanner(x, y, w, h, text) { // Băng rôn cổ động tinh thần học tập bằng tiếng Việt
+  const midX = x + w / 2, midY = y + h / 2;
+  // Dây treo 2 đầu vào đinh tán
+  ctx.strokeStyle = "#c59f60"; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x + 10, y); ctx.lineTo(x + 10, y - 6);
+  ctx.moveTo(x + w - 10, y); ctx.lineTo(x + w - 10, y - 6);
+  ctx.stroke();
+  ctx.fillStyle = "#ffd166"; ctx.beginPath(); ctx.arc(x + 10, y - 6, 2, 0, 7); ctx.arc(x + w - 10, y - 6, 2, 0, 7); ctx.fill();
+
+  // Đuôi nheo chữ V hai bên
+  ctx.fillStyle = "#6b1420";
+  // Đuôi trái
+  ctx.beginPath();
+  ctx.moveTo(x + 6, y); ctx.lineTo(x - 8, y); ctx.lineTo(x - 2, midY); ctx.lineTo(x - 8, y + h); ctx.lineTo(x + 6, y + h);
+  ctx.closePath(); ctx.fill();
+  // Đuôi phải
+  ctx.beginPath();
+  ctx.moveTo(x + w - 6, y); ctx.lineTo(x + w + 8, y); ctx.lineTo(x + w + 2, midY); ctx.lineTo(x + w + 8, y + h); ctx.lineTo(x + w - 6, y + h);
+  ctx.closePath(); ctx.fill();
+
+  // Thân băng rôn màu đỏ thắm sang trọng
+  const bg = ctx.createLinearGradient(0, y, 0, y + h);
+  bg.addColorStop(0, "#a82032"); bg.addColorStop(1, "#851424");
+  ctx.fillStyle = bg; rr(ctx, x, y, w, h, 3); ctx.fill();
+
+  // Viền vàng kim tuyến trên dưới
+  ctx.fillStyle = "#ffd166";
+  ctx.fillRect(x + 2, y + 1.5, w - 4, 1.5);
+  ctx.fillRect(x + 2, y + h - 3, w - 4, 1.5);
+
+  // Chữ khẩu hiệu tiếng Việt
+  ctx.fillStyle = "#fff8e7";
+  ctx.font = "800 8.5px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(text, midX, midY + 0.5);
+}
+
+function drawWaterCooler(x, y, t) {                 // Cây nước nóng lạnh hiện đại cho phòng học
+  // Bình nước úp ngược 19L trong suốt màu xanh lơ
+  ctx.fillStyle = "#a2d2ff"; rr(ctx, x + 3, y, 18, 20, 5); ctx.fill();
+  ctx.fillStyle = "#bde0fe"; ctx.fillRect(x + 5, y + 2, 14, 16);
+  // Ngấn nước và bọt khí li ti nổi lên
+  ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.fillRect(x + 6, y + 4, 3, 12);
+  for (let k = 0; k < 3; k++) {
+    const by = y + 15 - ((t * 8 + k * 6) % 13);
+    ctx.beginPath(); ctx.arc(x + 10 + (k % 2) * 4, by, 1, 0, 7); ctx.fill();
+  }
+  // Cổ bình cắm vào máy
+  ctx.fillStyle = "#e9ecef"; ctx.fillRect(x + 6, y + 19, 12, 3);
+
+  // Thân máy nước nóng lạnh
+  ctx.fillStyle = "#f8f9fa"; rr(ctx, x, y + 21, 24, 33, 3); ctx.fill();
+  ctx.strokeStyle = "#ced4da"; ctx.lineWidth = 1; ctx.stroke();
+
+  // Hốc lấy nước màu xám
+  ctx.fillStyle = "#495057"; rr(ctx, x + 3, y + 26, 18, 17, 2); ctx.fill();
+  // Vòi nóng (đỏ) và vòi lạnh (xanh)
+  ctx.fillStyle = "#e63946"; ctx.fillRect(x + 6, y + 28, 3, 4);
+  ctx.fillStyle = "#0077b6"; ctx.fillRect(x + 15, y + 28, 3, 4);
+  // Khay hứng nước thừa
+  ctx.fillStyle = "#6c757d"; ctx.fillRect(x + 4, y + 40, 16, 2.5);
+
+  // Ống đựng cốc giấy bên sườn
+  ctx.fillStyle = "rgba(200,225,255,.5)"; ctx.fillRect(x + 22, y + 24, 4, 18);
+  ctx.fillStyle = "#ffffff";
+  for (let c = 0; c < 4; c++) ctx.fillRect(x + 22.5, y + 26 + c * 3.5, 3, 2);
+
+  // Đèn LED báo nguồn (xanh/đỏ)
+  ctx.fillStyle = "#38b000"; ctx.beginPath(); ctx.arc(x + 6, y + 48, 1, 0, 7); ctx.fill();
+  ctx.fillStyle = "#e63946"; ctx.beginPath(); ctx.arc(x + 10, y + 48, 1, 0, 7); ctx.fill();
+}
+
+function drawLibraryBookshelf(x, y, w, h) {          // Giá sách lớn thư viện ốp tường bằng gỗ gụ
+  // Khung gỗ gụ sẫm màu
+  ctx.fillStyle = "#4a3020"; rr(ctx, x, y, w, h, 4); ctx.fill();
+  ctx.fillStyle = "#342014"; ctx.fillRect(x + 4, y + 4, w - 8, h - 8);
+  // 4 tầng sách với gáy sách nhiều màu
+  BOOKS.forEach((row, k) => {
+    const by = y + 4 + k * 33 + 30;
+    // Sách xếp trên kệ
+    row.forEach(b => {
+      ctx.fillStyle = b.c;
+      ctx.fillRect(x + 6 + b.x * ((w - 12) / 92), by - b.h, b.w * ((w - 12) / 92), b.h);
+      // Đường kẻ ép kim vàng/bạc trên gáy sách
+      ctx.fillStyle = "rgba(255,225,150,.4)";
+      ctx.fillRect(x + 6 + b.x * ((w - 12) / 92) + 1, by - b.h + 3, Math.max(1, b.w * ((w - 12) / 92) - 2), 1.5);
+    });
+    // Đợt gỗ kệ sách
+    ctx.fillStyle = "#5c3d28"; ctx.fillRect(x + 2, by, w - 4, 4);
+  });
+  // Quả địa cầu mini trang trí ở tầng 2
+  ctx.fillStyle = "#c59f60"; ctx.fillRect(x + w - 16, y + 54, 8, 2);
+  ctx.beginPath(); ctx.arc(x + w - 12, y + 47, 5, 0, 7); ctx.fill();
+  ctx.fillStyle = "#4895ef"; ctx.beginPath(); ctx.arc(x + w - 12, y + 47, 4, 0, 7); ctx.fill();
+  ctx.fillStyle = "#52b788"; ctx.fillRect(x + w - 14, y + 46, 3, 2);
+  // Thang trượt thư viện tựa vào kệ
+  ctx.strokeStyle = "#8a5a3c"; ctx.lineWidth = 2; ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x + w - 24, y + 10); ctx.lineTo(x + w - 10, y + h - 2);
+  ctx.moveTo(x + w - 16, y + 10); ctx.lineTo(x + w - 2, y + h - 2);
+  for (let s = 1; s <= 5; s++) {
+    const f = s / 6;
+    ctx.moveTo(x + w - 24 + f * 14, y + 10 + f * (h - 12));
+    ctx.lineTo(x + w - 16 + f * 14, y + 10 + f * (h - 12));
+  }
+  ctx.stroke();
+  // Thanh ray kim loại đồng vàng trên cùng của kệ
+  ctx.fillStyle = "#ffd166"; ctx.fillRect(x + 2, y + 10, w - 4, 2);
+}
+
 // ---- 📚 phòng học NGANG 1000x600: 12 bàn (2 hàng x 6), bảng giữa tường, 2 cửa sổ nắng xiên ----
 function drawStudyRoom(t) {
-  drawWall("#22404d");
-  drawWoodFloor("#7a5a44", "#73543f", "#7d5d47");
+  drawWall("#1e3845");                                // tường màu xanh teal thanh tĩnh thư viện
+  drawWoodFloor("#7a5a44", "#73543f", "#7d5d47");     // sàn gỗ màu hạt dẻ
   const {L, R} = bleed();
-  ctx.fillStyle = "#16303a"; ctx.fillRect(L, 156, R - L, 9);
-  // giá sách lớn bên trái
-  ctx.save(); ctx.translate(20, 0);
-  ctx.fillStyle = "#5a3d2b"; rr(ctx, 10, 18, 108, 142, 4); ctx.fill();
-  ctx.fillStyle = "#3e2a1e"; ctx.fillRect(15, 22, 98, 134);
-  BOOKS.forEach((row, k) => {
-    const by = 22 + k * 33.5 + 30;
-    row.forEach(b => { ctx.fillStyle = b.c; ctx.fillRect(17 + b.x, by - b.h, b.w, b.h); ctx.fillStyle = "rgba(255,255,255,.25)"; ctx.fillRect(17 + b.x + 1, by - b.h + 3, b.w - 2, 1.5); });
-    ctx.fillStyle = "#6b4a35"; ctx.fillRect(13, by, 102, 4);
-  });
-  ctx.restore();
-  // 2 cửa sổ lớn: trời theo giờ trong game, nắng xiên có bụi lơ lửng
+  ctx.fillStyle = "#142832"; ctx.fillRect(L, 156, R - L, 9); // nẹp chân tường gỗ đậm
+
+  // giá sách thư viện lớn ốp tường bên trái
+  drawLibraryBookshelf(20, 18, 112, 142);
+
+  // tủ sách phụ dạng cột bên tường (giữa cửa sổ 1 và bảng)
+  ctx.fillStyle = "#4a3020"; rr(ctx, 334, 34, 26, 126, 3); ctx.fill();
+  ctx.fillStyle = "#342014"; ctx.fillRect(336, 36, 22, 122);
+  for (let y = 36; y < 150; y += 28) {
+    ctx.fillStyle = ["#e76f51", "#2a9d8f", "#e9c46a", "#4cc9f0"][Math.floor(y / 28) % 4];
+    ctx.fillRect(338, y + 6, 8, 18); ctx.fillRect(347, y + 4, 9, 20);
+    ctx.fillStyle = "#5c3d28"; ctx.fillRect(335, y + 24, 24, 3);
+  }
+  // chậu cây trầu bà xanh rủ lá trên nóc tủ phụ
+  ctx.fillStyle = "#c17a56"; rr(ctx, 340, 26, 14, 8, 2); ctx.fill();
+  ctx.fillStyle = "#52b788";
+  for (let k = 0; k < 5; k++) { ctx.beginPath(); ctx.ellipse(338 + k * 3, 34 + (k % 2) * 5, 2.5, 4.5, .3, 0, 7); ctx.fill(); }
+
+  // 2 cửa sổ lớn: bầu trời theo giờ trong game, nắng xiên có bụi lơ lửng
   const day = Life.isDay();
   for (const wx of [210, 670]) {
     ctx.fillStyle = "#e9ecef"; rr(ctx, wx - 5, 22, 130, 96, 4); ctx.fill();
     const g = ctx.createLinearGradient(0, 26, 0, 114);
-    if (day) { const [a, b] = Life.skyColors(); g.addColorStop(0, a); g.addColorStop(1, b); } else { g.addColorStop(0, "#0b1033"); g.addColorStop(1, "#2b2d6b"); }
+    if (day) { const [a, b] = Life.skyColors(); g.addColorStop(0, a); g.addColorStop(1, b); }
+    else { g.addColorStop(0, "#0b1033"); g.addColorStop(1, "#2b2d6b"); }
     ctx.fillStyle = g; ctx.fillRect(wx, 27, 120, 86);
+
     ctx.fillStyle = day ? "#6fae63" : "#1d3b26"; ctx.beginPath(); ctx.moveTo(wx, 113); ctx.quadraticCurveTo(wx + 60, 86, wx + 120, 104); ctx.lineTo(wx + 120, 113); ctx.fill();   // sân trường xa
     ctx.fillStyle = day ? "#3f8f47" : "#163020"; ctx.beginPath(); ctx.arc(wx + 26, 96, 9, 0, 7); ctx.arc(wx + 96, 92, 11, 0, 7); ctx.fill();
     ctx.fillStyle = "#e9ecef"; ctx.fillRect(wx + 58, 27, 4, 86); ctx.fillRect(wx, 68, 120, 3);
     ctx.fillStyle = "rgba(255,255,255,.5)"; ctx.fillRect(wx - 6, 114, 132, 5);
-    for (let k = 0; k < 6; k++) { ctx.fillStyle = "#c9e4ca"; ctx.fillRect(wx + 6 + k * 20, 108, 8, 6); ctx.fillStyle = "#52b788"; ctx.beginPath(); ctx.arc(wx + 10 + k * 20, 106, 4, 0, 7); ctx.fill(); }   // cây bệ cửa
-    const sw = Math.sin(t * .8 + wx) * 3;                                         // rèm bay nhẹ
-    ctx.fillStyle = "rgba(255,240,200,.75)"; ctx.beginPath(); ctx.moveTo(wx - 8, 20); ctx.lineTo(wx + 14, 20); ctx.quadraticCurveTo(wx + 6 + sw, 70, wx + 12 + sw, 120); ctx.lineTo(wx - 8, 120); ctx.fill();
+
+    // cây bệ cửa sổ
+    for (let k = 0; k < 6; k++) {
+      ctx.fillStyle = "#c9e4ca"; ctx.fillRect(wx + 6 + k * 20, 108, 8, 6);
+      ctx.fillStyle = "#52b788"; ctx.beginPath(); ctx.arc(wx + 10 + k * 20, 106, 4, 0, 7); ctx.fill();
+    }
+    // rèm vải lanh trắng buông 2 bên bay nhẹ
+    const sw = Math.sin(t * .8 + wx) * 3;
+    ctx.fillStyle = "rgba(255,240,200,.75)";
+    ctx.beginPath(); ctx.moveTo(wx - 8, 20); ctx.lineTo(wx + 14, 20); ctx.quadraticCurveTo(wx + 6 + sw, 70, wx + 12 + sw, 120); ctx.lineTo(wx - 8, 120); ctx.fill();
     ctx.beginPath(); ctx.moveTo(wx + 128, 20); ctx.lineTo(wx + 106, 20); ctx.quadraticCurveTo(wx + 114 - sw, 70, wx + 108 - sw, 120); ctx.lineTo(wx + 128, 120); ctx.fill();
-    if (day) {                                                                    // vệt nắng xiên xuống sàn
+
+    // vệt nắng xiên xuống sàn vào ban ngày có bụi vàng lơ lửng
+    if (day) {
       ctx.save(); ctx.globalCompositeOperation = "lighter";
       ctx.fillStyle = "rgba(255,236,170,.07)"; ctx.beginPath(); ctx.moveTo(wx, 113); ctx.lineTo(wx + 120, 113); ctx.lineTo(wx + 210, 330); ctx.lineTo(wx + 70, 330); ctx.fill();
-      for (let k = 0; k < 8; k++) { const ph = (t * .05 + k / 8) % 1; ctx.fillStyle = `rgba(255,250,220,${.5 * Math.sin(ph * Math.PI)})`; ctx.fillRect(wx + 40 + ph * 110 + Math.sin(t + k) * 20, 130 + ((k * 37) % 180), 1.6, 1.6); }
+      for (let k = 0; k < 8; k++) {
+        const ph = (t * .05 + k / 8) % 1;
+        ctx.fillStyle = `rgba(255,250,220,${.5 * Math.sin(ph * Math.PI)})`;
+        ctx.fillRect(wx + 40 + ph * 110 + Math.sin(t + k) * 20, 130 + ((k * 37) % 180), 1.6, 1.6);
+      }
       ctx.restore();
     }
   }
-  // bảng trắng giữa tường + khay bút
+
+  // băng rôn cổ động bằng tiếng Việt treo trang trọng phía trên tường
+  drawMotivationalBanner(356, 12, 288, 17, "📖 TRI THỨC LÀ SỨC MẠNH • TƯƠNG LAI TRONG TẦM TAY 🌟");
+
+  // bảng xanh phấn trắng giữa tường + khay phấn
   ctx.save(); ctx.translate(306, 0);
-  ctx.fillStyle = "#b0b5bf"; rr(ctx, 138, 30, 112, 82, 4); ctx.fill();
-  ctx.fillStyle = "#f8f9fa"; ctx.fillRect(142, 34, 104, 74);
+  ctx.fillStyle = "#8a5a3c"; rr(ctx, 136, 32, 116, 82, 4); ctx.fill();           // khung gỗ sồi
+  ctx.fillStyle = "#1b3d2f"; ctx.fillRect(140, 36, 108, 74);                      // mặt bảng xanh chống lóa
   ctx.font = "600 10px system-ui"; ctx.textAlign = "left"; ctx.textBaseline = "top";
-  ctx.fillStyle = "#1d4ed8"; ctx.fillText("E = mc²", 148, 40);
-  ctx.fillStyle = "#c1121f"; ctx.fillText("∫ x dx = x²/2", 148, 56);
-  ctx.fillStyle = "#2d6a4f"; ctx.fillText("Study hard! 💪", 148, 74);
-  ctx.strokeStyle = "#555"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(150, 98); ctx.quadraticCurveTo(190, 86, 236, 100); ctx.stroke();
-  ctx.fillStyle = "#c9ccd6"; rr(ctx, 148, 113, 92, 5, 2); ctx.fill();
-  ctx.fillStyle = "#ff6b6b"; ctx.fillRect(160, 111, 10, 3); ctx.fillStyle = "#4cc9f0"; ctx.fillRect(176, 111, 10, 3);
+  ctx.fillStyle = "#ffd166"; ctx.fillText("E = mc²", 146, 40);
+  ctx.fillStyle = "#4cc9f0"; ctx.fillText("∫ x dx = x²/2", 146, 56);
+  ctx.fillStyle = "#f8f9fa"; ctx.fillText("Cố lên! 💯 📖", 146, 73);
+  ctx.fillStyle = "rgba(255,255,255,.65)"; ctx.font = "500 7px system-ui"; ctx.fillText("✓ Đọc sách  ✓ Làm bài tập", 146, 90);
+  ctx.strokeStyle = "rgba(255,255,255,.25)"; ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(146, 103); ctx.lineTo(240, 103); ctx.stroke();
+  ctx.fillStyle = "#c9ccd6"; rr(ctx, 148, 113, 92, 5, 2); ctx.fill();             // khay phấn
+  ctx.fillStyle = "#fff"; ctx.fillRect(158, 111, 8, 3);
+  ctx.fillStyle = "#ff6b6b"; ctx.fillRect(170, 111, 8, 3);
+  ctx.fillStyle = "#4cc9f0"; ctx.fillRect(182, 111, 8, 3);
   ctx.restore();
-  // bảng tin ghim giấy + bảng vinh danh
+
+  // bảng tin ghim bần + bảng vinh danh
   ctx.fillStyle = "#c9a36b"; rr(ctx, 368, 40, 62, 58, 3); ctx.fill();
-  ["#ffd166", "#a0c4ff", "#ffadad", "#caffbf"].forEach((c, k) => { ctx.fillStyle = c; ctx.fillRect(374 + (k % 2) * 28, 46 + (k / 2 | 0) * 26, 22, 20); ctx.fillStyle = "#e63946"; ctx.beginPath(); ctx.arc(385 + (k % 2) * 28, 48 + (k / 2 | 0) * 26, 1.8, 0, 7); ctx.fill(); });
+  ["#ffd166", "#a0c4ff", "#ffadad", "#caffbf"].forEach((c, k) => {
+    ctx.fillStyle = c; ctx.fillRect(374 + (k % 2) * 28, 46 + (k / 2 | 0) * 26, 22, 20);
+    ctx.fillStyle = "#e63946"; ctx.beginPath(); ctx.arc(385 + (k % 2) * 28, 48 + (k / 2 | 0) * 26, 1.8, 0, 7); ctx.fill();
+  });
   ctx.fillStyle = "#264653"; rr(ctx, 572, 40, 70, 58, 3); ctx.fill();
   ctx.fillStyle = "#ffd27a"; ctx.font = "800 7px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🏆 VINH DANH", 607, 50);
   ctx.fillStyle = "rgba(255,255,255,.6)"; for (let k = 0; k < 3; k++) ctx.fillRect(582, 62 + k * 10, 50 - k * 8, 3);
+
+  // công tắc đèn và đồng hồ treo tường
   drawSwitch();
   drawClock(860, 54);
+
+  // cây nước nóng lạnh cạnh đồng hồ
+  drawWaterCooler(844, 104, t);
+
   // bàn nhỏ + radio (góc phải)
   ctx.save(); ctx.translate(604, 0);
   ctx.fillStyle = "#4a3428"; ctx.fillRect(296, 132, 60, 7); ctx.fillRect(300, 139, 4, 22); ctx.fillRect(348, 139, 4, 22);
   ctx.restore();
   drawRadio(t);
-  // quạt trần quay
+
+  // quạt trần quay nhẹ
   for (const fx of [320, 680]) {
     ctx.save(); ctx.translate(fx, 6); ctx.fillStyle = "#3a3a46"; ctx.fillRect(-1.5, -10, 3, 10);
-    ctx.rotate(t * 3); ctx.fillStyle = "rgba(220,220,230,.55)"; for (let k = 0; k < 3; k++) { ctx.rotate(Math.PI * 2 / 3); ctx.beginPath(); ctx.ellipse(12, 0, 12, 3, 0, 0, 7); ctx.fill(); }
+    ctx.rotate(t * 3); ctx.fillStyle = "rgba(220,220,230,.55)";
+    for (let k = 0; k < 3; k++) { ctx.rotate(Math.PI * 2 / 3); ctx.beginPath(); ctx.ellipse(12, 0, 12, 3, 0, 0, 7); ctx.fill(); }
     ctx.restore();
   }
-  // góc đọc sách (dưới cùng, giữa phòng)
+
+  // góc đọc sách thư giãn (dưới cùng, giữa phòng)
   ctx.save(); ctx.translate(320, 0);
   ctx.fillStyle = "rgba(70,130,100,.45)"; ctx.beginPath(); ctx.ellipse(180, 470, 160, 42, 0, 0, 7); ctx.fill();
   ctx.strokeStyle = "rgba(255,210,122,.25)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(180, 470, 150, 35, 0, 0, 7); ctx.stroke();
@@ -2338,14 +2671,17 @@ function drawStudyRoom(t) {
   ctx.fillStyle = "#d9825f"; rr(ctx, 118, 464, 60, 18, 6); ctx.fill(); rr(ctx, 182, 464, 60, 18, 6); ctx.fill();
   ctx.fillStyle = "#e9c46a"; ctx.beginPath(); ctx.ellipse(56, 474, 20, 15, 0, 0, 7); ctx.fill();
   ctx.fillStyle = "#9b5de5"; ctx.beginPath(); ctx.ellipse(304, 474, 20, 15, 0, 0, 7); ctx.fill();
+  // cây cảnh chậu gốm góc sofa
   ctx.fillStyle = "#8a5a3c"; rr(ctx, 334, 440, 18, 16, 3); ctx.fill();
   ctx.fillStyle = "#3f8f47"; ctx.beginPath(); ctx.arc(343, 428, 14, 0, 7); ctx.arc(334, 420, 9, 0, 7); ctx.arc(352, 418, 9, 0, 7); ctx.fill();
   ctx.restore();
+
   // tủ đồ cá nhân (2 góc dưới)
   for (const lx of [40, 880]) for (let k = 0; k < 3; k++) {
     ctx.fillStyle = ["#457b9d", "#2a9d8f", "#e76f51"][k]; rr(ctx, lx + k * 27, 452, 25, 52, 3); ctx.fill();
     ctx.fillStyle = "rgba(255,255,255,.3)"; ctx.fillRect(lx + k * 27 + 5, 460, 15, 2); ctx.fillStyle = "#ddd"; ctx.fillRect(lx + k * 27 + 18, 478, 3, 6);
   }
+
   // đồng hồ Pomodoro lớn treo tường (trung tâm, trên cao)
   ctx.save(); ctx.translate(500, 0);
   ctx.fillStyle = "#1a2e3a"; rr(ctx, 0, 22, 100, 56, 8); ctx.fill();
@@ -2355,6 +2691,7 @@ function drawStudyRoom(t) {
   ctx.fillText(`${pomM}:${pomS}`, 50, 50);
   ctx.fillStyle = "#ffd27a"; ctx.font = "700 7px system-ui"; ctx.fillText("🍅 POMODORO", 50, 70);
   ctx.restore();
+
   // bảng "ai đang học gì" (tường trái)
   ctx.fillStyle = "#1d3557"; rr(ctx, 10, 170, 110, 90, 6); ctx.fill();
   ctx.strokeStyle = "#4cc9f0"; ctx.lineWidth = 1.5; ctx.strokeRect(12, 172, 106, 86);
@@ -2366,6 +2703,171 @@ function drawStudyRoom(t) {
     ctx.fillText((p.name || "???").slice(0, 10), 34, 194 + k * 14);
   });
   if (!studiers.length) { ctx.fillStyle = "rgba(255,255,255,.4)"; ctx.font = "700 8px system-ui"; ctx.textAlign = "center"; ctx.fillText("chưa ai học", 65, 215); }
+}
+
+// ---- 🌳 Các đồ trang trí công viên ----
+function drawFlowerBed(x, y, w, h, kind) {          // Luống hoa công viên khoe sắc
+  ctx.fillStyle = "#4a3220"; rr(ctx, x, y, w, h, 6); ctx.fill();
+  ctx.strokeStyle = "#8a6547"; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = "#b8b2a5";
+  for (let px = x + 4; px < x + w - 3; px += 8) {
+    ctx.beginPath(); ctx.arc(px, y + 1, 2, 0, 7); ctx.arc(px, y + h - 1, 2, 0, 7); ctx.fill();
+  }
+  const cols = kind === "tulip" ? ["#ff4d6d", "#ff758f", "#ff8fa3", "#ffd166"]
+             : kind === "rose" ? ["#e63946", "#f72585", "#ff70a6", "#ff9770"]
+             : kind === "daisy" ? ["#ffffff", "#fffa65", "#ffffff", "#ffd166"]
+             : ["#9b5de5", "#c77dff", "#7209b7", "#a0c4ff"];
+  for (let r = 0; r < 2; r++) {
+    const fy = y + 7 + r * (h - 14);
+    for (let c = 0; c < 5; c++) {
+      const fx = x + 7 + c * ((w - 14) / 4);
+      ctx.fillStyle = "#38b000"; ctx.fillRect(fx - 0.5, fy + 1, 1, 4);
+      const fc = cols[(r * 5 + c) % cols.length];
+      ctx.fillStyle = fc; ctx.beginPath(); ctx.arc(fx, fy, 2.8, 0, 7); ctx.fill();
+      ctx.fillStyle = "#ffd166"; ctx.beginPath(); ctx.arc(fx, fy, 1, 0, 7); ctx.fill();
+    }
+  }
+}
+
+function drawPicnicBlanket(x, y) {                  // Thảm dã ngoại caro với giỏ picnic và hoa quả
+  ctx.fillStyle = "#e63946"; rr(ctx, x, y, 62, 40, 4); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,.85)";
+  for (let px = x + 4; px < x + 60; px += 10) ctx.fillRect(px, y, 5, 40);
+  for (let py = y + 4; py < y + 38; py += 10) ctx.fillRect(x, py, 62, 5);
+  ctx.fillStyle = "#f8f9fa";
+  [[x - 2, y], [x + 60, y], [x - 2, y + 38], [x + 60, y + 38]].forEach(([tx, ty]) => { ctx.fillRect(tx, ty, 3, 2); });
+  // Giỏ mây picnic
+  ctx.fillStyle = "#c59f60"; rr(ctx, x + 6, y + 6, 20, 15, 3); ctx.fill();
+  ctx.strokeStyle = "#8c6239"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x + 6, y + 13); ctx.lineTo(x + 26, y + 13); ctx.moveTo(x + 16, y + 6); ctx.lineTo(x + 16, y + 21); ctx.stroke();
+  ctx.strokeStyle = "#8c6239"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x + 16, y + 6, 6, Math.PI, 0); ctx.stroke();
+  // Đĩa dưa hấu
+  ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(x + 44, y + 15, 9, 0, 7); ctx.fill();
+  ctx.fillStyle = "#2d6a4f"; ctx.beginPath(); ctx.arc(x + 42, y + 14, 6, 0, Math.PI); ctx.fill();
+  ctx.fillStyle = "#e63946"; ctx.beginPath(); ctx.arc(x + 42, y + 14, 4.8, 0, Math.PI); ctx.fill();
+  ctx.fillStyle = "#111"; ctx.fillRect(x + 41, y + 16, 1, 1); ctx.fillRect(x + 43, y + 16, 1, 1);
+  // Bình giữ nhiệt và 2 cốc
+  ctx.fillStyle = "#48cae4"; rr(ctx, x + 34, y + 23, 7, 13, 2); ctx.fill();
+  ctx.fillStyle = "#f3f0ea"; ctx.beginPath(); ctx.arc(x + 47, y + 30, 3, 0, 7); ctx.arc(x + 54, y + 29, 3, 0, 7); ctx.fill();
+  // Sách mở đọc
+  ctx.fillStyle = "#fff3b0"; rr(ctx, x + 10, y + 24, 16, 10, 1.5); ctx.fill();
+  ctx.strokeStyle = "#bbb"; ctx.lineWidth = .7; ctx.beginPath(); ctx.moveTo(x + 18, y + 24); ctx.lineTo(x + 18, y + 34); ctx.stroke();
+}
+
+function drawBicycleRack(x, y) {                    // Giá để xe đạp kim loại và 2 chiếc xe đạp
+  ctx.strokeStyle = "#555566"; ctx.lineWidth = 2; ctx.lineCap = "round";
+  ctx.beginPath();
+  for (let k = 0; k < 4; k++) {
+    const rx = x + 4 + k * 14;
+    ctx.moveTo(rx, y + 28); ctx.lineTo(rx, y + 8); ctx.quadraticCurveTo(rx + 4, y + 4, rx + 8, y + 8); ctx.lineTo(rx + 8, y + 28);
+  }
+  ctx.moveTo(x, y + 28); ctx.lineTo(x + 54, y + 28); ctx.stroke();
+
+  // Xe đạp 1 (xanh mint có giỏ hoa)
+  const b1x = x + 10, b1y = y + 14;
+  ctx.strokeStyle = "#444"; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.arc(b1x - 8, b1y + 10, 6, 0, 7); ctx.arc(b1x + 12, b1y + 10, 6, 0, 7); ctx.stroke();
+  ctx.strokeStyle = "#aaa"; ctx.lineWidth = .6;
+  ctx.beginPath(); ctx.moveTo(b1x - 8, b1y + 4); ctx.lineTo(b1x - 8, b1y + 16); ctx.moveTo(b1x + 12, b1y + 4); ctx.lineTo(b1x + 12, b1y + 16); ctx.stroke();
+  ctx.strokeStyle = "#52b788"; ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.moveTo(b1x - 8, b1y + 10); ctx.lineTo(b1x - 1, b1y + 5); ctx.lineTo(b1x + 6, b1y + 5); ctx.lineTo(b1x + 12, b1y + 10);
+  ctx.moveTo(b1x - 1, b1y + 5); ctx.lineTo(b1x + 3, b1y + 10); ctx.lineTo(b1x + 6, b1y + 5); ctx.stroke();
+  ctx.strokeStyle = "#333"; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(b1x + 7, b1y + 3); ctx.lineTo(b1x + 9, b1y); ctx.lineTo(b1x + 12, b1y); ctx.stroke();
+  ctx.fillStyle = "#7f5539"; rr(ctx, b1x - 4, b1y + 2, 6, 2.5, 1); ctx.fill();
+  ctx.fillStyle = "#c59f60"; rr(ctx, b1x + 10, b1y - 2, 7, 5, 1); ctx.fill();
+  ctx.fillStyle = "#ff758f"; ctx.beginPath(); ctx.arc(b1x + 12, b1y - 3, 2, 0, 7); ctx.arc(b1x + 15, b1y - 3, 1.8, 0, 7); ctx.fill();
+
+  // Xe đạp 2 (cam san hô)
+  const b2x = x + 28, b2y = y + 14;
+  ctx.strokeStyle = "#444"; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.arc(b2x - 8, b2y + 10, 6, 0, 7); ctx.arc(b2x + 12, b2y + 10, 6, 0, 7); ctx.stroke();
+  ctx.strokeStyle = "#f4a261"; ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.moveTo(b2x - 8, b2y + 10); ctx.lineTo(b2x - 1, b2y + 5); ctx.lineTo(b2x + 6, b2y + 5); ctx.lineTo(b2x + 12, b2y + 10);
+  ctx.moveTo(b2x - 1, b2y + 5); ctx.lineTo(b2x + 3, b2y + 10); ctx.lineTo(b2x + 6, b2y + 5); ctx.stroke();
+  ctx.strokeStyle = "#333"; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(b2x + 7, b2y + 3); ctx.lineTo(b2x + 9, b2y); ctx.stroke();
+  ctx.fillStyle = "#7f5539"; rr(ctx, b2x - 4, b2y + 2, 6, 2.5, 1); ctx.fill();
+  ctx.strokeStyle = "#888"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(b2x - 8, b2y + 4); ctx.lineTo(b2x - 2, b2y + 4); ctx.stroke();
+}
+
+function drawParkKiosk(x, y, t, day) {               // Quầy ki-ốt bán đồ uống và báo chí công viên
+  ctx.fillStyle = "rgba(0,0,0,.15)"; ctx.beginPath(); ctx.ellipse(x + 29, y + 46, 32, 6, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#8a5a3c"; rr(ctx, x, y + 14, 58, 30, 3); ctx.fill();
+  ctx.fillStyle = "#6b4226"; ctx.fillRect(x + 4, y + 24, 50, 18);
+  ctx.fillStyle = "#5c3a21";
+  for (let xx = x + 8; xx < x + 50; xx += 8) ctx.fillRect(xx, y + 26, 1, 14);
+
+  // Mặt quầy
+  ctx.fillStyle = "#c59f60"; rr(ctx, x - 2, y + 21, 62, 5, 2); ctx.fill();
+  // Báo và chai nước
+  ctx.fillStyle = "#f8f9fa"; ctx.fillRect(x + 4, y + 17, 10, 5);
+  ctx.fillStyle = "#333"; ctx.fillRect(x + 6, y + 19, 6, 1);
+  [["#e63946", 18], ["#00b4d8", 24], ["#52b788", 30], ["#ffb703", 36]].forEach(([c, dx]) => {
+    ctx.fillStyle = c; ctx.fillRect(x + dx, y + 15, 3.5, 7);
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(x + dx + 0.5, y + 13.5, 2.5, 2);
+  });
+
+  // Biển hiệu
+  ctx.fillStyle = "#264653"; rr(ctx, x + 10, y + 4, 38, 10, 2); ctx.fill();
+  ctx.fillStyle = "#ffd166"; ctx.font = "800 7px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("KI-ỐT 🥤", x + 29, y + 9);
+
+  // Mái hiên sọc đỏ trắng
+  const stripes = 6, sw = 64 / stripes;
+  for (let s = 0; s < stripes; s++) {
+    ctx.fillStyle = s % 2 ? "#e63946" : "#ffffff";
+    ctx.beginPath();
+    ctx.moveTo(x - 3 + s * sw, y - 2); ctx.lineTo(x - 3 + (s + 1) * sw, y - 2);
+    ctx.lineTo(x - 5 + (s + 1) * sw, y + 12); ctx.lineTo(x - 5 + s * sw, y + 12);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.arc(x - 5 + s * sw + sw / 2, y + 12, sw / 2, 0, Math.PI); ctx.fill();
+  }
+
+  // Đèn treo sáng ấm áp vào ban đêm
+  ctx.strokeStyle = "#333"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x + 50, y + 12); ctx.lineTo(x + 50, y + 18); ctx.stroke();
+  const lit = !day;
+  ctx.fillStyle = lit ? "#ffe08a" : "#d8dde3";
+  ctx.beginPath(); ctx.arc(x + 50, y + 20, 3.5, 0, 7); ctx.fill();
+  if (lit) {
+    const lg = ctx.createRadialGradient(x + 50, y + 20, 0, x + 50, y + 20, 18);
+    lg.addColorStop(0, "rgba(255,224,138,.5)"); lg.addColorStop(1, "rgba(255,224,138,0)");
+    ctx.fillStyle = lg; ctx.fillRect(x + 32, y + 2, 36, 36);
+  }
+}
+
+function drawDuckFamily(cx, cy, t) {                // Đàn vịt mẹ và vịt con bơi lội trên hồ
+  for (let k = 0; k < 3; k++) {
+    const da = t * .22 - k * .28;
+    const dx = cx + Math.cos(da) * 58;
+    const dy = cy + Math.sin(da) * 22;
+    const sc = k === 0 ? 1 : 0.65;
+    const bob = Math.sin(t * 3.5 + k * 1.5) * 1;
+    const facing = Math.sin(da) > 0 ? -1 : 1;
+
+    // Vệt rẽ sóng nước
+    ctx.strokeStyle = "rgba(255,255,255,.45)"; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(dx - facing * 4, dy + bob + 2);
+    ctx.lineTo(dx - facing * 12, dy + bob - 1);
+    ctx.moveTo(dx - facing * 4, dy + bob + 2);
+    ctx.lineTo(dx - facing * 12, dy + bob + 5);
+    ctx.stroke();
+
+    ctx.save(); ctx.translate(dx, dy + bob); ctx.scale(facing * sc, sc);
+    ctx.fillStyle = k === 0 ? "#ffffff" : "#ffe066";
+    ctx.beginPath(); ctx.ellipse(0, 0, 6.5, 4.5, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = k === 0 ? "#e9ecef" : "#ffd166";
+    ctx.beginPath(); ctx.ellipse(-1.5, -0.5, 3.5, 2.2, -.2, 0, 7); ctx.fill();
+    ctx.fillStyle = k === 0 ? "#ffffff" : "#ffe066";
+    ctx.beginPath(); ctx.arc(4.5, -4, 3.2, 0, 7); ctx.fill();
+    ctx.fillStyle = "#111"; ctx.beginPath(); ctx.arc(5.2, -4.5, 0.8, 0, 7); ctx.fill();
+    ctx.fillStyle = "#f4a261";
+    ctx.beginPath(); ctx.moveTo(7, -4); ctx.lineTo(10.5, -3.2); ctx.lineTo(7, -2.5); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
 }
 
 // ---- 🌳 công viên trung tâm ----
@@ -2389,6 +2891,17 @@ function drawPark(t) {                              // 🌳 công viên NGANG 11
     ctx.fillStyle = "#ffd166"; ctx.fillRect(bx - 1.5, by - 11, 3, 22);
     ctx.strokeStyle = "#7a5236"; ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(bx - 5, by + 8); ctx.lineTo(bx - 3, by + 16); ctx.moveTo(bx + 5, by + 8); ctx.lineTo(bx + 3, by + 16); ctx.stroke();
     ctx.fillStyle = "#8a5a3c"; ctx.fillRect(bx - 3.5, by + 16, 7, 5);
+
+    // đàn chim bay lượn trên bầu trời ban ngày hình chữ V
+    for (let k = 0; k < 4; k++) {
+      const birdX = ((t * 24 + k * 52) % (wv + 120)) + x0 - 60;
+      const birdY = 24 + (k % 2) * 16 + Math.sin(t * 1.6 + k) * 6;
+      const flap = Math.sin(t * 8 + k * 1.5);
+      ctx.strokeStyle = "rgba(40, 55, 75, .7)"; ctx.lineWidth = 1.3; ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(birdX - 6, birdY - flap * 3); ctx.quadraticCurveTo(birdX - 2, birdY, birdX, birdY + 1);
+      ctx.quadraticCurveTo(birdX + 2, birdY, birdX + 6, birdY - flap * 3); ctx.stroke();
+    }
   } else {
     for (const st of winStars.concat(tvStars)) for (let k = 0; k < 4; k++) {
       ctx.fillStyle = `rgba(255,255,255,${.35 + .45 * Math.sin(t * 2 + st.p + k)})`; ctx.fillRect(-200 + k * 380 + st.x * 380, -60 + st.y * 160, 1.6, 1.6);
@@ -2409,23 +2922,42 @@ function drawPark(t) {                              // 🌳 công viên NGANG 11
   for (let x = x0 - 300; x <= x1 + 300; x += 24) ctx.lineTo(x, 104 + Math.sin(x * .011) * 10 + Math.sin(x * .031) * 5);
   ctx.lineTo(x1 + 300, 140); ctx.fill();
   ctx.restore();
-  // ---- cỏ ----
+
+  // ---- cỏ công viên ----
   ctx.fillStyle = "#67b85a"; ctx.fillRect(x0, 112, wv, yb - 112);
   ctx.fillStyle = "#58a84c"; PARK.grass.forEach(q => ctx.fillRect(q.x, q.y, 2, 5));
   ctx.fillStyle = "#4e9a45"; ctx.fillRect(x0, 112, wv, 5);
+
   const tree = (x, y, r, c1 = "#3f8f47", c2 = "#4fa857") => {
     ctx.fillStyle = "rgba(0,0,0,.15)"; ctx.beginPath(); ctx.ellipse(x, y + r * 1.25, r * .9, r * .3, 0, 0, 7); ctx.fill();
     ctx.fillStyle = "#7a5236"; ctx.fillRect(x - 3, y + r * .4, 6, r * .9);
-    const sw = Math.sin(t * 1.3 + x) * 1.2;                                           // tán lá đung đưa theo gió
+    const sw = Math.sin(t * 1.3 + x) * 1.8;                                           // tán lá đung đưa theo gió
     ctx.fillStyle = c1; ctx.beginPath(); ctx.arc(x + sw, y, r, 0, 7); ctx.fill();
     ctx.fillStyle = c2; ctx.beginPath(); ctx.arc(x - r * .35 + sw, y - r * .3, r * .55, 0, 7); ctx.arc(x + r * .4 + sw, y - r * .35, r * .48, 0, 7); ctx.fill();
   };
   for (let x = -180; x < 1320; x += 62) if (x < 440 || x > 680) tree(x + (x % 3) * 6, 132 + (x % 5), 13, "#3b8743", "#4a9f53");   // hàng cây chân đồi
-  // ---- lối đi: ngang từ cổng sang phải, dọc từ sân khấu xuống ----
+
+  // ---- lối đi lát đá tự nhiên chi tiết ----
+  // Lối đi ngang từ cổng sang phải
   ctx.fillStyle = "#d8c08c"; ctx.fillRect(x0, 332, wv, 36);
-  ctx.fillStyle = "rgba(0,0,0,.06)"; for (let xx = Math.floor(x0 / 18) * 18; xx < x1; xx += 18) ctx.fillRect(xx, 332, 1.5, 36);
+  // Gờ đá viền trên dưới lối đi
+  ctx.fillStyle = "#beaa7b"; ctx.fillRect(x0, 332, wv, 2); ctx.fillRect(x0, 366, wv, 2);
+  // Vân gạch đá lát xen kẽ
+  ctx.fillStyle = "rgba(0,0,0,.07)";
+  for (let xx = Math.floor(x0 / 18) * 18; xx < x1; xx += 18) ctx.fillRect(xx, 332, 1.5, 36);
+  ctx.fillStyle = "rgba(255,255,255,.15)";
+  for (let xx = Math.floor(x0 / 36) * 36; xx < x1; xx += 36) ctx.fillRect(xx + 3, 336, 12, 10);
+
+  // Lối đi dọc từ sân khấu xuống
   ctx.fillStyle = "#cfc6b8"; ctx.fillRect(544, 170, 32, yb - 170);
-  ctx.fillStyle = "rgba(0,0,0,.07)"; for (let yy = 176; yy < yb; yy += 14) ctx.fillRect(544, yy, 32, 1.5);
+  ctx.fillStyle = "#b8b0a2"; ctx.fillRect(544, 170, 2, yb - 170); ctx.fillRect(574, 170, 2, yb - 170);
+  ctx.fillStyle = "rgba(0,0,0,.07)";
+  for (let yy = 176; yy < yb; yy += 14) ctx.fillRect(544, yy, 32, 1.5);
+
+  // Mầm cỏ xanh mọc len lỏi giữa kẽ đá
+  ctx.fillStyle = "#58a84c";
+  for (let xx = 120; xx < 1050; xx += 78) ctx.fillRect(xx, 348, 2, 4);
+
   // ---- sân khấu nhỏ ngoài trời (nơi sự kiện cộng đồng) ----
   const S = STAGE_P;
   ctx.fillStyle = "#5e3d27"; ctx.fillRect(S.x + 6, S.y - 44, 6, 50); ctx.fillRect(S.x + S.w - 12, S.y - 44, 6, 50);
@@ -2439,6 +2971,13 @@ function drawPark(t) {                              // 🌳 công viên NGANG 11
     const xx = S.x + 6 + k * (S.w - 12) / 13, yy = S.y - 46 + Math.sin(k / 13 * Math.PI) * 8;
     ctx.fillStyle = (Math.floor(t * 2) + k) % 2 ? "#ffd166" : "#ff8fab"; ctx.beginPath(); ctx.arc(xx, yy, 2.4, 0, 7); ctx.fill();
   }
+
+  // ---- các luống hoa công viên khoe sắc ----
+  drawFlowerBed(415, 230, 48, 28, "tulip");
+  drawFlowerBed(650, 230, 48, 28, "rose");
+  drawFlowerBed(330, 492, 52, 26, "daisy");
+  drawFlowerBed(670, 492, 52, 26, "lavender");
+
   // ---- quảng trường tròn + đài phun nước ----
   const F = FOUNTAIN;
   ctx.fillStyle = "#d9d2c3"; ctx.beginPath(); ctx.arc(F.x, F.y, PLAZA_R, 0, 7); ctx.fill();
@@ -2454,6 +2993,7 @@ function drawPark(t) {                              // 🌳 công viên NGANG 11
     const a = k / 14 * Math.PI * 2, ph = (t * 1.2 + k * .07) % 1, d = 4 + ph * 22;
     ctx.fillStyle = `rgba(220,240,255,${.9 - ph * .7})`; ctx.beginPath(); ctx.arc(F.x + Math.cos(a) * d, F.y + Math.sin(a) * d * .8 - Math.sin(ph * Math.PI) * 14, 1.8, 0, 7); ctx.fill();
   }
+
   // ---- cột đèn lớn giữa công viên: 3 bóng, ban đêm sáng cả quảng trường ----
   const BL = BIG_LAMP, top = BL.y - BL.h;
   ctx.fillStyle = "#4a4a58"; rr(ctx, BL.x - 8, BL.y - 14, 16, 10, 3); ctx.fill();               // đế cột
@@ -2468,25 +3008,53 @@ function drawPark(t) {                              // 🌳 công viên NGANG 11
     ctx.fillStyle = day ? "#d8dde3" : "#ffe08a"; ctx.beginPath(); ctx.arc(lx, ly, r, 0, 7); ctx.fill();
     ctx.fillStyle = "#3a3a46"; rr(ctx, lx - r * .7, ly - r - 3, r * 1.4, 4, 2); ctx.fill();    // nắp chụp đèn
   }
-  // ---- hồ sen + đàn vịt (góc dưới trái) ----
+
+  // ---- hồ sen tự nhiên + đàn vịt bơi + phản chiếu trăng sao (góc dưới trái) ----
   const P = POND_P;
-  ctx.fillStyle = "#8d8f80"; ctx.beginPath(); ctx.ellipse(P.x, P.y, P.rx + 5, P.ry + 5, 0, 0, 7); ctx.fill();
+  // Bờ đá cuội bo quanh hồ
+  ctx.fillStyle = "#7d7f70"; ctx.beginPath(); ctx.ellipse(P.x, P.y, P.rx + 7, P.ry + 7, 0, 0, 7); ctx.fill();
+  for (let pa = 0; pa < Math.PI * 2; pa += .3) {
+    const ppx = P.x + Math.cos(pa) * (P.rx + 4), ppy = P.y + Math.sin(pa) * (P.ry + 4);
+    ctx.fillStyle = pa % .6 ? "#a3a899" : "#8c9183";
+    ctx.beginPath(); ctx.arc(ppx, ppy, 3.5, 0, 7); ctx.fill();
+  }
+  // Mặt nước hồ nước trong xanh
   const pg = ctx.createLinearGradient(0, P.y - P.ry, 0, P.y + P.ry);
   pg.addColorStop(0, day ? "#6cb8e8" : "#1d3a6b"); pg.addColorStop(1, day ? "#3d8cc9" : "#0f2448");
   ctx.fillStyle = pg; ctx.beginPath(); ctx.ellipse(P.x, P.y, P.rx, P.ry, 0, 0, 7); ctx.fill();
+
+  // Gợn sóng nước lăn tăn
   ctx.strokeStyle = "rgba(255,255,255,.35)"; ctx.lineWidth = 1;
-  for (let k = 0; k < 3; k++) { const ph = (t * .4 + k / 3) % 1; ctx.globalAlpha = 1 - ph; ctx.beginPath(); ctx.ellipse(P.x - 40 + k * 35, P.y + 8 - k * 10, 4 + ph * 16, 2 + ph * 6, 0, 0, 7); ctx.stroke(); }
+  for (let k = 0; k < 3; k++) {
+    const ph = (t * .4 + k / 3) % 1;
+    ctx.globalAlpha = 1 - ph;
+    ctx.beginPath(); ctx.ellipse(P.x - 30 + k * 30, P.y + 6 - k * 8, 5 + ph * 18, 2.5 + ph * 7, 0, 0, 7); ctx.stroke();
+  }
   ctx.globalAlpha = 1;
-  for (const [lx, ly, lr] of [[P.x + 52, P.y - 14, 9], [P.x + 66, P.y + 6, 7], [P.x - 60, P.y + 12, 8]]) {          // lá sen
+
+  // Ban đêm: ánh trăng và sao phản chiếu lung linh trên mặt hồ
+  if (!day) {
+    const mrX = P.x + 30, mrY = P.y - 2;
+    const waveW = Math.sin(t * 2.5) * 3;
+    ctx.fillStyle = "rgba(255, 246, 200, .35)";
+    ctx.beginPath(); ctx.ellipse(mrX + waveW, mrY, 14, 7, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "rgba(255, 255, 255, .75)";
+    for (let sw = 0; sw < 3; sw++) {
+      const swY = mrY - 3 + sw * 3, swX = mrX + Math.sin(t * 3 + sw) * 4;
+      ctx.fillRect(swX - 5 + sw, swY, 10 - sw * 2, 1.2);
+    }
+  }
+
+  // Lá sen và hoa sen nở
+  for (const [lx, ly, lr] of [[P.x + 52, P.y - 14, 9], [P.x + 66, P.y + 6, 7], [P.x - 60, P.y + 12, 8]]) {
     ctx.fillStyle = "#4f9d4a"; ctx.beginPath(); ctx.moveTo(lx, ly); ctx.ellipse(lx, ly, lr, lr * .6, 0, .3, Math.PI * 2); ctx.closePath(); ctx.fill();
   }
-  ctx.fillStyle = "#ff9ec4"; ctx.beginPath(); ctx.arc(P.x + 54, P.y - 16, 3.5, 0, 7); ctx.fill();
-  for (let k = 0; k < 3; k++) {
-    const da = t * .25 - k * .35, dx = P.x + Math.cos(da) * 58, dy = P.y + Math.sin(da) * 22, sc = k ? .75 : 1;
-    ctx.save(); ctx.translate(dx, dy); ctx.scale((Math.sin(da) > 0 ? -1 : 1) * sc, sc);
-    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(0, 0, 6, 4, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(4, -4, 3, 0, 7); ctx.fill();
-    ctx.fillStyle = "#f4a261"; ctx.fillRect(6.5, -4.5, 3, 1.6); ctx.restore();
-  }
+  ctx.fillStyle = "#ff9ec4"; ctx.beginPath(); ctx.arc(P.x + 54, P.y - 16, 3.8, 0, 7); ctx.fill();
+  ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(P.x + 54, P.y - 16, 1.8, 0, 7); ctx.fill();
+
+  // Đàn vịt mẹ và vịt con bơi lội
+  drawDuckFamily(P.x, P.y, t);
+
   // ---- sân chơi: xích đu + bập bênh (góc dưới phải) ----
   const sx = 930, sy = 470;
   ctx.fillStyle = "rgba(0,0,0,.12)"; ctx.beginPath(); ctx.ellipse(sx + 45, sy + 62, 80, 14, 0, 0, 7); ctx.fill();
@@ -2501,19 +3069,29 @@ function drawPark(t) {                              // 🌳 công viên NGANG 11
   ctx.save(); ctx.translate(sx + 132, sy + 40); ctx.rotate(tilt * Math.PI / 180);
   ctx.fillStyle = "#f4a261"; rr(ctx, -26, -4, 52, 8, 4); ctx.fill(); ctx.restore();
   ctx.fillStyle = "#6b4a35"; ctx.fillRect(sx + 129, sy + 40, 6, 12);
-  // ---- hoa (tránh lối đi, quảng trường, hồ, sân khấu, sân chơi, ghế) ----
+
+  // ---- thảm dã ngoại caro picnic ----
+  drawPicnicBlanket(750, 462);
+
+  // ---- hoa dại rải rác trên cỏ ----
   PARK.flowers.forEach(f => {
     if (Math.hypot(f.x - F.x, f.y - F.y) < PLAZA_R + 8 || (f.y > 326 && f.y < 374) || (f.x > 538 && f.x < 582) ||
         ((f.x - P.x) / (P.rx + 12)) ** 2 + ((f.y - P.y) / (P.ry + 12)) ** 2 < 1 || (f.x > 450 && f.x < 670 && f.y < 186) ||
-        (f.x > 900 && f.x < 1090 && f.y > 455) || BEDS.some(b => f.x > b.x && f.x < b.x + BED_W && f.y > b.y + 30 && f.y < b.y + BED_H + 4)) return;
+        (f.x > 900 && f.x < 1090 && f.y > 455) || (f.x > 740 && f.x < 820 && f.y > 455 && f.y < 510) ||
+        BEDS.some(b => f.x > b.x && f.x < b.x + BED_W && f.y > b.y + 30 && f.y < b.y + BED_H + 4)) return;
     ctx.fillStyle = f.c; ctx.beginPath(); ctx.arc(f.x, f.y, 2, 0, 7); ctx.fill();
   });
+
   // ---- cây xanh + anh đào (cánh hoa rơi) ----
   for (const [x, y, r] of [[110, 186, 20], [250, 196, 15], [880, 190, 17], [1060, 200, 20], [60, 548, 20], [400, 560, 15], [730, 566, 16], [1095, 420, 16]]) tree(x, y, r);
   for (const [x, y] of [[1000, 278], [800, 520]]) {
     tree(x, y, 22, "#f4a6c4", "#ffc8dd");
     for (let k = 0; k < 6; k++) { const ph = (t * .18 + k / 6) % 1; ctx.fillStyle = `rgba(255,192,214,${1 - ph})`; ctx.fillRect(x - 14 + Math.sin(t + k * 2) * 16, y - 6 + ph * 60, 2.2, 2.2); }
   }
+
+  // ---- quầy ki-ốt đồ uống / báo chí ----
+  drawParkKiosk(742, 178, t, day);
+
   // ---- xe kem (phát nhạc cho cả công viên) ----
   const R = RADIO, bounce = room.music.on ? Math.abs(Math.sin(t * 4.2)) * 1.2 : 0;
   ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.beginPath(); ctx.ellipse(R.x + R.w / 2, R.y + R.h + 3, R.w * .6, 5, 0, 0, 7); ctx.fill();
@@ -2522,11 +3100,13 @@ function drawPark(t) {                              // 🌳 công viên NGANG 11
   ctx.fillStyle = "#cdb4db"; ctx.beginPath(); ctx.moveTo(R.x - 4, R.y + 9 - bounce); ctx.lineTo(R.x + R.w / 2, R.y - 6 - bounce); ctx.lineTo(R.x + R.w + 4, R.y + 9 - bounce); ctx.fill();
   ctx.fillStyle = "#333"; ctx.beginPath(); ctx.arc(R.x + 10, R.y + R.h + 1, 4, 0, 7); ctx.arc(R.x + R.w - 10, R.y + R.h + 1, 4, 0, 7); ctx.fill();
   ctx.font = "11px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🍦", R.x + R.w / 2, R.y + 2 - bounce);
+
   // ---- cổng vào (bên trái, cũng là lối ra mở bản đồ) ----
   ctx.fillStyle = "#5e3d27"; ctx.fillRect(6, 290, 9, 80); ctx.fillRect(46, 290, 9, 80);
   ctx.fillStyle = "#8a5a3c"; rr(ctx, -2, 282, 66, 18, 4); ctx.fill();
   ctx.fillStyle = "#ffd27a"; ctx.font = "800 9px system-ui"; ctx.fillText("CỔNG VÀO", 31, 291.5);
   for (const lx of [10, 51]) { ctx.fillStyle = day ? "#f4a261" : "#ffb347"; ctx.beginPath(); ctx.ellipse(lx, 306, 4, 5, 0, 0, 7); ctx.fill(); }
+
   // ---- bảng bản đồ lớn (chạm để mở bản đồ) ----
   const MB = MAPBOARD;
   ctx.fillStyle = "#6b4a35"; ctx.fillRect(MB.x + MB.w / 2 - 2.5, MB.y + MB.h, 5, 16);
@@ -2536,30 +3116,40 @@ function drawPark(t) {                              // 🌳 công viên NGANG 11
     ctx.fillStyle = c; ctx.fillRect(MB.x + MB.w * fx - 3.5, MB.y + MB.h * fy - 3.5, 7, 7);
   });
   ctx.fillStyle = "#333"; ctx.font = "800 7px system-ui"; ctx.fillText("BẢN ĐỒ", MB.x + MB.w / 2, MB.y + MB.h - 6);
+
+  // ---- giá để xe đạp cạnh cổng vào ----
+  drawBicycleRack(85, 198);
+
   // ---- đèn đường ----
   LAMPS.forEach(l => {
     ctx.fillStyle = "#3a3a46"; ctx.fillRect(l.x - 1.5, l.y - 40, 3, 40); ctx.fillRect(l.x - 5, l.y - 2, 10, 3);
     ctx.fillStyle = day ? "#d8dde3" : "#ffe08a"; ctx.beginPath(); ctx.arc(l.x, l.y - 43, 5, 0, 7); ctx.fill();
   });
-  // ---- bụi hoa dọc lối đi (thêm bụi lớn nhiều màu) ----
+
+  // ---- bụi hoa dọc lối đi (đung đưa nhẹ theo gió) ----
   const bushSpots = [[160, 350], [310, 350], [460, 350], [720, 350], [870, 350], [1020, 350],
                      [160, 220], [310, 230], [870, 220], [1020, 230], [560, 180], [730, 190]];
   bushSpots.forEach(([bx, by], ki) => {
     const cols = ["#ff8fab", "#ffd166", "#a0c4ff", "#90be6d", "#f4a261", "#cdb4db"][ki % 6];
-    ctx.fillStyle = "#3f8f47"; ctx.beginPath(); ctx.arc(bx, by + 2, 10, 0, 7); ctx.arc(bx - 7, by + 4, 7, 0, 7); ctx.arc(bx + 7, by + 4, 7, 0, 7); ctx.fill();
+    const bsw = Math.sin(t * 1.5 + ki) * 1.5;
+    ctx.fillStyle = "#3f8f47";
+    ctx.beginPath();
+    ctx.arc(bx + bsw, by + 2, 10, 0, 7);
+    ctx.arc(bx - 7 + bsw, by + 4, 7, 0, 7);
+    ctx.arc(bx + 7 + bsw, by + 4, 7, 0, 7);
+    ctx.fill();
     for (let fk = 0; fk < 5; fk++) {
       const fa = fk / 5 * 6.28, fr = 6 + (fk % 2) * 3;
-      ctx.fillStyle = cols; ctx.beginPath(); ctx.arc(bx + Math.cos(fa) * fr, by + Math.sin(fa) * fr * 0.6 + 2, 2.5, 0, 7); ctx.fill();
+      ctx.fillStyle = cols; ctx.beginPath(); ctx.arc(bx + bsw + Math.cos(fa) * fr, by + Math.sin(fa) * fr * 0.6 + 2, 2.5, 0, 7); ctx.fill();
     }
   });
+
   // ---- đèn lồng giấy dọc lối đi (ban đêm sáng lên) ----
   const lanternPts = [[200, 180], [400, 180], [600, 180], [800, 180], [1000, 180],
                       [200, 362], [400, 362], [600, 362], [800, 362], [1000, 362]];
   lanternPts.forEach(([lnx, lny], ki) => {
-    // dây treo
     ctx.strokeStyle = "rgba(80,60,40,.5)"; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(lnx, lny - 18); ctx.lineTo(lnx, lny); ctx.stroke();
-    // thân đèn lồng
     const lc = day ? "#f1c27d" : `rgba(255,180,60,${.7 + Math.sin(t * 2 + ki) * .2})`;
     ctx.fillStyle = lc; ctx.beginPath(); ctx.ellipse(lnx, lny + 7, 6, 9, 0, 0, 7); ctx.fill();
     ctx.strokeStyle = "rgba(140,80,0,.4)"; ctx.lineWidth = .8;
@@ -2935,12 +3525,14 @@ function drawDesk(i, t) {
   ctx.fillStyle = "#8d5e3c"; rr(ctx, x + 3, y + 6, 104, 46, 6); ctx.fill();          // mặt bàn
   ctx.fillStyle = "#b27d52"; rr(ctx, x + 3, y + 6, 104, 40, 6); ctx.fill();
   ctx.fillStyle = "rgba(255,255,255,.08)"; ctx.fillRect(x + 8, y + 10, 94, 2);
-  if (sit) { ctx.fillStyle = "rgba(255,210,122,.2)"; ctx.beginPath(); ctx.ellipse(x + 36, y + 30, 30, 15, 0, 0, 7); ctx.fill(); }
-  // đèn bàn
+  const lampOn = sit || (!room.light && lightLevel > 0.05);
+  if (lampOn) { ctx.fillStyle = "rgba(255,210,122,.2)"; ctx.beginPath(); ctx.ellipse(x + 36, y + 30, 30, 15, 0, 0, 7); ctx.fill(); }
+  // đèn bàn (phát sáng ấm áp vào ban đêm)
   ctx.fillStyle = "#3a3a46"; ctx.beginPath(); ctx.arc(x + 15, y + 37, 6, 0, 7); ctx.fill();
   ctx.strokeStyle = "#3a3a46"; ctx.lineWidth = 2; ctx.lineCap = "round";
   ctx.beginPath(); ctx.moveTo(x + 15, y + 35); ctx.lineTo(x + 12, y + 21); ctx.lineTo(x + 21, y + 14); ctx.stroke();
-  ctx.fillStyle = sit ? "#ffd27a" : "#5d5d72"; ctx.beginPath(); ctx.ellipse(x + 24, y + 17, 7, 4, .5, 0, 7); ctx.fill();
+  ctx.fillStyle = lampOn ? "#ffd27a" : "#5d5d72"; ctx.beginPath(); ctx.ellipse(x + 24, y + 17, 7, 4, .5, 0, 7); ctx.fill();
+  if (lampOn) { ctx.fillStyle = "rgba(255,230,130,.4)"; ctx.beginPath(); ctx.arc(x + 24, y + 18, 6, 0, 7); ctx.fill(); }
   // laptop
   ctx.fillStyle = "#c9ccd6"; rr(ctx, x + 38, y + 11, 36, 23, 3); ctx.fill();
   ctx.fillStyle = sit ? "#2b4a7a" : "#3b3f4a"; rr(ctx, x + 41, y + 13, 30, 18, 2); ctx.fill();
@@ -3155,15 +3747,35 @@ function drawDarkness(t) {
   const tc = tvCenter(), rc = {x: RADIO.x + 24, y: RADIO.y + 14};
   if (room.tv.on && TVR) hole(tc.x, tc.y, Math.max(260, TVR.w * .75),.85 + Math.sin(t * 7) * .05 + Math.sin(t * 13) * .04);
   if (room.music.on) hole(rc.x, rc.y, 55, .45);
-  if (park()) LAMPS.forEach(l => hole(l.x, l.y - 30, 95, .75));    // đèn đường
-  if (park()) hole(BIG_LAMP.x, BIG_LAMP.y - 40, 250, .9);          // cột đèn lớn giữa công viên: sáng cả quảng trường
+  if (park()) {
+    LAMPS.forEach(l => hole(l.x, l.y - 30, 95, .75));              // đèn đường
+    hole(BIG_LAMP.x, BIG_LAMP.y - 40, 250, .9);                    // cột đèn lớn giữa công viên
+    hole(792, 198, 65, .7);                                        // đèn ki-ốt công viên
+    hole(STAGE_P.x + STAGE_P.w / 2, STAGE_P.y - 10, 85, .55);       // đèn sân khấu
+    hole(31, 305, 50, .6);                                          // đèn cổng vào
+    for (const [lnx, lny] of [[200, 180], [400, 180], [600, 180], [800, 180], [1000, 180],
+                              [200, 362], [400, 362], [600, 362], [800, 362], [1000, 362]]) {
+      hole(lnx, lny + 7, 36, .45);                                 // đèn lồng giấy dọc đường
+    }
+  }
   Areas.holes(hole, t); Zones.holes(hole, t);
   if (myArea === "sleep") {                                         // lò sưởi + đèn ngủ từng giường
     hole(500, 140, 170, .9 + Math.sin(t * 8) * .04);
     BEDS.forEach(b => hole(b.x + 10, b.y - 18, 32, .6));
+    hole(785, 110, 52, .65 + Math.sin(t * 1.5) * .05);             // đèn đá muối kệ sách
+    hole(500, 455, 60, .5);                                         // nến bàn trà cạnh lò sưởi
+    [110, 728].forEach(nx => hole(nx, 266, 28, .5));               // đèn ngủ nhỏ tab đầu giường
+    for (let x = 30; x <= W - 30; x += 60) hole(x, 22, 28, .35);   // ánh sáng dây đèn fairy lights trần
   }
-  if (study()) for (const p of here())                            // đèn bàn học
-    if (p.lying && p.bed != null) { const b = BEDS[p.bed]; hole(b.x + 32, b.y + 32, 75, .8); }
+  if (study()) {
+    for (const p of here())                                        // đèn bàn học của người đang ngồi
+      if (p.lying && p.bed != null) { const b = BEDS[p.bed]; hole(b.x + 32, b.y + 32, 75, .8); }
+    hole(74, 88, 80, .65);                                          // đèn hắt giá sách lớn thư viện
+    hole(550, 50, 52, .5);                                          // ánh sáng đồng hồ Pomodoro
+    hole(500, 465, 85, .65);                                        // đèn góc đọc sách sofa
+    hole(855, 138, 22, .4);                                         // đèn led cây nước nóng lạnh
+    BEDS.forEach(b => hole(b.x + 28, b.y + 24, 34, .4));            // đèn bàn học phát sáng dịu về đêm
+  }
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(dark, 0, 0); ctx.restore();
   if (room.tv.on && TVR) {                                        // ánh màu TV
     const c = room.tv.ch >= 0 ? TV_CH[room.tv.ch].glow : "170,180,255", tcc = tvCenter(), g = ctx.createRadialGradient(tcc.x, tcc.y, 0, tcc.x, tcc.y, 280);
