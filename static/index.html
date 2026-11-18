@@ -1410,7 +1410,7 @@ const Sound = {
   setVol(v) {
     this.vol = v; localStorage.setItem("nc_vol", v);
     if (this.master) this.master.gain.setTargetAtTime(v, this.ctx.currentTime, 0.05);
-    for (const p of Object.values(YTP)) if (p && p.ready) p.pl.setVolume(Math.round(v * 100));
+    for (const [s, p] of Object.entries(YTP)) if (p && p.ready) p.pl.setVolume(ytVol(s));
   },
   stop() {
     this.timers.forEach(clearInterval); this.timers = [];
@@ -1697,6 +1697,11 @@ function destroyYT(slot) {
   const p = YTP[slot]; if (p) { try { p.pl.destroy(); } catch (e) {} }
   YTP[slot] = null;
 }
+// Âm lượng YouTube theo chỗ đứng: rạp phim chỉ có tiếng trong phòng chiếu, ở sảnh thì im
+function ytVol(slot) {
+  const inLobby = slot === "tv" && myArea === "cinema" && typeof cinemaZone !== "undefined" && cinemaZone === "lobby";
+  return inLobby ? 0 : Math.round(Sound.vol * 100);
+}
 function applyMedia(slot) {
   const m = media[slot], box = slot === "tv" ? $("#tvFrame") : $("#ytMusic");
   if (!m) {
@@ -1724,7 +1729,7 @@ function applyMedia(slot) {
       playerVars: {autoplay: 1, start: Math.floor(mediaPos(m)), playsinline: 1, controls: 0, disablekb: 1,
                    rel: 0, modestbranding: 1, fs: 0, iv_load_policy: 3, origin: location.origin},
       events: {
-        onReady: () => { p.ready = true; p.pl.setVolume(Math.round(Sound.vol * 100)); syncYT(slot); },
+        onReady: () => { p.ready = true; p.pl.setVolume(ytVol(slot)); syncYT(slot); },
         onStateChange: e => {
           // rạp phim: phim theo lịch vừa hết -> báo server chuyển sang phim kế tiếp
           if (e.data === 0 && slot === "tv" && myArea === "cinema" && media.tv && media.tv.sched) send({t: "media", slot: "tv", a: "sched"});
@@ -1753,9 +1758,7 @@ function syncYT(slot) {
     if (++p.fails >= 2) pl.mute();
   }
   if (slot === "tv" && p.ready && pl.getVolume) {
-    const inLobby = (myArea === "cinema" && typeof cinemaZone !== "undefined" && cinemaZone === "lobby");
-    const baseVol = Math.round(Sound.vol * 100);
-    const targetVol = inLobby ? Math.round(baseVol * 0.25) : baseVol;
+    const targetVol = ytVol(slot);
     if (pl.getVolume() !== targetVol && !pl.isMuted()) pl.setVolume(targetVol);
   }
   updateUnlock();
@@ -1770,7 +1773,7 @@ function updateUnlock() {
 $("#ytUnlock").onclick = () => {
   for (const s of ["tv", "music"]) {
     const p = YTP[s]; if (!p || !p.ready || !media[s]) continue;
-    p.pl.unMute(); p.pl.setVolume(Math.round(Sound.vol * 100));
+    p.pl.unMute(); p.pl.setVolume(ytVol(s));
     if (!media[s].paused) p.pl.playVideo();
     p.fails = 0;
   }
@@ -2849,11 +2852,9 @@ function cinemaTransition(toZone) {
   $("#fade").classList.add("on");
   cam.snap = true;
   placeTV();
-  // Điều chỉnh âm lượng YouTube: ở sảnh nghe nhỏ nhẹ, vào phòng chiếu nghe đầy đủ
+  // Âm lượng YouTube: ở sảnh tắt tiếng, vào phòng chiếu mới có tiếng
   const p = YTP["tv"];
-  if (p && p.ready && p.pl && !p.pl.isMuted()) {
-    p.pl.setVolume(toZone === "hall" ? Math.round(Sound.vol * 100) : Math.round(Sound.vol * 25));
-  }
+  if (p && p.ready && p.pl && !p.pl.isMuted()) p.pl.setVolume(ytVol("tv"));
   clearTimeout(cinemaTransitionTimer);
   cinemaTransitionTimer = setTimeout(() => {
     $("#fade").classList.remove("on");
