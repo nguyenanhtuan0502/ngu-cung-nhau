@@ -3928,6 +3928,103 @@ const Areas = (() => {
         });
       });
   }
+  // ---------- Thử đồ miễn phí tại cửa hàng quần áo (khu mua sắm) ----------
+  let storeTry = {}, storeUp = false, storeRaf = 0;
+
+  function storeCss() {
+    if (document.getElementById("storeCss")) return;
+    const s = document.createElement("style"); s.id = "storeCss";
+    s.textContent = `
+      .store-pv-box { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 0 0 10px; }
+      .store-pv-wrap { position: relative; display: inline-block; }
+      #storePv { width: 148px; height: 158px; border-radius: 18px; display: block;
+                 background: radial-gradient(circle at 50% 35%, #3d3570, #191630 80%);
+                 border: 2px solid rgba(255, 215, 120, 0.3); box-shadow: 0 4px 14px rgba(0,0,0,.35); touch-action: none; cursor: pointer; }
+      .store-rot-btn { position: absolute; top: 8px; right: 8px; padding: 3px 8px; border-radius: 12px;
+                       background: rgba(18, 15, 38, 0.82); color: #fff; border: 1px solid rgba(255,255,255,0.25);
+                       cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 3px; }
+      .store-rot-btn:hover { background: rgba(30, 25, 60, 0.95); }
+      .store-pv-bar { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; width: 100%; min-height: 28px; }
+      .store-pv-bar .mini { padding: 5px 11px; font-size: 12px; font-weight: 700; border-radius: 10px; }
+      .store-btn-buy { background: #ffd27a !important; color: #1f1832 !important; border: none !important; }
+      .store-btn-wear { background: #52b788 !important; color: #fff !important; border: none !important; }
+      .store-list { max-height: 44vh; overflow-y: auto; padding: 2px 2px 6px; -webkit-overflow-scrolling: touch; }
+      .store-card { cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+      .store-card.store-trying { border-color: var(--accent) !important; background: rgba(255,210,122,.18) !important;
+                                 box-shadow: 0 0 8px rgba(255,210,122,.35); }
+      .store-try-btn { font-size: 11px; padding: 2px 7px; border-radius: 8px; }
+      .store-try-btn.cur { background: var(--accent); color: #1d1838; font-weight: 800; border-color: transparent; }
+      @media (max-height: 460px) {
+        #storePv { width: 116px; height: 124px; }
+        .store-pv-box { gap: 4px; margin-bottom: 6px; }
+        .store-list { max-height: 38vh; }
+      }
+    `;
+    document.head.appendChild(s);
+  }
+
+  function drawStorePv(cv) {
+    if (!cv) return;
+    const c = cv.getContext("2d"), saved = ctx, t = performance.now() / 1000, sc = 2.8;
+    c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height);
+    c.setTransform(sc, 0, 0, sc, cv.width / 2, 0);
+    // Thảm tròn sang trọng phòng thử đồ
+    c.fillStyle = "rgba(255, 255, 255, 0.06)";
+    c.beginPath(); c.ellipse(0, 56, 22, 6, 0, 0, 7); c.fill();
+    c.strokeStyle = "rgba(255, 215, 120, 0.2)"; c.lineWidth = 1; c.stroke();
+    ctx = c;
+    const curOutfit = cleanOutfit();
+    const previewOutfit = { ...curOutfit, ...storeTry };
+    try {
+      drawAvatar({
+        x: 0,
+        y: 56,
+        color: myColor,
+        outfit: previewOutfit,
+        walking: false,
+        up: !!storeUp,
+        id: myId
+      }, t);
+    } finally {
+      ctx = saved;
+    }
+  }
+
+  function storePvLoop() {
+    const cv = document.getElementById("storePv");
+    if (!cv || $("#sheet").classList.contains("hidden")) {
+      storeRaf = 0;
+      return;
+    }
+    drawStorePv(cv);
+    storeRaf = requestAnimationFrame(storePvLoop);
+  }
+
+  function storePvBarHtml() {
+    const triedIds = Object.values(storeTry);
+    const hasTried = triedIds.length > 0;
+    let html = `<button class="mini ghostb store-reset-btn" id="storeReset" ${hasTried ? "" : "disabled style=\"opacity:.5\""}>↺ Bỏ thử</button>`;
+    if (!hasTried) {
+      html += `<span style="font-size:12px;color:var(--muted);margin-left:4px">Chạm món đồ bên dưới để thử ✨</span>`;
+    } else {
+      for (const id of triedIds) {
+        const c = CL[id];
+        if (!c) continue;
+        if (owns(c.id)) {
+          const isWearing = S().outfit && S().outfit[c.slot] === c.id;
+          if (isWearing) {
+            html += `<button class="mini ghostb" disabled style="opacity:.65">✓ Đang mặc${triedIds.length > 1 ? ` ${c.name}` : ""}</button>`;
+          } else {
+            html += `<button class="mini store-btn-wear" data-try-wear="${c.id}">✓ Mặc luôn${triedIds.length > 1 ? ` ${c.name}` : ""}</button>`;
+          }
+        } else {
+          html += `<button class="mini store-btn-buy" data-try-buy="${c.id}">Mua ${c.name} · ${c.price} 💰</button>`;
+        }
+      }
+    }
+    return html;
+  }
+
   function openStore(store) {
     if (store.id === "pet") return openPetShop();
     if (store.id === "deco") return openDecoShop();
@@ -3937,25 +4034,164 @@ const Areas = (() => {
         el => el.querySelector("#goSalon").onclick = () => { closeSheet(); travelTo("salon"); });
       return;
     }
+    storeCss();
     const items = CLOTHES.filter(c => store.slots.includes(c.slot) && c.price > 0);
     openSheet(`${store.e} ${store.name}`,
-      `${Life.coinLine()}<div class="grid">${items.map(c => {
-        const perm = S().owned[c.id] === 0, rent = Math.ceil(c.price / RENT_FACTOR);
-        return `<div class="opt" style="display:flex;flex-direction:column;gap:6px">${c.e} ${c.name}
-          ${perm ? `<button class="mini" data-wear="${c.id}">✓ Đã có · Mặc</button>`
-                 : `<button class="mini" data-buy="${c.id}">Mua ${c.price} 💰</button><button class="mini ghostb" data-rent="${c.id}">Thuê 1 ngày ${rent} 💰${owns(c.id) ? " (gia hạn)" : ""}</button>`}</div>`;
-      }).join("")}</div>`,
+      `${Life.coinLine()}
+       <div class="store-pv-box">
+         <div class="store-pv-wrap">
+           <canvas id="storePv" width="180" height="190"></canvas>
+           <button id="storeRot" class="mini store-rot-btn" title="Xoay trước / sau">⟲ <small id="storeRotLbl">${storeUp ? "Lưng" : "Trước"}</small></button>
+         </div>
+         <div class="store-pv-bar" id="storePvBar">
+           ${storePvBarHtml()}
+         </div>
+       </div>
+       <div class="store-list">
+         <div class="grid">${items.map(c => {
+           const perm = S().owned[c.id] === 0, rent = Math.ceil(c.price / RENT_FACTOR);
+           const isTrying = storeTry[c.slot] === c.id;
+           return `<div class="opt store-card ${isTrying ? "active store-trying" : ""}" data-card-id="${c.id}" style="display:flex;flex-direction:column;gap:6px">
+             <div style="display:flex;justify-content:space-between;align-items:center;gap:4px">
+               <span style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.e} ${c.name}</span>
+               <button class="mini store-try-btn ${isTrying ? "cur" : "ghostb"}" data-try="${c.id}">${isTrying ? "✓ Đang thử" : "👁️ Thử"}</button>
+             </div>
+             ${perm ? `<button class="mini" data-wear="${c.id}">✓ Đã có · Mặc</button>`
+                    : `<button class="mini" data-buy="${c.id}">Mua ${c.price} 💰</button><button class="mini ghostb" data-rent="${c.id}">Thuê 1 ngày ${rent} 💰${owns(c.id) ? " (gia hạn)" : ""}</button>`}
+           </div>`;
+         }).join("")}</div>
+       </div>`,
       el => {
         const done = (c, msg) => { equip(c.slot, c.id); Life.apply({xp: 2, fun: 5}); Life.commit(); toast(msg); openStore(store); };
-        el.querySelectorAll("[data-buy]").forEach(b => b.onclick = async () => {
-          const c = CL[b.dataset.buy]; if (!(await Life.eco("buyCloth", {id: c.id}))) return;
+
+        const buyItem = async (c, btn) => {
+          if (!c) return;
+          if (btn) btn.disabled = true;
+          const ok = await Life.eco("buyCloth", {id: c.id});
+          if (!ok) {
+            if (btn) btn.disabled = false;
+            return;
+          }
+          delete storeTry[c.slot];
           done(c, `${c.e} Đã mua ${c.name} (vĩnh viễn) và mặc luôn!`);
+        };
+
+        const refreshUI = () => {
+          el.querySelectorAll(".store-card").forEach(card => {
+            const id = card.dataset.cardId;
+            const c = CL[id];
+            const isTrying = c && storeTry[c.slot] === id;
+            card.classList.toggle("active", isTrying);
+            card.classList.toggle("store-trying", isTrying);
+            const tryBtn = card.querySelector(".store-try-btn");
+            if (tryBtn) {
+              tryBtn.textContent = isTrying ? "✓ Đang thử" : "👁️ Thử";
+              tryBtn.classList.toggle("cur", isTrying);
+              tryBtn.classList.toggle("ghostb", !isTrying);
+            }
+          });
+          const bar = el.querySelector("#storePvBar");
+          if (bar) {
+            bar.innerHTML = storePvBarHtml();
+            bindPvBar(bar);
+          }
+          const rotLbl = el.querySelector("#storeRotLbl");
+          if (rotLbl) rotLbl.textContent = storeUp ? "Lưng" : "Trước";
+          const cv = el.querySelector("#storePv");
+          if (cv) drawStorePv(cv);
+        };
+
+        const toggleTry = c => {
+          if (storeTry[c.slot] === c.id) {
+            delete storeTry[c.slot];
+          } else {
+            storeTry[c.slot] = c.id;
+          }
+          refreshUI();
+        };
+
+        const bindPvBar = barEl => {
+          const resetBtn = barEl.querySelector("#storeReset");
+          if (resetBtn) resetBtn.onclick = e => {
+            e.stopPropagation();
+            storeTry = {};
+            storeUp = false;
+            refreshUI();
+          };
+          barEl.querySelectorAll("[data-try-buy]").forEach(b => b.onclick = e => {
+            e.stopPropagation();
+            buyItem(CL[b.dataset.tryBuy], b);
+          });
+          barEl.querySelectorAll("[data-try-wear]").forEach(b => b.onclick = e => {
+            e.stopPropagation();
+            const c = CL[b.dataset.tryWear];
+            if (!c) return;
+            equip(c.slot, c.id);
+            delete storeTry[c.slot];
+            toast(`${c.e} Đã mặc ${c.name}`);
+            refreshUI();
+          });
+        };
+
+        bindPvBar(el.querySelector("#storePvBar"));
+
+        el.querySelectorAll(".store-card").forEach(card => {
+          card.onclick = e => {
+            if (e.target.closest("[data-buy]") || e.target.closest("[data-rent]") || e.target.closest("[data-wear]")) return;
+            const c = CL[card.dataset.cardId];
+            if (c) toggleTry(c);
+          };
         });
-        el.querySelectorAll("[data-rent]").forEach(b => b.onclick = async () => {
-          const c = CL[b.dataset.rent]; if (!(await Life.eco("buyCloth", {id: c.id, rent: true}))) return;
+
+        el.querySelectorAll(".store-try-btn").forEach(btn => {
+          btn.onclick = e => {
+            e.stopPropagation();
+            const c = CL[btn.dataset.try];
+            if (c) toggleTry(c);
+          };
+        });
+
+        el.querySelectorAll("[data-buy]").forEach(b => b.onclick = e => {
+          e.stopPropagation();
+          buyItem(CL[b.dataset.buy], b);
+        });
+
+        el.querySelectorAll("[data-rent]").forEach(b => b.onclick = async e => {
+          e.stopPropagation();
+          const c = CL[b.dataset.rent]; if (!c) return;
+          b.disabled = true;
+          if (!(await Life.eco("buyCloth", {id: c.id, rent: true}))) {
+            b.disabled = false;
+            return;
+          }
+          delete storeTry[c.slot];
           done(c, `${c.e} Đã thuê ${c.name} 1 ngày!`);
         });
-        el.querySelectorAll("[data-wear]").forEach(b => b.onclick = () => { const c = CL[b.dataset.wear]; equip(c.slot, c.id); toast(`${c.e} Đã mặc ${c.name}`); });
+
+        el.querySelectorAll("[data-wear]").forEach(b => b.onclick = e => {
+          e.stopPropagation();
+          const c = CL[b.dataset.wear]; if (!c) return;
+          equip(c.slot, c.id);
+          delete storeTry[c.slot];
+          toast(`${c.e} Đã mặc ${c.name}`);
+          refreshUI();
+        });
+
+        const rotBtn = el.querySelector("#storeRot");
+        if (rotBtn) rotBtn.onclick = e => {
+          e.stopPropagation();
+          storeUp = !storeUp;
+          refreshUI();
+        };
+
+        const cv = el.querySelector("#storePv");
+        if (cv) cv.onclick = () => {
+          storeUp = !storeUp;
+          refreshUI();
+        };
+
+        if (storeRaf) { cancelAnimationFrame(storeRaf); storeRaf = 0; }
+        storePvLoop();
       });
   }
   function openPetShop() {
@@ -4633,7 +4869,11 @@ const Areas = (() => {
     cleanOutfit();
     if (SEASON) setTimeout(() => log(SEASON.banner), 2200);
   }
-  function onArea(a) { placing = null; cleanupFishing(); }
+  function onArea(a) {
+    placing = null; cleanupFishing();
+    storeTry = {}; storeUp = false;
+    if (storeRaf) { cancelAnimationFrame(storeRaf); storeRaf = 0; }
+  }
   function setHome(items) { homeItems = Array.isArray(items) ? items : []; }
 
   return {has: a => NEW.has(a), TXT, draw, seat, ents, tap, holes, act, over: drawSeason, drawAvatar, onJoin, onArea, setHome,
