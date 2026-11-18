@@ -33,7 +33,7 @@ const Areas = (() => {
               tvr: null, scr: null, radio: {x: 478, y: 372, w: 44, h: 26}, sw: OFF, moon: null},
     home:    {ww: 840, wh: 600, floor: {x1: 20, y1: 175, x2: 820, y2: 585},
               beds: [{x: 30, y: 186}, {x: 110, y: 186}], bw: 68, bh: 96, sitY: 52,                         // 2 nệm futon có sẵn
-              tvr: null, scr: null, radio: {x: 612, y: 112, w: 48, h: 28}, sw: {x: 790, y: 96, w: 13, h: 19}, moon: {x: 440, y: 70}},
+              tvr: null, scr: null, radio: {x: 612, y: 112, w: 48, h: 28}, sw: {x: 790, y: 96, w: 13, h: 19}, moon: {x: 448, y: 50}},
   });
   // Mỗi khu chỉ có 1 lối ra, chạm vào thì mở bản đồ (to: "map")
   const bottomExit = cx => ({x: cx - 24, y: 538, w: 48, h: 37, side: "bottom", spot: {x: cx, y: 556}, to: "map"});
@@ -1711,49 +1711,452 @@ const Areas = (() => {
 
   // ---------- 9. Nhà riêng: nội thất do cả nhóm bày, server lưu lại ----------
   let homeItems = [], placing = null;
-  function drawHome(t) {                             // 🏠 nhà riêng NGANG 840x600: ấm cúng, có sẵn bộ đồ cơ bản
-    drawWall("#fbf6ee");
-    // hoa văn dán tường ấm áp
-    ctx.fillStyle = "rgba(210,180,150,.15)"; for (let x = 0; x < W; x += 20) ctx.fillRect(x, -10, 8, 170);
-    // nẹp chân tường gỗ và sàn gỗ cao cấp
-    drawWoodFloor("#b87c4a", "#af7341", "#c18553");
+  // Chuỗi bóng đèn fairy lights trang trí ấm áp dọc bờ tường phòng ngủ
+  const HOME_FAIRY_BULBS = [
+    {x: 40, y: 11}, {x: 105, y: 10}, {x: 175, y: 11}, {x: 245, y: 10},
+    {x: 315, y: 11}, {x: 388, y: 10}, {x: 452, y: 10}, {x: 520, y: 11},
+    {x: 590, y: 10}, {x: 660, y: 11}, {x: 730, y: 10}, {x: 795, y: 11}
+  ];
+
+  function drawHome(t) {                             // 🏠 nhà riêng NGANG 840x600: phong cách chibi ấm cúng, gọn gàng, tiện nghi
+    const night = Life.darkness() > .5;
     const {L, R} = bleed();
+
+    // 1. TƯỜNG PHÒNG, GIẤY DÁN TƯỜNG & ỐP CHÂN TƯỜNG WAINSCOTING
+    drawWall("#fbf6ee");
+    // Giấy dán tường hoa văn pastel kẻ sọc thanh thoát kết hợp chấm nhỏ xinh xắn
+    ctx.fillStyle = "rgba(215, 190, 165, 0.18)";
+    for (let x = Math.floor(L / 24) * 24; x < R; x += 24) {
+      ctx.fillRect(x, 0, 1.5, 108);
+      for (let py = 16; py < 100; py += 24) {
+        ctx.beginPath(); ctx.arc(x + 12, py, 1.5, 0, 7); ctx.fill();
+      }
+    }
+
+    // Phần ốp gỗ chân tường wainscoting phong cách Bắc Âu (y = 108 đến 154)
+    ctx.fillStyle = "#f5ece1"; ctx.fillRect(L, 108, R - L, 46);
+    // Các rãnh ốp gỗ dọc (beadboard)
+    ctx.strokeStyle = "rgba(190, 160, 135, 0.35)"; ctx.lineWidth = 1;
+    for (let x = Math.floor(L / 16) * 16; x < R; x += 16) {
+      ctx.beginPath(); ctx.moveTo(x, 112); ctx.lineTo(x, 154); ctx.stroke();
+    }
+    // Gờ nẹp chỉ viền trên wainscoting (chair rail) với hiệu ứng gờ nổi
+    ctx.fillStyle = "#d4b89b"; ctx.fillRect(L, 106, R - L, 3);
+    ctx.fillStyle = "#8a5a3c"; ctx.fillRect(L, 108, R - L, 2);
+    ctx.fillStyle = "rgba(0,0,0,0.06)"; ctx.fillRect(L, 110, R - L, 2);
+
+    // Sàn gỗ cao cấp ấm áp và nẹp chân tường (baseboard)
+    drawWoodFloor("#b87c4a", "#af7341", "#c18553");
     ctx.fillStyle = "#6b4226"; ctx.fillRect(L, 156, R - L, 8);
     ctx.fillStyle = "#8a5a3c"; ctx.fillRect(L, 154, R - L, 2);
+    ctx.fillStyle = "rgba(0,0,0,0.12)"; ctx.fillRect(L, 164, R - L, 2); // bóng đổ nhẹ chân tường xuống sàn gỗ
 
-    const night = Life.darkness() > .5;                                  // cửa sổ lớn nhìn ra trời theo giờ game
-    ctx.save(); ctx.translate(240, 0);
-    ctx.fillStyle = "#5e3d27"; rr(ctx, 126, 22, 108, 96, 6); ctx.fill();
-    const g = ctx.createLinearGradient(0, 28, 0, 114); if (night) { g.addColorStop(0, "#0b1033"); g.addColorStop(1, "#2b2d6b"); } else { const [a, b] = Life.skyColors(); g.addColorStop(0, a); g.addColorStop(1, b); }
-    ctx.fillStyle = g; ctx.fillRect(132, 28, 96, 84);
-    ctx.fillStyle = night ? "#fff6c8" : "#ffe066"; ctx.beginPath(); ctx.arc(196, 50, 9, 0, 7); ctx.fill();
-    ctx.fillStyle = "#5e3d27"; ctx.fillRect(178, 28, 4, 84); ctx.fillRect(132, 68, 96, 4);
+    // 2. DÂY ĐÈN FAIRY LIGHTS LUNG LINH DỌC THEO MÉP TRÊN BỨC TƯỜNG
+    ctx.strokeStyle = "rgba(90, 60, 40, 0.55)"; ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    let prevX = L > 0 ? 0 : L, prevY = 8;
+    ctx.moveTo(prevX, prevY);
+    for (let k = 0; k < HOME_FAIRY_BULBS.length; k++) {
+      const b = HOME_FAIRY_BULBS[k];
+      const midX = (prevX + b.x) / 2, midY = Math.max(prevY, b.y) + 3;
+      ctx.quadraticCurveTo(midX, midY, b.x, b.y);
+      prevX = b.x; prevY = b.y;
+    }
+    const endX = R < 840 ? 840 : R;
+    ctx.quadraticCurveTo((prevX + endX) / 2, prevY + 3, endX, 8);
+    ctx.stroke();
 
-    // rèm vải nhung pastel buông dài 2 bên cửa sổ
-    const sw = Math.sin(t * .8) * 2.5;
-    ctx.fillStyle = "#ffafcc";
-    ctx.beginPath(); ctx.moveTo(118, 18); ctx.lineTo(136, 18); ctx.quadraticCurveTo(130 + sw, 70, 138 + sw, 124); ctx.lineTo(118, 124); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(242, 18); ctx.lineTo(224, 18); ctx.quadraticCurveTo(230 - sw, 70, 222 - sw, 124); ctx.lineTo(242, 124); ctx.fill();
-    // chậu hoa bệ cửa sổ
-    ctx.fillStyle = "#e76f51"; rr(ctx, 164, 104, 32, 8, 2); ctx.fill();
+    // Các bóng đèn nhỏ và quầng sáng ban đêm
+    const bulbCols = ["#ffe066", "#ffd166", "#ffb4a2", "#ffc6ff", "#caffbf", "#ffd166"];
+    for (let k = 0; k < HOME_FAIRY_BULBS.length; k++) {
+      const b = HOME_FAIRY_BULBS[k];
+      ctx.fillStyle = "#5c4033"; ctx.fillRect(b.x - 1.5, b.y - 3, 3, 3); // chuôi bóng
+      const c = bulbCols[k % bulbCols.length];
+      if (night) {
+        // Quầng sáng ấm áp lung linh ban đêm
+        const fg = ctx.createRadialGradient(b.x, b.y, 1, b.x, b.y, 13);
+        fg.addColorStop(0, "rgba(255, 235, 150, 0.75)");
+        fg.addColorStop(0.5, "rgba(255, 210, 110, 0.3)");
+        fg.addColorStop(1, "rgba(255, 200, 90, 0)");
+        ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(b.x, b.y, 13, 0, 7); ctx.fill();
+        ctx.fillStyle = "#fffdf0"; ctx.beginPath(); ctx.arc(b.x, b.y, 3, 0, 7); ctx.fill();
+      } else {
+        ctx.fillStyle = c; ctx.beginPath(); ctx.arc(b.x, b.y, 3, 0, 7); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.beginPath(); ctx.arc(b.x - 0.8, b.y - 0.8, 1, 0, 7); ctx.fill();
+      }
+    }
+
+    // 3. KHU VỰC GIỮA: CỬA SỔ LỚN NHÌN RA BẦU TRỜI (hiển thị trọn vẹn, có rèm nhung pastel)
+    const winX = 352, winY = 26, winW = 136, winH = 102;
+    // Khung gỗ viền ngoài của cửa sổ
+    ctx.fillStyle = "#5e3d27"; rr(ctx, winX - 4, winY - 3, winW + 8, winH + 6, 6); ctx.fill();
+    ctx.fillStyle = "#7a4e32"; rr(ctx, winX - 1, winY, winW + 2, winH, 4); ctx.fill();
+
+    // Kính cửa sổ nhìn ra bầu trời theo thời gian thực của game
+    const g = ctx.createLinearGradient(0, winY + 2, 0, winY + winH - 2);
+    if (night) {
+      g.addColorStop(0, "#0b1033"); g.addColorStop(1, "#2b2d6b");
+    } else {
+      const [a, b] = Life.skyColors();
+      g.addColorStop(0, a); g.addColorStop(1, b);
+    }
+    ctx.fillStyle = g; ctx.fillRect(winX + 2, winY + 2, winW - 4, winH - 4);
+
+    if (night) {
+      // Mặt trăng tỏa sáng lung linh
+      const mg = ctx.createRadialGradient(winX + 96, winY + 24, 4, winX + 96, winY + 24, 20);
+      mg.addColorStop(0, "rgba(255, 246, 200, 0.35)"); mg.addColorStop(1, "rgba(255, 246, 200, 0)");
+      ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(winX + 96, winY + 24, 20, 0, 7); ctx.fill();
+      ctx.fillStyle = "#fff6c8"; ctx.beginPath(); ctx.arc(winX + 96, winY + 24, 9, 0, 7); ctx.fill();
+      // Ngôi sao nhỏ lấp lánh ban đêm
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      [[winX + 25, winY + 22], [winX + 56, winY + 34], [winX + 32, winY + 68], [winX + 104, winY + 68]].forEach(([sx, sy]) => {
+        ctx.fillRect(sx, sy, 2, 2);
+      });
+    } else {
+      // Mặt trời dịu dàng buổi ngày
+      ctx.fillStyle = "#ffe066"; ctx.beginPath(); ctx.arc(winX + 96, winY + 24, 9, 0, 7); ctx.fill();
+      // Đám mây chibi nhỏ trôi bồng bềnh
+      const cx = winX + 36 + Math.sin(t * 0.2) * 6;
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.beginPath(); ctx.arc(cx, winY + 36, 6, 0, 7); ctx.arc(cx + 8, winY + 33, 8, 0, 7); ctx.arc(cx + 16, winY + 36, 5, 0, 7); ctx.fill();
+    }
+
+    // Các nan chia ô cửa sổ bằng gỗ (4 ô kính cân đối, thoáng đãng)
+    ctx.fillStyle = "#5e3d27";
+    ctx.fillRect(winX + winW / 2 - 2, winY + 2, 4, winH - 4);
+    ctx.fillRect(winX + 2, winY + winH / 2 - 2, winW - 4, 4);
+
+    // Bệ cửa sổ bằng gỗ dày dặn (windowsill)
+    ctx.fillStyle = "rgba(0,0,0,0.15)"; ctx.fillRect(winX - 10, winY + winH + 3, winW + 20, 3);
+    ctx.fillStyle = "#5e3d27"; rr(ctx, winX - 10, winY + winH - 2, winW + 20, 7, 2); ctx.fill();
+    ctx.fillStyle = "#8a5a3c"; ctx.fillRect(winX - 8, winY + winH - 2, winW + 16, 2);
+
+    // Chậu cây nhỏ xinh trên bệ cửa sổ
+    // Chậu 1: sen đá chibi bên trái
+    ctx.fillStyle = "#d4a373"; rr(ctx, winX + 16, winY + winH - 12, 16, 10, 2); ctx.fill();
+    ctx.fillStyle = "#52b788"; ctx.beginPath(); ctx.arc(winX + 24, winY + winH - 12, 6, 0, 7); ctx.fill();
+    ctx.fillStyle = "#74c69d"; ctx.beginPath(); ctx.arc(winX + 24, winY + winH - 14, 4, 0, 7); ctx.fill();
+    // Chậu 2: chậu hoa 3 bông sắc màu pastel bên phải
+    ctx.fillStyle = "#e76f51"; rr(ctx, winX + winW - 36, winY + winH - 12, 20, 10, 2); ctx.fill();
     for (let fl = 0; fl < 3; fl++) {
       ctx.fillStyle = ["#ffd166", "#ff8fab", "#a0c4ff"][fl];
-      ctx.beginPath(); ctx.arc(170 + fl * 10, 100, 3, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(winX + winW - 32 + fl * 6, winY + winH - 15, 3, 0, 7); ctx.fill();
     }
+
+    // Thanh treo rèm bằng đồng và rèm vải nhung pastel buông 2 bên cửa sổ
+    ctx.fillStyle = "#c9a227"; ctx.fillRect(winX - 22, winY - 9, winW + 44, 4);
+    ctx.beginPath(); ctx.arc(winX - 22, winY - 7, 4.5, 0, 7); ctx.arc(winX + winW + 22, winY - 7, 4.5, 0, 7); ctx.fill();
+
+    const sw = Math.sin(t * 0.8) * 2.5;
+    ctx.fillStyle = "#ffafcc";
+    // Rèm trái
+    ctx.beginPath();
+    ctx.moveTo(winX - 20, winY - 7);
+    ctx.lineTo(winX + 2, winY - 7);
+    ctx.quadraticCurveTo(winX - 6 + sw, winY + 54, winX + 4 + sw, winY + winH + 10);
+    ctx.lineTo(winX - 20, winY + winH + 10);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#ffd166"; rr(ctx, winX - 18, winY + 56, 10, 5, 2); ctx.fill(); // nơ buộc rèm trái
+
+    // Rèm phải
+    ctx.fillStyle = "#ffafcc";
+    ctx.beginPath();
+    ctx.moveTo(winX + winW + 20, winY - 7);
+    ctx.lineTo(winX + winW - 2, winY - 7);
+    ctx.quadraticCurveTo(winX + winW + 6 - sw, winY + 54, winX + winW - 4 - sw, winY + winH + 10);
+    ctx.lineTo(winX + winW + 20, winY + winH + 10);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#ffd166"; rr(ctx, winX + winW + 8, winY + 56, 10, 5, 2); ctx.fill(); // nơ buộc rèm phải
+
+    // 4. KHU VỰC BÊN TRÁI: GÓC NGỦ ẤM ÁP (SLEEPING CORNER)
+    // Kệ gỗ gắn tường bên góc ngủ (floating wall shelf)
+    ctx.fillStyle = "rgba(0,0,0,0.1)"; ctx.fillRect(44, 65, 80, 2);
+    ctx.fillStyle = "#8a5a3c"; rr(ctx, 42, 60, 84, 5, 2); ctx.fill();
+    ctx.fillStyle = "#b07d58"; ctx.fillRect(43, 60, 82, 2);
+    // Eke đỡ kệ gỗ
+    ctx.fillStyle = "#6b4226";
+    ctx.beginPath(); ctx.moveTo(54, 65); ctx.lineTo(60, 71); ctx.lineTo(60, 65); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(114, 65); ctx.lineTo(120, 71); ctx.lineTo(120, 65); ctx.fill();
+
+    // Khung ảnh mini 1 trên kệ (tranh núi chibi)
+    ctx.fillStyle = "#6b4226"; rr(ctx, 50, 38, 24, 22, 3); ctx.fill();
+    ctx.fillStyle = "#faedcd"; ctx.fillRect(52, 40, 20, 18);
+    ctx.fillStyle = "#ffb4a2"; ctx.beginPath(); ctx.arc(66, 46, 3, 0, 7); ctx.fill();
+    ctx.fillStyle = "#a8dadc"; ctx.beginPath(); ctx.moveTo(53, 58); ctx.lineTo(61, 48); ctx.lineTo(68, 58); ctx.fill();
+    ctx.fillStyle = "#457b9d"; ctx.beginPath(); ctx.moveTo(63, 58); ctx.lineTo(68, 51); ctx.lineTo(72, 58); ctx.fill();
+
+    // Khung ảnh mini 2 nhỏ hơn hơi nghiêng (trái tim pastel)
+    ctx.fillStyle = "#a0c4ff"; rr(ctx, 77, 43, 16, 17, 2); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.fillRect(79, 45, 12, 13);
+    ctx.fillStyle = "#ff8fab"; ctx.font = "8px system-ui"; ctx.textAlign = "center"; ctx.fillText("♥", 85, 54);
+
+    // Chậu xương rồng nhỏ trên kệ
+    ctx.fillStyle = "#e76f51"; rr(ctx, 98, 48, 14, 12, 2); ctx.fill();
+    ctx.fillStyle = "#2a9d8f"; ctx.beginPath(); ctx.arc(105, 45, 6, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(101, 44, 3, 0, 7); ctx.arc(109, 44, 3, 0, 7); ctx.fill();
+    ctx.fillStyle = "#ffafcc"; ctx.beginPath(); ctx.arc(105, 38, 2, 0, 7); ctx.fill(); // hoa nhỏ xíu
+
+    // Bảng ghim nỉ/cork board ghi chú và lịch treo tường
+    ctx.fillStyle = "rgba(0,0,0,0.12)"; rr(ctx, 138, 48, 62, 56, 4); ctx.fill();
+    ctx.fillStyle = "#8a5a3c"; rr(ctx, 136, 46, 62, 56, 4); ctx.fill();
+    ctx.fillStyle = "#d4a373"; ctx.fillRect(140, 50, 54, 48);
+    // Hạt chấm li ti bề mặt gỗ bần
+    ctx.fillStyle = "rgba(100,60,30,0.15)";
+    for (let cy = 52; cy < 96; cy += 8) {
+      for (let cx = 142; cx < 192; cx += 10) ctx.fillRect(cx + ((cy % 16 === 0) ? 4 : 0), cy, 2, 1.5);
+    }
+    // Tờ lịch mini
+    ctx.fillStyle = "#fff"; ctx.fillRect(144, 54, 18, 20);
+    ctx.fillStyle = "#e63946"; ctx.fillRect(144, 54, 18, 5);
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    for (let r = 0; r < 3; r++) ctx.fillRect(146, 62 + r * 3, 14, 1.5);
+    ctx.fillStyle = "#e63946"; ctx.beginPath(); ctx.arc(153, 55, 1.8, 0, 7); ctx.fill(); // đinh ghim đỏ
+
+    // Giấy note vàng pastel
+    ctx.fillStyle = "#fef08a"; ctx.fillRect(166, 56, 22, 18);
+    ctx.fillStyle = "rgba(0,0,0,0.2)";
+    ctx.fillRect(169, 61, 16, 1.5); ctx.fillRect(169, 65, 13, 1.5); ctx.fillRect(169, 69, 10, 1.5);
+    ctx.fillStyle = "#06d6a0"; ctx.beginPath(); ctx.arc(177, 57, 1.8, 0, 7); ctx.fill(); // đinh ghim xanh
+
+    // Giấy note hồng có vẽ hình ngôi sao
+    ctx.fillStyle = "#ffccd5"; ctx.fillRect(148, 77, 20, 18);
+    ctx.fillStyle = "#ff758f"; ctx.font = "8px system-ui"; ctx.textAlign = "center"; ctx.fillText("★", 158, 89);
+    ctx.fillStyle = "#ffd166"; ctx.beginPath(); ctx.arc(158, 78, 1.8, 0, 7); ctx.fill();
+
+    // Tủ quần áo cao kiểu dáng Bắc Âu xinh xắn sát tường cạnh góc ngủ
+    ctx.fillStyle = "rgba(0,0,0,0.18)"; ctx.beginPath(); ctx.ellipse(246, 162, 36, 6, 0, 0, 7); ctx.fill(); // bóng tủ xuống sàn
+    ctx.fillStyle = "#5c3d27"; rr(ctx, 218, 154, 8, 8, 2); ctx.fill(); rr(ctx, 266, 154, 8, 8, 2); ctx.fill(); // chân tủ
+    ctx.fillStyle = "#8a5a3c"; rr(ctx, 212, 44, 68, 112, 6); ctx.fill();
+    ctx.fillStyle = "#fcf8f2"; rr(ctx, 214, 46, 64, 108, 4); ctx.fill();
+    ctx.fillStyle = "#ba8a63"; rr(ctx, 210, 42, 72, 6, 2); ctx.fill(); // gờ nóc tủ
+    // Cánh tủ đôi
+    ctx.strokeStyle = "#decbb5"; ctx.lineWidth = 1.2;
+    rr(ctx, 218, 52, 26, 76, 2); ctx.stroke();
+    rr(ctx, 248, 52, 26, 76, 2); ctx.stroke();
+    ctx.strokeStyle = "#8a5a3c"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(246, 50); ctx.lineTo(246, 130); ctx.stroke(); // khe cánh cửa
+    // 2 tay nắm cửa tròn bằng gỗ
+    ctx.fillStyle = "#ba8a63";
+    ctx.beginPath(); ctx.arc(242, 94, 2.5, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(250, 94, 2.5, 0, 7); ctx.fill();
+    // Ngăn kéo dưới
+    ctx.strokeStyle = "#decbb5"; ctx.lineWidth = 1.2;
+    rr(ctx, 218, 133, 56, 16, 2); ctx.stroke();
+    ctx.fillStyle = "#ba8a63"; rr(ctx, 240, 139, 12, 3, 1.5); ctx.fill();
+    // Đồ xếp nóc tủ: chăn gấp pastel và giỏ cói
+    ctx.fillStyle = "#a0c4ff"; rr(ctx, 220, 36, 24, 7, 2); ctx.fill();
+    ctx.fillStyle = "#ffc6ff"; rr(ctx, 222, 31, 20, 6, 2); ctx.fill();
+    ctx.fillStyle = "#d4a373"; rr(ctx, 250, 31, 24, 12, 3); ctx.fill();
+    ctx.strokeStyle = "#b07d58"; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(250, 37); ctx.lineTo(274, 37); ctx.stroke();
+
+    // Đồng hồ treo tường chạy giờ thực
+    drawClock(306, 54);
+
+    // Thảm tròn lông êm ái dưới góc ngủ
+    ctx.fillStyle = "rgba(0,0,0,0.12)";
+    ctx.beginPath(); ctx.ellipse(104, 240, 98, 64, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#fae1dd";
+    ctx.beginPath(); ctx.ellipse(104, 236, 96, 62, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = "#e8b4a2"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.ellipse(104, 236, 84, 52, 0, 0, 7); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Tủ đầu giường nhỏ (nightstand) có đèn ngủ cạnh nệm futon
+    ctx.fillStyle = "rgba(0,0,0,0.18)"; ctx.beginPath(); ctx.ellipse(200, 220, 18, 5, 0, 0, 7); ctx.fill(); // bóng đổ
+    ctx.fillStyle = "#5c3d27"; ctx.fillRect(186, 214, 4, 6); ctx.fillRect(210, 214, 4, 6); // chân tủ
+    ctx.fillStyle = "#ba8a63"; rr(ctx, 184, 186, 32, 30, 4); ctx.fill();
+    ctx.fillStyle = "#d4a373"; rr(ctx, 186, 188, 28, 26, 3); ctx.fill();
+    ctx.fillStyle = "#fdfbf7"; rr(ctx, 188, 191, 24, 10, 2); ctx.fill(); rr(ctx, 188, 203, 24, 10, 2); ctx.fill(); // 2 ngăn kéo
+    ctx.fillStyle = "#e9c46a"; ctx.beginPath(); ctx.arc(200, 196, 1.8, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(200, 208, 1.8, 0, 7); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.7)"; rr(ctx, 207, 180, 5, 7, 1); ctx.fill(); // cốc nước
+
+    // Đèn ngủ đầu giường
+    ctx.fillStyle = "#e9d8a6"; ctx.beginPath(); ctx.arc(197, 184, 4, 0, 7); ctx.fill();
+    ctx.fillStyle = "#6b4226"; ctx.fillRect(196, 174, 2, 8);
+    ctx.fillStyle = "#ffe5b4";
+    ctx.beginPath(); ctx.moveTo(191, 175); ctx.lineTo(203, 175); ctx.lineTo(206, 163); ctx.lineTo(188, 163); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#ffb4a2"; ctx.fillRect(190, 174, 14, 2);
+
+    if (night) {
+      const lg = ctx.createRadialGradient(197, 170, 3, 197, 176, 55);
+      lg.addColorStop(0, "rgba(255, 230, 150, 0.55)");
+      lg.addColorStop(0.5, "rgba(255, 210, 120, 0.2)");
+      lg.addColorStop(1, "rgba(255, 210, 120, 0)");
+      ctx.fillStyle = lg; ctx.fillRect(142, 121, 110, 110);
+    }
+
+    // Dép bông thỏ xinh xắn đặt ở chân nệm futon
+    ctx.fillStyle = "rgba(0,0,0,0.15)"; ctx.beginPath(); ctx.ellipse(138, 296, 6, 3, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#fff0f3"; rr(ctx, 133, 290, 10, 6, 3); ctx.fill();
+    ctx.fillStyle = "#ffb4a2"; ctx.fillRect(135, 291, 6, 3);
+    ctx.fillStyle = "#fff0f3";
+    ctx.beginPath(); ctx.ellipse(135, 288, 1.5, 3, -0.2, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(138, 288, 1.5, 3, 0.2, 0, 7); ctx.fill();
+
+    ctx.fillStyle = "rgba(0,0,0,0.15)"; ctx.beginPath(); ctx.ellipse(149, 296, 6, 3, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#fff0f3"; rr(ctx, 144, 290, 10, 6, 3); ctx.fill();
+    ctx.fillStyle = "#ffb4a2"; ctx.fillRect(146, 291, 6, 3);
+    ctx.fillStyle = "#fff0f3";
+    ctx.beginPath(); ctx.ellipse(146, 288, 1.5, 3, -0.2, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(149, 288, 1.5, 3, 0.2, 0, 7); ctx.fill();
+
+    // Giỏ đựng đồ giặt bằng mây đan (laundry basket) cạnh đệm
+    ctx.fillStyle = "rgba(0,0,0,0.18)"; ctx.beginPath(); ctx.ellipse(44, 324, 18, 6, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#c49a6c"; rr(ctx, 30, 294, 28, 28, 5); ctx.fill();
+    ctx.fillStyle = "#d4a373"; rr(ctx, 32, 296, 24, 24, 4); ctx.fill();
+    ctx.strokeStyle = "rgba(120,70,30,0.25)"; ctx.lineWidth = 1;
+    for (let lx = 34; lx < 54; lx += 6) {
+      ctx.beginPath(); ctx.moveTo(lx, 298); ctx.lineTo(lx + 4, 318); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(lx + 4, 298); ctx.lineTo(lx, 318); ctx.stroke();
+    }
+    ctx.fillStyle = "#ba8a63"; rr(ctx, 28, 292, 32, 5, 2); ctx.fill();
+    ctx.fillStyle = "#a0c4ff"; ctx.beginPath(); ctx.ellipse(38, 291, 6, 4, -0.2, 0, 7); ctx.fill();
+    ctx.fillStyle = "#ffafcc"; ctx.beginPath(); ctx.ellipse(47, 290, 7, 5, 0.3, 0, 7); ctx.fill();
+
+    // Cây trầu bà lá xẻ (monstera) trong chậu sứ ở góc phòng dưới bên trái
+    ctx.fillStyle = "rgba(0,0,0,0.18)"; ctx.beginPath(); ctx.ellipse(48, 552, 22, 7, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#8a5a3c"; ctx.fillRect(36, 542, 4, 12); ctx.fillRect(56, 542, 4, 12); ctx.fillRect(34, 546, 28, 3);
+    ctx.fillStyle = "#f8f9fa"; rr(ctx, 36, 520, 24, 24, 4); ctx.fill();
+    ctx.fillStyle = "#e9ecef"; ctx.fillRect(38, 520, 20, 3);
+
+    const leafSway = Math.sin(t * 1.2) * 1.5;
+    ctx.strokeStyle = "#2d6a4f"; ctx.lineWidth = 2;
+    // Nhánh & lá 1
+    ctx.beginPath(); ctx.moveTo(48, 520); ctx.quadraticCurveTo(34, 508, 28 + leafSway, 496); ctx.stroke();
+    ctx.fillStyle = "#40916c"; ctx.beginPath(); ctx.ellipse(27 + leafSway, 494, 14, 9, -0.6, 0, 7); ctx.fill();
+    ctx.fillStyle = "#fbf6ee"; ctx.beginPath(); ctx.ellipse(25 + leafSway, 492, 4, 1.5, -0.6, 0, 7); ctx.fill();
+    // Nhánh & lá 2
+    ctx.beginPath(); ctx.moveTo(48, 520); ctx.quadraticCurveTo(56, 506, 68 - leafSway, 498); ctx.stroke();
+    ctx.fillStyle = "#52b788"; ctx.beginPath(); ctx.ellipse(69 - leafSway, 496, 15, 10, 0.6, 0, 7); ctx.fill();
+    ctx.fillStyle = "#fbf6ee"; ctx.beginPath(); ctx.ellipse(71 - leafSway, 494, 4, 1.5, 0.6, 0, 7); ctx.fill();
+    // Nhánh & lá 3
+    ctx.beginPath(); ctx.moveTo(48, 520); ctx.quadraticCurveTo(46, 498, 48 + leafSway * 0.5, 484); ctx.stroke();
+    ctx.fillStyle = "#2d6a4f"; ctx.beginPath(); ctx.ellipse(48 + leafSway * 0.5, 482, 13, 11, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#fbf6ee"; ctx.beginPath(); ctx.ellipse(48 + leafSway * 0.5, 480, 4, 1.5, 0, 0, 7); ctx.fill();
+
+    // 5. KHU VỰC BÊN PHẢI: GÓC HỌC TẬP & GIẢI TRÍ (STUDY & ENTERTAINMENT CORNER)
+    // Kệ sách gỗ 3 tầng đứng sát tường
+    ctx.fillStyle = "rgba(0,0,0,0.18)"; ctx.beginPath(); ctx.ellipse(554, 160, 36, 5, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#8a5a3c"; rr(ctx, 520, 38, 68, 120, 4); ctx.fill();
+    ctx.fillStyle = "#ba8a63"; rr(ctx, 522, 40, 64, 116, 3); ctx.fill();
+    ctx.fillStyle = "#f4ece1"; ctx.fillRect(524, 42, 60, 112);
+
+    // Tầng 1: chậu cây dây leo rủ xuống + tượng nhỏ
+    ctx.fillStyle = "#8a5a3c"; ctx.fillRect(522, 74, 64, 4);
+    ctx.fillStyle = "#e76f51"; rr(ctx, 528, 60, 16, 14, 2); ctx.fill();
+    ctx.fillStyle = "#52b788"; ctx.beginPath(); ctx.arc(536, 58, 8, 0, 7); ctx.fill();
+    ctx.strokeStyle = "#40916c"; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(532, 68); ctx.quadraticCurveTo(529, 78, 531, 86); ctx.stroke();
+    ctx.fillStyle = "#52b788"; ctx.beginPath(); ctx.arc(531, 86, 2.5, 0, 7); ctx.arc(530, 78, 2, 0, 7); ctx.fill();
+    ctx.fillStyle = "#a0c4ff"; ctx.beginPath(); ctx.arc(566, 64, 7, 0, 7); ctx.fill();
+    ctx.fillStyle = "#8a5a3c"; rr(ctx, 560, 70, 12, 4, 1); ctx.fill();
+
+    // Tầng 2: dãy sách màu sắc pastel rực rỡ
+    ctx.fillStyle = "#8a5a3c"; ctx.fillRect(522, 114, 64, 4);
+    const bookColors = ["#2a9d8f", "#e76f51", "#e9c46a", "#a0c4ff", "#b5838d", "#cdb4db"];
+    let bx = 528;
+    for (let k = 0; k < 6; k++) {
+      const bw = 5 + (k % 3), bh = 26 - (k % 4) * 2;
+      ctx.fillStyle = bookColors[k];
+      ctx.fillRect(bx, 114 - bh, bw, bh);
+      ctx.fillStyle = "rgba(255,255,255,0.45)";
+      ctx.fillRect(bx + 1, 114 - bh + 3, bw - 2, 1.2);
+      ctx.fillRect(bx + 1, 114 - bh + 6, bw - 2, 1.2);
+      bx += bw + 2;
+    }
+    ctx.save();
+    ctx.translate(bx + 3, 114); ctx.rotate(0.2);
+    ctx.fillStyle = "#f4a261"; ctx.fillRect(0, -22, 6, 22);
     ctx.restore();
 
-    // đồng hồ chạy thật + 2 tranh treo tường nghệ thuật
-    drawClock(250, 60);
-    [[60, "#a0c4ff", "#ffc6ff"], [640, "#ffd166", "#f4a261"]].forEach(([x, c1, c2]) => {
-      ctx.fillStyle = "#8a5a3c"; rr(ctx, x, 34, 56, 46, 4); ctx.fill();
-      const pg = ctx.createLinearGradient(0, 38, 0, 76); pg.addColorStop(0, c1); pg.addColorStop(1, c2);
-      ctx.fillStyle = pg; ctx.fillRect(x + 4, 38, 48, 38);
-      ctx.fillStyle = "rgba(255,255,255,.7)"; ctx.beginPath(); ctx.moveTo(x + 8, 72); ctx.lineTo(x + 24, 54); ctx.lineTo(x + 36, 66); ctx.lineTo(x + 44, 58); ctx.lineTo(x + 50, 72); ctx.fill();
-    });
-    ctx.fillStyle = "#6b4a35"; ctx.fillRect(606, 140, 60, 6);                    // kệ để radio
-    drawRadio(t); drawSwitch();
+    // Tầng 3: hộp lưu trữ pastel có nhãn
+    ctx.fillStyle = "#8a5a3c"; ctx.fillRect(522, 154, 64, 4);
+    ctx.fillStyle = "#bde0fe"; rr(ctx, 528, 126, 26, 26, 3); ctx.fill();
+    ctx.fillStyle = "#fff"; rr(ctx, 535, 134, 12, 6, 1); ctx.fill();
+    ctx.fillStyle = "#ffc8dd"; rr(ctx, 558, 128, 24, 24, 3); ctx.fill();
+    ctx.fillStyle = "#fff"; rr(ctx, 564, 136, 12, 6, 1); ctx.fill();
 
-    // VẼ NỘI THẤT CỦA PHÒNG
+    // Kệ gỗ gắn tường để radio và tranh âm nhạc mini
+    ctx.fillStyle = "#8a5a3c"; rr(ctx, 616, 50, 42, 48, 3); ctx.fill();
+    const posterG = ctx.createLinearGradient(0, 52, 0, 96);
+    posterG.addColorStop(0, "#ffd166"); posterG.addColorStop(1, "#f4a261");
+    ctx.fillStyle = posterG; ctx.fillRect(618, 52, 38, 44);
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    ctx.beginPath(); ctx.moveTo(620, 92); ctx.lineTo(632, 78); ctx.lineTo(642, 86); ctx.lineTo(654, 72); ctx.lineTo(656, 92); ctx.fill();
+    ctx.fillStyle = "#6b4226"; ctx.font = "10px system-ui"; ctx.textAlign = "center"; ctx.fillText("♪", 637, 68);
+
+    ctx.fillStyle = "rgba(0,0,0,0.12)"; ctx.fillRect(604, 146, 66, 3);
+    ctx.fillStyle = "#6b4a35"; rr(ctx, 604, 140, 66, 6, 2); ctx.fill();
+    ctx.fillStyle = "#8a5a3c"; ctx.fillRect(606, 140, 62, 2);
+    ctx.fillStyle = "#5c3d27";
+    ctx.beginPath(); ctx.moveTo(612, 146); ctx.lineTo(618, 153); ctx.lineTo(618, 146); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(662, 146); ctx.lineTo(656, 153); ctx.lineTo(656, 146); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(660, 137, 3.5, 0, 7); ctx.fill(); // tách trà nhỏ
+
+    // Vẽ radio và công tắc tương tác
+    drawRadio(t);
+    ctx.fillStyle = "#ffcad4";
+    ctx.beginPath(); ctx.arc(794, 95, 2.5, 0, 7); ctx.arc(800, 95, 2.5, 0, 7); ctx.fill(); // tai mèo nhỏ trang trí công tắc
+    drawSwitch();
+
+    // Bàn học & làm việc nhỏ gọn ở góc phải (không chắn lối ra door x: 700..840 y: 470..600)
+    ctx.fillStyle = "rgba(0,0,0,0.18)";
+    ctx.beginPath(); ctx.ellipse(728, 226, 46, 10, 0, 0, 7); ctx.fill(); // bóng bàn
+    ctx.beginPath(); ctx.ellipse(725, 243, 16, 5, 0, 0, 7); ctx.fill(); // bóng ghế
+
+    // Chân bàn & hộc ngăn kéo
+    ctx.fillStyle = "#8a5a3c";
+    ctx.fillRect(688, 192, 5, 32); ctx.fillRect(728, 192, 5, 32); ctx.fillRect(764, 192, 5, 32);
+    ctx.fillStyle = "#c59262"; rr(ctx, 735, 186, 32, 34, 3); ctx.fill();
+    ctx.fillStyle = "#ba8a63"; rr(ctx, 737, 188, 28, 14, 2); ctx.fill(); rr(ctx, 737, 204, 28, 14, 2); ctx.fill();
+    ctx.fillStyle = "#e9c46a"; ctx.beginPath(); ctx.arc(751, 195, 1.8, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(751, 211, 1.8, 0, 7); ctx.fill();
+
+    // Mặt bàn gỗ sồi bo tròn
+    ctx.fillStyle = "#8a5a3c"; rr(ctx, 684, 172, 88, 20, 5); ctx.fill();
+    ctx.fillStyle = "#d4a373"; rr(ctx, 685, 173, 86, 17, 4); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.25)"; ctx.fillRect(687, 174, 82, 2);
+
+    // Laptop chibi mở nắp
+    ctx.fillStyle = "#c5c6c7"; rr(ctx, 696, 176, 24, 13, 2); ctx.fill();
+    ctx.fillStyle = "#495057"; ctx.fillRect(699, 178, 18, 7);
+    ctx.fillStyle = "#adb5bd"; ctx.fillRect(706, 186, 4, 2);
+    ctx.fillStyle = "#343a40"; rr(ctx, 696, 160, 24, 16, 2); ctx.fill();
+    ctx.fillStyle = night ? "#64dfdf" : "#72efdd"; ctx.fillRect(698, 162, 20, 12);
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.fillRect(700, 164, 8, 1.2); ctx.fillRect(700, 167, 12, 1.2); ctx.fillRect(700, 170, 6, 1.2);
+    ctx.fillStyle = "#ff8fab"; ctx.font = "6px system-ui"; ctx.textAlign = "center"; ctx.fillText("♥", 708, 161);
+
+    // Cốc đựng bút sắc màu
+    ctx.fillStyle = "#ffd166"; rr(ctx, 726, 173, 8, 11, 2); ctx.fill();
+    ctx.fillStyle = "#06d6a0"; ctx.fillRect(727, 167, 1.5, 6);
+    ctx.fillStyle = "#ef476f"; ctx.fillRect(730, 166, 1.5, 7);
+    ctx.fillStyle = "#118ab2"; ctx.fillRect(732, 168, 1.5, 5);
+
+    // Đèn bàn học (desk lamp)
+    ctx.fillStyle = "#6c757d"; ctx.fillRect(748, 176, 8, 3);
+    ctx.strokeStyle = "#52b788"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(752, 176); ctx.quadraticCurveTo(755, 164, 747, 160); ctx.stroke();
+    ctx.fillStyle = "#52b788";
+    ctx.beginPath(); ctx.moveTo(743, 163); ctx.lineTo(752, 158); ctx.lineTo(749, 155); ctx.lineTo(741, 158); ctx.closePath(); ctx.fill();
+
+    if (night) {
+      const dg = ctx.createRadialGradient(746, 166, 3, 730, 185, 45);
+      dg.addColorStop(0, "rgba(255, 245, 170, 0.65)");
+      dg.addColorStop(0.6, "rgba(255, 230, 130, 0.2)");
+      dg.addColorStop(1, "rgba(255, 230, 130, 0)");
+      ctx.fillStyle = dg; ctx.fillRect(690, 150, 80, 65);
+    }
+
+    // Ghế ngồi học đẩy gọn gàng dưới bàn
+    ctx.fillStyle = "#5c3d27"; ctx.fillRect(716, 222, 3, 20); ctx.fillRect(732, 222, 3, 20);
+    ctx.fillStyle = "#8a5a3c"; rr(ctx, 714, 202, 22, 18, 3); ctx.fill();
+    ctx.fillStyle = "#ba8a63"; ctx.fillRect(718, 206, 2.5, 12); ctx.fillRect(724, 206, 2.5, 12); ctx.fillRect(730, 206, 2.5, 12);
+    ctx.fillStyle = "#a0c4ff"; rr(ctx, 713, 218, 24, 8, 3); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.fillRect(716, 219, 18, 2);
+
+    // 6. VẼ NỘI THẤT CỦA PHÒNG (do người chơi đặt)
     for (const it of homeItems) { const f = FU[it.k]; if (f && f.rug) { ctx.fillStyle = f.rug; ctx.globalAlpha = .85; ctx.beginPath(); ctx.ellipse(it.x, it.y, f.size / 2 + 10, f.size / 4 + 4, 0, 0, 7); ctx.fill(); ctx.globalAlpha = 1; } }
 
     // TẶNG NGƯỜI MỚI BỘ ĐỒ CƠ BẢN (nếu chưa đặt món đồ nào)
@@ -1893,7 +2296,18 @@ const Areas = (() => {
       FARM_LAMPS.forEach(l => hole(l.x, l.y, 90, .75));
       FAIRY_BULBS.forEach(b => hole(b.x, b.y, 24, .45));
     }
-    if (myArea === "home") for (const it of homeItems) if (it.k === "f_lamp" || it.k === "f_tv" || it.k === "f_tree") hole(it.x, it.y - 20, 80, .8);
+    if (myArea === "home") {
+      // Vùng sáng cho đèn ngủ đầu giường
+      hole(197, 172, 75, .8);
+      // Vùng sáng cho đèn bàn học góc phải
+      hole(748, 168, 80, .85);
+      // Vùng sáng nhỏ cho chuỗi đèn fairy lights dọc bờ tường
+      HOME_FAIRY_BULBS.forEach(b => hole(b.x, b.y, 20, .45));
+      // Đèn cây đứng góc phòng khi chưa bày đồ nội thất
+      if (!homeItems.length) hole(280, 255, 75, .7);
+      // Vùng sáng cho các món đồ nội thất do người chơi đặt
+      for (const it of homeItems) if (it.k === "f_lamp" || it.k === "f_tv" || it.k === "f_tree") hole(it.x, it.y - 20, 80, .8);
+    }
   }
   function act() {
     if (myArea === "farm") openFarmer();
