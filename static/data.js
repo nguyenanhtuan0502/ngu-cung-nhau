@@ -102,10 +102,40 @@ const NPCS = {
 
 // ================== SỰ KIỆN THEO MÙA ==================
 // Đổi trang trí công viên + sảnh rạp theo ngày (tháng-ngày), không cần sửa code. Thử nhanh: thêm &season=xmas vào link.
+// Thứ tự ưu tiên: ngày lễ ngắn đặt TRƯỚC mùa dài bao quanh nó (code chọn sự kiện đầu tiên thỏa from <= today <= to).
 const SEASONS = [
-  {key: "tet",       from: "01-20", to: "02-25", deco: ["🏮", "🧧", "🌼"], fall: "🌸", banner: "🧧 Chúc mừng năm mới! Công viên đã treo đèn lồng đỏ"},
-  {key: "trungthu",  from: "09-05", to: "10-05", deco: ["🏮", "⭐", "🥮"], fall: null, banner: "🥮 Trung Thu rồi! Rước đèn ở công viên nhé"},
-  {key: "halloween", from: "10-20", to: "11-05", deco: ["🎃", "👻", "🦇"], fall: "🍂", banner: "🎃 Halloween! Coi chừng ma ở công viên"},
-  {key: "autumn",    from: "11-06", to: "11-30", deco: ["🍁", "🍂", "🌰"], fall: "🍁", banner: "🍁 Thu sang, lá vàng rơi khắp công viên"},
-  {key: "xmas",      from: "12-01", to: "12-31", deco: ["🎄", "🎁", "⛄"], fall: "❄️", banner: "🎄 Giáng sinh an lành! Tuyết rơi ở công viên"},
+  // Tết Dương lịch (phần đầu năm 01-01..01-02)
+  {key: "newyear",        from: "01-01", to: "01-02", deco: ["🎉", "🎆", "✨"], fall: "✨",  banner: "🎉 Chúc mừng năm mới! Khởi đầu năm mới thật vui tại công viên nhé"},
+  // Valentine (đặt trước Tết Nguyên Đán để ưu tiên các ngày 12-15/2)
+  {key: "valentine",      from: "02-12", to: "02-15", deco: ["💖", "🌹", "🍫"], fall: "💖",  banner: "💖 Lễ tình nhân ngọt ngào! Ghé công viên hẹn hò cùng người thương nhé"},
+  // Tết Nguyên Đán
+  {key: "tet",            from: "01-20", to: "02-25", deco: ["🏮", "🧧", "🌼"], fall: "🌸",  banner: "🧧 Chúc mừng năm mới! Công viên đã treo đèn lồng đỏ"},
+  // Quốc tế Phụ nữ 8/3
+  {key: "womens_day",     from: "03-06", to: "03-09", deco: ["💐", "🌷", "🎀"], fall: "🌷",  banner: "💐 Mừng ngày Quốc tế Phụ nữ 8/3! Muôn hoa khoe sắc rực rỡ ở công viên"},
+  // Mùa xuân
+  {key: "spring",         from: "03-10", to: "04-24", deco: ["🌸", "🌱", "🦋"], fall: "🌸",  banner: "🌸 Tiết trời mùa xuân ấm áp, trăm hoa đua nở rộn ràng khắp công viên"},
+  // Giải phóng miền Nam 30/4 & Quốc tế Lao động 1/5
+  {key: "reunification",  from: "04-28", to: "05-02", deco: ["🇻🇳", "⭐", "🎉"], fall: "⭐",  banner: "🇻🇳 Mừng đại lễ 30/4 và 1/5! Cờ đỏ sao vàng tung bay rực rỡ tại công viên"},
+  // Quốc tế Thiếu nhi 1/6
+  {key: "children",       from: "05-30", to: "06-02", deco: ["🎈", "🧸", "🍭"], fall: "🎈",  banner: "🎈 Chúc mừng Quốc tế Thiếu nhi 1/6! Công viên ngập tràn niềm vui và quà tặng"},
+  // Mùa hè
+  {key: "summer",         from: "06-03", to: "08-31", deco: ["☀️", "🍉", "🏖️"], fall: null, banner: "☀️ Mùa hè rực nắng đã sang! Ra công viên hóng gió mát và ăn dưa hấu nhé"},
+  // Quốc khánh 2/9
+  {key: "national_day",   from: "09-01", to: "09-03", deco: ["🇻🇳", "⭐", "🎆"], fall: "⭐",  banner: "🇻🇳 Chào mừng Quốc khánh 2/9! Không khí tưng bừng rực rỡ khắp công viên"},
+  // Ngày Tựu trường
+  {key: "back_to_school", from: "09-04", to: "09-04", deco: ["🎒", "📚", "🔔"], fall: null, banner: "🎒 Rộn ràng ngày tựu trường! Cùng bạn bè tụ họp tại công viên sau giờ học nhé"},
+  // Tết Trung Thu
+  {key: "trungthu",       from: "09-05", to: "10-05", deco: ["🏮", "⭐", "🥮"], fall: null, banner: "🥮 Trung Thu rồi! Rước đèn ở công viên nhé"},
+  // Phụ nữ Việt Nam 20/10 (đặt trước Halloween để ưu tiên các ngày 18-20/10)
+  {key: "vietnam_women",  from: "10-18", to: "10-20", deco: ["🌹", "💐", "🎀"], fall: "🌹",  banner: "🌹 Mừng ngày Phụ nữ Việt Nam 20/10! Gửi ngàn yêu thương đến công viên"},
+  // Lễ hội Halloween
+  {key: "halloween",      from: "10-20", to: "11-05", deco: ["🎃", "👻", "🦇"], fall: "🍂",  banner: "🎃 Halloween! Coi chừng ma ở công viên"},
+  // Nhà giáo Việt Nam 20/11 (đặt trước Mùa thu)
+  {key: "teachers_day",   from: "11-18", to: "11-21", deco: ["📚", "💐", "💌"], fall: "💐",  banner: "💐 Tri ân ngày Nhà giáo Việt Nam 20/11! Công viên rực rỡ hoa tươi dâng thầy cô"},
+  // Mùa thu
+  {key: "autumn",         from: "11-06", to: "11-30", deco: ["🍁", "🍂", "🌰"], fall: "🍁",  banner: "🍁 Thu sang, lá vàng rơi khắp công viên"},
+  // Tết Dương lịch (phần cuối năm 12-30..12-31, đặt trước Giáng sinh)
+  {key: "newyear",        from: "12-30", to: "12-31", deco: ["🎉", "🎆", "✨"], fall: "✨",  banner: "🎆 Chào đón năm mới rộn ràng! Cùng đếm ngược khoảnh khắc giao thừa tại công viên"},
+  // Giáng sinh
+  {key: "xmas",           from: "12-01", to: "12-31", deco: ["🎄", "🎁", "⛄"], fall: "❄️",  banner: "🎄 Giáng sinh an lành! Tuyết rơi ở công viên"},
 ];
