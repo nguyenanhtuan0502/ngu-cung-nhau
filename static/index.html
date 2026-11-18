@@ -2883,16 +2883,15 @@ function clampCinemaMove(tx, ty, fromX, fromY, isUserTap) {
   const fromLobby = (fromY >= 460);
   const fromHall = (fromY <= 450);
 
+  // Chạm qua phía bên kia bức tường mà không trúng cổng: tự đi vào cổng soát vé (giữa) thay vì đứng kẹt dưới tường
+  const toGate = () => {
+    tx = Math.max(465, Math.min(535, tx));
+    if (isUserTap && now - lastTicketToastAt > 2.0) { lastTicketToastAt = now; toast("🎟️ Đi qua cổng soát vé ở giữa nhé"); }
+  };
   if (fromLobby) {
-    // Đang ở sảnh: nếu không đi vào cổng soát vé thì bức tường y 440..470 chặn lại
-    if (!inGateX && ty < 475) {
-      ty = 480;
-    }
+    if (!inGateX && ty < 475) toGate();                 // sảnh -> phòng chiếu
   } else if (fromHall) {
-    // Đang ở phòng chiếu: nếu không đi vào cổng soát vé thì bức tường chặn lại
-    if (!inGateX && ty > 435) {
-      ty = 430;
-    }
+    if (!inGateX && ty > 435) toGate();                 // phòng chiếu -> sảnh
   }
 
   return {x: tx, y: ty};
