@@ -1582,6 +1582,933 @@ const Areas = (() => {
   // ---------- 6. Hồ câu cá ----------
   let fishState = null;                                                  // {seat, phase: wait|bite, at}
   const SWIM = FISH.filter(f => f.id !== "boot").slice(0, 7);
+
+  // Khởi tạo hoạt ảnh CSS cho cá khi câu được (nảy nhẹ và lấp lánh)
+  function ensureFishStyles() {
+    if (typeof document === "undefined" || document.getElementById("fishAnimStyle")) return;
+    const st = document.createElement("style");
+    st.id = "fishAnimStyle";
+    st.textContent = `
+      @keyframes fishBounce {
+        0%, 100% { transform: translateY(0) scale(1) rotate(0deg); }
+        35% { transform: translateY(-10px) scale(1.04) rotate(-3deg); }
+        70% { transform: translateY(-4px) scale(0.98) rotate(2deg); }
+      }
+      @keyframes fishSparkle {
+        0% { transform: scale(0.7) rotate(0deg); opacity: 0.4; }
+        50% { transform: scale(1.25) rotate(25deg); opacity: 1; }
+        100% { transform: scale(0.8) rotate(45deg); opacity: 0.6; }
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  // Vẽ mắt chibi to tròn long lanh hai đốm sáng
+  function drawCuteEye(c, ex, ey, r, irisCol = "#2b1810") {
+    c.fillStyle = "#ffffff";
+    c.beginPath(); c.arc(ex, ey, r, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = "rgba(0,0,0,0.25)"; c.lineWidth = 0.8; c.stroke();
+    c.fillStyle = irisCol;
+    c.beginPath(); c.arc(ex + 0.3, ey, r * 0.82, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "#ffffff";
+    c.beginPath(); c.arc(ex - r * 0.28, ey - r * 0.3, r * 0.38, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(ex + r * 0.32, ey + r * 0.32, r * 0.18, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = "#1a0c06"; c.lineWidth = 1.1; c.lineCap = "round";
+    c.beginPath(); c.arc(ex, ey, r * 1.05, Math.PI * 1.15, Math.PI * 1.85); c.stroke();
+  }
+
+  // Vẽ ngôi sao lấp lánh cho loài cá hiếm
+  function drawSparkleStar(c, sx, sy, r) {
+    c.fillStyle = "#ffd166";
+    c.beginPath();
+    c.moveTo(sx, sy - r * 1.4);
+    c.quadraticCurveTo(sx, sy, sx + r * 1.4, sy);
+    c.quadraticCurveTo(sx, sy, sx, sy + r * 1.4);
+    c.quadraticCurveTo(sx, sy, sx - r * 1.4, sy);
+    c.quadraticCurveTo(sx, sy, sx, sy - r * 1.4);
+    c.fill();
+    c.fillStyle = "#ffffff";
+    c.beginPath(); c.arc(sx, sy, r * 0.35, 0, Math.PI * 2); c.fill();
+  }
+
+  // Bảng vẽ chi tiết từng loại cá/vật phẩm câu được theo phong cách chibi dễ thương (khung 120x120)
+  const FISH_DRAWERS = {
+    // 1. Cá chép (carp)
+    carp: (c) => {
+      c.fillStyle = "rgba(0,0,0,0.08)"; c.beginPath(); c.ellipse(60, 96, 36, 6, 0, 0, Math.PI * 2); c.fill();
+      const tg = c.createLinearGradient(15, 38, 38, 76);
+      tg.addColorStop(0, "#e76f51"); tg.addColorStop(1, "#f4a261");
+      c.fillStyle = tg; c.beginPath();
+      c.moveTo(34, 58);
+      c.bezierCurveTo(24, 40, 12, 36, 12, 44);
+      c.quadraticCurveTo(14, 54, 25, 58);
+      c.quadraticCurveTo(14, 62, 12, 72);
+      c.bezierCurveTo(12, 80, 24, 76, 34, 58);
+      c.fill();
+      c.strokeStyle = "rgba(255,255,255,0.45)"; c.lineWidth = 1; c.beginPath();
+      c.moveTo(32, 58); c.lineTo(16, 46);
+      c.moveTo(32, 58); c.lineTo(15, 58);
+      c.moveTo(32, 58); c.lineTo(16, 70);
+      c.stroke();
+
+      c.fillStyle = "#e76f51"; c.beginPath();
+      c.moveTo(42, 41);
+      c.bezierCurveTo(48, 28, 62, 30, 68, 41);
+      c.quadraticCurveTo(55, 37, 42, 41);
+      c.fill();
+
+      c.fillStyle = "#f4a261"; c.beginPath();
+      c.moveTo(44, 73); c.quadraticCurveTo(38, 83, 34, 77); c.quadraticCurveTo(40, 72, 44, 73); c.fill();
+
+      const bg = c.createLinearGradient(30, 36, 85, 76);
+      bg.addColorStop(0, "#e76f51");
+      bg.addColorStop(0.45, "#f4a261");
+      bg.addColorStop(1, "#ffe3a8");
+      c.fillStyle = bg;
+      c.beginPath();
+      c.moveTo(88, 58);
+      c.bezierCurveTo(86, 42, 60, 36, 34, 54);
+      c.quadraticCurveTo(30, 58, 34, 62);
+      c.bezierCurveTo(60, 80, 86, 74, 88, 58);
+      c.closePath();
+      c.fill();
+      c.strokeStyle = "#c85a3a"; c.lineWidth = 1.8; c.stroke();
+
+      c.fillStyle = "rgba(255, 243, 176, 0.55)"; c.beginPath();
+      c.moveTo(82, 62);
+      c.quadraticCurveTo(60, 76, 40, 65);
+      c.quadraticCurveTo(60, 70, 82, 62);
+      c.fill();
+
+      c.strokeStyle = "rgba(215, 95, 50, 0.45)"; c.lineWidth = 1.2;
+      for (let row = 0; row < 3; row++) {
+        const rx = 44 + row * 8, ry = 50 + row * 6;
+        c.beginPath(); c.arc(rx, ry, 4.5, -0.6, 1.8); c.stroke();
+        c.beginPath(); c.arc(rx + 6, ry - 3, 4.5, -0.6, 1.8); c.stroke();
+      }
+      c.fillStyle = "rgba(255, 255, 255, 0.7)";
+      c.beginPath(); c.arc(54, 48, 1.4, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(62, 54, 1.2, 0, Math.PI * 2); c.fill();
+
+      c.strokeStyle = "rgba(180, 70, 40, 0.4)"; c.lineWidth = 1.5;
+      c.beginPath(); c.arc(70, 58, 8, 0.6, 2.6); c.stroke();
+
+      c.strokeStyle = "#e76f51"; c.lineWidth = 1.8; c.lineCap = "round";
+      c.beginPath(); c.moveTo(86, 62); c.quadraticCurveTo(92, 68, 89, 74); c.stroke();
+      c.beginPath(); c.moveTo(84, 64); c.quadraticCurveTo(88, 70, 85, 73); c.stroke();
+
+      c.fillStyle = "rgba(244, 162, 97, 0.85)"; c.beginPath();
+      c.moveTo(68, 64); c.quadraticCurveTo(56, 76, 52, 72); c.quadraticCurveTo(58, 62, 66, 64); c.fill();
+      c.strokeStyle = "#e76f51"; c.lineWidth = 1; c.stroke();
+
+      c.fillStyle = "rgba(255, 99, 132, 0.35)"; c.beginPath(); c.ellipse(73, 64, 4.5, 2.8, 0, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = "#8b2500"; c.lineWidth = 1.4; c.lineCap = "round";
+      c.beginPath(); c.moveTo(88, 58); c.quadraticCurveTo(86, 61, 83, 59); c.stroke();
+
+      drawCuteEye(c, 76, 50, 5.5);
+    },
+
+    // 2. Cá rô (perch)
+    perch: (c) => {
+      c.fillStyle = "rgba(0,0,0,0.08)"; c.beginPath(); c.ellipse(60, 96, 36, 6, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#606c38"; c.beginPath();
+      c.moveTo(34, 58);
+      c.quadraticCurveTo(16, 42, 14, 48);
+      c.quadraticCurveTo(18, 58, 14, 68);
+      c.quadraticCurveTo(16, 74, 34, 58);
+      c.fill();
+      c.strokeStyle = "#283618"; c.lineWidth = 1; c.stroke();
+
+      c.fillStyle = "#4f772d";
+      c.beginPath();
+      c.moveTo(38, 44);
+      c.lineTo(41, 28); c.lineTo(46, 34); c.lineTo(51, 25);
+      c.lineTo(56, 32); c.lineTo(61, 26); c.lineTo(67, 34);
+      c.lineTo(71, 44);
+      c.closePath();
+      c.fill();
+      c.strokeStyle = "#283618"; c.lineWidth = 1.4; c.stroke();
+      c.strokeStyle = "rgba(255,255,255,0.4)"; c.lineWidth = 1;
+      [[41, 28], [51, 25], [61, 26]].forEach(([gx, gy]) => {
+        c.beginPath(); c.moveTo(gx, gy); c.lineTo(gx + 3, gy + 14); c.stroke();
+      });
+
+      c.fillStyle = "#606c38"; c.beginPath();
+      c.moveTo(48, 73); c.lineTo(43, 82); c.lineTo(54, 75); c.fill();
+
+      const bg = c.createLinearGradient(40, 36, 85, 76);
+      bg.addColorStop(0, "#386641");
+      bg.addColorStop(0.5, "#6a994e");
+      bg.addColorStop(1, "#e9f5db");
+      c.fillStyle = bg;
+      c.beginPath();
+      c.moveTo(88, 58);
+      c.bezierCurveTo(85, 42, 60, 36, 34, 53);
+      c.quadraticCurveTo(30, 58, 34, 63);
+      c.bezierCurveTo(60, 80, 85, 74, 88, 58);
+      c.closePath();
+      c.fill();
+      c.strokeStyle = "#1b4332"; c.lineWidth = 1.8; c.stroke();
+
+      c.strokeStyle = "rgba(27, 67, 50, 0.55)"; c.lineWidth = 3.2; c.lineCap = "round";
+      [[46, 42, 48, 62], [54, 40, 55, 65], [62, 40, 63, 64], [70, 43, 71, 62]].forEach(([x1, y1, x2, y2]) => {
+        c.beginPath(); c.moveTo(x1, y1); c.quadraticCurveTo((x1 + x2) / 2 + 1, (y1 + y2) / 2, x2, y2); c.stroke();
+      });
+
+      c.strokeStyle = "#1b4332"; c.lineWidth = 1.4;
+      c.beginPath(); c.arc(71, 58, 8.5, 0.7, 2.5); c.stroke();
+      c.fillStyle = "#1b4332"; c.beginPath(); c.arc(68, 59, 1.2, 0, Math.PI * 2); c.fill();
+
+      c.fillStyle = "rgba(106, 153, 78, 0.85)"; c.beginPath();
+      c.moveTo(68, 63); c.quadraticCurveTo(58, 73, 54, 69); c.quadraticCurveTo(60, 60, 68, 63); c.fill();
+
+      c.fillStyle = "rgba(255, 120, 100, 0.3)"; c.beginPath(); c.ellipse(75, 64, 4, 2.5, 0, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = "#1b4332"; c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(88, 58); c.lineTo(84, 60); c.stroke();
+
+      drawCuteEye(c, 77, 50, 5.2, "#854d0e");
+    },
+
+    // 3. Cá vàng (gold)
+    gold: (c) => {
+      c.fillStyle = "rgba(0,0,0,0.08)"; c.beginPath(); c.ellipse(60, 96, 36, 6, 0, 0, Math.PI * 2); c.fill();
+      const tg = c.createLinearGradient(10, 24, 40, 88);
+      tg.addColorStop(0, "rgba(255, 107, 53, 0.85)");
+      tg.addColorStop(0.5, "rgba(255, 183, 3, 0.75)");
+      tg.addColorStop(1, "rgba(255, 230, 109, 0.5)");
+      c.fillStyle = tg;
+      c.beginPath();
+      c.moveTo(38, 58);
+      c.bezierCurveTo(24, 30, 8, 22, 10, 36);
+      c.bezierCurveTo(12, 48, 22, 52, 38, 58);
+      c.fill();
+      c.beginPath();
+      c.moveTo(38, 58);
+      c.bezierCurveTo(22, 64, 8, 68, 10, 82);
+      c.bezierCurveTo(12, 92, 26, 82, 38, 58);
+      c.fill();
+      c.fillStyle = "rgba(255, 214, 10, 0.7)";
+      c.beginPath();
+      c.moveTo(36, 58);
+      c.bezierCurveTo(18, 45, 6, 50, 6, 60);
+      c.bezierCurveTo(6, 70, 18, 72, 36, 58);
+      c.fill();
+
+      c.fillStyle = "rgba(255, 158, 0, 0.85)"; c.beginPath();
+      c.moveTo(42, 42);
+      c.bezierCurveTo(46, 20, 62, 22, 66, 42);
+      c.quadraticCurveTo(54, 34, 42, 42);
+      c.fill();
+
+      const bg = c.createRadialGradient(68, 52, 6, 60, 60, 34);
+      bg.addColorStop(0, "#fff275");
+      bg.addColorStop(0.35, "#ffb703");
+      bg.addColorStop(0.75, "#fb8500");
+      bg.addColorStop(1, "#d90429");
+      c.fillStyle = bg;
+      c.beginPath();
+      c.ellipse(62, 58, 26, 22, 0, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = "#d90429"; c.lineWidth = 1.6; c.stroke();
+
+      c.fillStyle = "rgba(255, 195, 0, 0.85)"; c.beginPath();
+      c.moveTo(68, 66); c.quadraticCurveTo(56, 80, 52, 74); c.quadraticCurveTo(58, 62, 68, 66); c.fill();
+
+      c.fillStyle = "#fff";
+      [[52, 50, 1.6], [58, 46, 1.2], [48, 56, 1.3], [56, 64, 1.1]].forEach(([sx, sy, sr]) => {
+        c.beginPath(); c.arc(sx, sy, sr, 0, Math.PI * 2); c.fill();
+      });
+
+      c.fillStyle = "rgba(255, 45, 85, 0.4)"; c.beginPath(); c.ellipse(74, 65, 5.5, 3.5, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#d90429"; c.beginPath(); c.ellipse(88, 60, 2, 2.5, 0, 0, Math.PI * 2); c.fill();
+
+      c.strokeStyle = "rgba(255, 255, 255, 0.75)"; c.lineWidth = 1;
+      c.beginPath(); c.arc(96, 52, 3.5, 0, Math.PI * 2); c.stroke();
+      c.fillStyle = "rgba(255,255,255,0.6)"; c.beginPath(); c.arc(95, 51, 1, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(104, 44, 2, 0, Math.PI * 2); c.stroke();
+
+      drawCuteEye(c, 78, 49, 6.2);
+    },
+
+    // 4. Tôm càng (shrimp)
+    shrimp: (c) => {
+      c.fillStyle = "rgba(0,0,0,0.08)"; c.beginPath(); c.ellipse(60, 96, 36, 6, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#ff5d8f";
+      [[-15, 78], [-10, 84], [-3, 86], [4, 84]].forEach(([ox, oy]) => {
+        c.beginPath(); c.ellipse(36 + ox, oy, 7, 3.5, 0.4, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = "#c9184a"; c.lineWidth = 0.8; c.stroke();
+      });
+
+      const segments = [
+        {x: 40, y: 72, rx: 9, ry: 7, rot: 0.5},
+        {x: 46, y: 64, rx: 11, ry: 8, rot: 0.3},
+        {x: 54, y: 57, rx: 12, ry: 9, rot: 0.1},
+        {x: 63, y: 54, rx: 13, ry: 10, rot: -0.05},
+      ];
+      segments.forEach(seg => {
+        const sg = c.createLinearGradient(seg.x - seg.rx, seg.y - seg.ry, seg.x + seg.rx, seg.y + seg.ry);
+        sg.addColorStop(0, "#ff4d6d"); sg.addColorStop(1, "#ffb3c1");
+        c.fillStyle = sg;
+        c.beginPath(); c.ellipse(seg.x, seg.y, seg.rx, seg.ry, seg.rot, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = "#c9184a"; c.lineWidth = 1.2; c.stroke();
+        c.fillStyle = "rgba(255,255,255,0.45)"; c.beginPath();
+        c.ellipse(seg.x, seg.y - seg.ry * 0.45, seg.rx * 0.6, 2, seg.rot, 0, Math.PI * 2); c.fill();
+      });
+
+      c.strokeStyle = "#ff758f"; c.lineWidth = 1.6; c.lineCap = "round";
+      [[44, 76], [50, 71], [58, 66]].forEach(([lx, ly]) => {
+        c.beginPath(); c.moveTo(lx, ly); c.lineTo(lx - 4, ly + 6); c.stroke();
+      });
+
+      const hg = c.createLinearGradient(60, 40, 85, 62);
+      hg.addColorStop(0, "#ff4d6d"); hg.addColorStop(1, "#ffccd5");
+      c.fillStyle = hg;
+      c.beginPath();
+      c.moveTo(96, 46);
+      c.quadraticCurveTo(88, 38, 70, 42);
+      c.quadraticCurveTo(65, 48, 66, 60);
+      c.quadraticCurveTo(76, 64, 86, 56);
+      c.closePath();
+      c.fill();
+      c.strokeStyle = "#c9184a"; c.lineWidth = 1.5; c.stroke();
+
+      c.strokeStyle = "#a4133c"; c.lineWidth = 1.2;
+      c.beginPath(); c.moveTo(86, 44); c.lineTo(96, 46); c.stroke();
+
+      c.strokeStyle = "#ff4d6d"; c.lineWidth = 1.6; c.lineCap = "round";
+      c.beginPath(); c.moveTo(86, 46); c.bezierCurveTo(96, 32, 85, 18, 50, 18); c.stroke();
+      c.beginPath(); c.moveTo(85, 48); c.bezierCurveTo(100, 40, 95, 26, 65, 22); c.stroke();
+
+      c.strokeStyle = "#ff4d6d"; c.lineWidth = 2.4;
+      c.beginPath(); c.moveTo(76, 60); c.quadraticCurveTo(86, 72, 94, 68); c.stroke();
+      c.fillStyle = "#48cae4"; c.beginPath();
+      c.moveTo(94, 68); c.quadraticCurveTo(100, 62, 102, 66); c.lineTo(96, 69); c.fill();
+      c.beginPath();
+      c.moveTo(94, 68); c.quadraticCurveTo(100, 74, 103, 70); c.lineTo(96, 69); c.fill();
+      c.strokeStyle = "#0077b6"; c.lineWidth = 1; c.stroke();
+
+      c.fillStyle = "rgba(255, 77, 109, 0.4)"; c.beginPath(); c.ellipse(78, 56, 4, 2.5, 0, 0, Math.PI * 2); c.fill();
+      drawCuteEye(c, 80, 47, 4.5);
+    },
+
+    // 5. Cua đồng (crab)
+    crab: (c) => {
+      c.fillStyle = "rgba(0,0,0,0.08)"; c.beginPath(); c.ellipse(60, 96, 40, 6, 0, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = "#d90429"; c.lineWidth = 2.8; c.lineCap = "round";
+      c.beginPath(); c.moveTo(42, 60); c.quadraticCurveTo(28, 58, 24, 70); c.stroke();
+      c.beginPath(); c.moveTo(40, 66); c.quadraticCurveTo(26, 68, 22, 80); c.stroke();
+      c.beginPath(); c.moveTo(42, 72); c.quadraticCurveTo(30, 78, 28, 88); c.stroke();
+      c.beginPath(); c.moveTo(78, 60); c.quadraticCurveTo(92, 58, 96, 70); c.stroke();
+      c.beginPath(); c.moveTo(80, 66); c.quadraticCurveTo(94, 68, 98, 80); c.stroke();
+      c.beginPath(); c.moveTo(78, 72); c.quadraticCurveTo(90, 78, 92, 88); c.stroke();
+
+      c.strokeStyle = "#d90429"; c.lineWidth = 4;
+      c.beginPath(); c.moveTo(42, 56); c.quadraticCurveTo(26, 48, 28, 38); c.stroke();
+      c.beginPath(); c.moveTo(78, 56); c.quadraticCurveTo(94, 48, 92, 38); c.stroke();
+
+      c.fillStyle = "#ef233c";
+      c.beginPath();
+      c.moveTo(28, 38);
+      c.bezierCurveTo(18, 36, 14, 24, 25, 22);
+      c.bezierCurveTo(28, 26, 26, 32, 28, 38);
+      c.fill();
+      c.beginPath();
+      c.moveTo(28, 38);
+      c.bezierCurveTo(36, 36, 38, 22, 28, 22);
+      c.bezierCurveTo(26, 26, 28, 32, 28, 38);
+      c.fill();
+      c.strokeStyle = "#a4133c"; c.lineWidth = 1.4; c.stroke();
+
+      c.beginPath();
+      c.moveTo(92, 38);
+      c.bezierCurveTo(84, 36, 82, 22, 92, 22);
+      c.bezierCurveTo(94, 26, 92, 32, 92, 38);
+      c.fill();
+      c.beginPath();
+      c.moveTo(92, 38);
+      c.bezierCurveTo(102, 36, 106, 24, 95, 22);
+      c.bezierCurveTo(92, 26, 94, 32, 92, 38);
+      c.fill();
+      c.stroke();
+
+      const mg = c.createLinearGradient(60, 44, 60, 82);
+      mg.addColorStop(0, "#ef233c");
+      mg.addColorStop(0.7, "#d90429");
+      mg.addColorStop(1, "#800f2f");
+      c.fillStyle = mg;
+      c.beginPath();
+      c.ellipse(60, 66, 24, 17, 0, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = "#590d22"; c.lineWidth = 1.8; c.stroke();
+
+      c.fillStyle = "rgba(255, 255, 255, 0.4)"; c.beginPath();
+      c.ellipse(60, 56, 14, 4, 0, 0, Math.PI * 2); c.fill();
+
+      c.fillStyle = "#ef233c";
+      c.fillRect(51, 46, 5, 8);
+      c.fillRect(64, 46, 5, 8);
+
+      drawCuteEye(c, 53, 44, 5);
+      drawCuteEye(c, 67, 44, 5);
+
+      c.strokeStyle = "#590d22"; c.lineWidth = 1.6; c.lineCap = "round";
+      c.beginPath(); c.arc(60, 69, 5.5, 0.2, Math.PI - 0.2); c.stroke();
+
+      c.fillStyle = "rgba(255, 180, 190, 0.55)";
+      c.beginPath(); c.ellipse(47, 68, 4, 2.5, 0, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.ellipse(73, 68, 4, 2.5, 0, 0, Math.PI * 2); c.fill();
+    },
+
+    // 6. Cá koi (koi, rare)
+    koi: (c) => {
+      c.fillStyle = "rgba(0,0,0,0.08)"; c.beginPath(); c.ellipse(60, 96, 38, 6, 0, 0, Math.PI * 2); c.fill();
+      const tg = c.createLinearGradient(12, 38, 36, 76);
+      tg.addColorStop(0, "rgba(255,255,255,0.95)");
+      tg.addColorStop(1, "rgba(255, 107, 107, 0.6)");
+      c.fillStyle = tg; c.beginPath();
+      c.moveTo(34, 58);
+      c.bezierCurveTo(22, 38, 10, 34, 10, 44);
+      c.quadraticCurveTo(14, 56, 24, 58);
+      c.quadraticCurveTo(14, 60, 10, 72);
+      c.bezierCurveTo(10, 82, 22, 78, 34, 58);
+      c.fill();
+      c.strokeStyle = "rgba(230, 57, 70, 0.3)"; c.lineWidth = 1; c.stroke();
+
+      c.fillStyle = "rgba(255,255,255,0.9)"; c.beginPath();
+      c.moveTo(42, 40); c.bezierCurveTo(48, 28, 64, 30, 68, 40); c.fill();
+
+      const bg = c.createLinearGradient(32, 36, 88, 76);
+      bg.addColorStop(0, "#f8f9fa");
+      bg.addColorStop(0.5, "#e9ecef");
+      bg.addColorStop(1, "#dee2e6");
+      c.fillStyle = bg;
+      c.beginPath();
+      c.moveTo(88, 58);
+      c.bezierCurveTo(86, 42, 60, 36, 34, 54);
+      c.quadraticCurveTo(30, 58, 34, 62);
+      c.bezierCurveTo(60, 80, 86, 74, 88, 58);
+      c.closePath();
+      c.fill();
+      c.strokeStyle = "#ced4da"; c.lineWidth = 1.6; c.stroke();
+
+      c.fillStyle = "#e63946";
+      c.beginPath(); c.ellipse(78, 48, 6.5, 4.5, 0.2, 0, Math.PI * 2); c.fill();
+      c.beginPath();
+      c.moveTo(64, 40);
+      c.bezierCurveTo(56, 36, 48, 44, 52, 54);
+      c.bezierCurveTo(60, 58, 68, 50, 64, 40);
+      c.fill();
+      c.beginPath(); c.ellipse(40, 56, 5, 3.5, -0.2, 0, Math.PI * 2); c.fill();
+
+      c.fillStyle = "#212529";
+      c.beginPath(); c.ellipse(60, 56, 2.5, 1.8, 0.3, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.ellipse(46, 52, 1.8, 1.2, -0.1, 0, Math.PI * 2); c.fill();
+
+      c.strokeStyle = "#e63946"; c.lineWidth = 1.6; c.lineCap = "round";
+      c.beginPath(); c.moveTo(86, 61); c.quadraticCurveTo(92, 67, 88, 73); c.stroke();
+
+      c.fillStyle = "rgba(255, 255, 255, 0.9)"; c.beginPath();
+      c.moveTo(68, 64); c.quadraticCurveTo(58, 76, 54, 72); c.quadraticCurveTo(60, 62, 68, 64); c.fill();
+      c.strokeStyle = "rgba(230, 57, 70, 0.4)"; c.lineWidth = 1; c.stroke();
+
+      c.fillStyle = "rgba(255, 107, 107, 0.35)"; c.beginPath(); c.ellipse(74, 63, 4.5, 2.5, 0, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = "#9d0208"; c.lineWidth = 1.4;
+      c.beginPath(); c.moveTo(88, 58); c.quadraticCurveTo(86, 61, 84, 59); c.stroke();
+
+      drawCuteEye(c, 78, 51, 5.2);
+      drawSparkleStar(c, 96, 32, 5);
+      drawSparkleStar(c, 24, 30, 4);
+      drawSparkleStar(c, 90, 80, 4);
+    },
+
+    // 7. Cá nóc (puffer, rare)
+    puffer: (c) => {
+      c.fillStyle = "rgba(0,0,0,0.08)"; c.beginPath(); c.ellipse(60, 96, 38, 6, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#f4a261"; c.beginPath();
+      c.moveTo(32, 60); c.lineTo(18, 52); c.lineTo(22, 60); c.lineTo(18, 68); c.closePath(); c.fill();
+      c.strokeStyle = "#e76f51"; c.lineWidth = 1; c.stroke();
+
+      c.fillStyle = "#f4a261"; c.beginPath();
+      c.moveTo(42, 36); c.quadraticCurveTo(46, 28, 50, 36); c.fill();
+
+      const bg = c.createRadialGradient(66, 50, 10, 60, 60, 32);
+      bg.addColorStop(0, "#fff3b0");
+      bg.addColorStop(0.45, "#ffd166");
+      bg.addColorStop(0.85, "#f4a261");
+      bg.addColorStop(1, "#e76f51");
+      c.fillStyle = bg;
+      c.beginPath();
+      c.arc(60, 60, 28, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = "#e76f51"; c.lineWidth = 2; c.stroke();
+
+      c.fillStyle = "rgba(255, 255, 240, 0.65)"; c.beginPath();
+      c.arc(60, 68, 20, 0.3, Math.PI - 0.3); c.fill();
+
+      c.fillStyle = "#e76f51";
+      for (let a = 0.5; a < Math.PI * 2; a += 0.42) {
+        const gx = 60 + Math.cos(a) * 28;
+        const gy = 60 + Math.sin(a) * 28;
+        const tx = 60 + Math.cos(a) * 34;
+        const ty = 60 + Math.sin(a) * 34;
+        const px = 60 + Math.cos(a + 0.12) * 27;
+        const py = 60 + Math.sin(a + 0.12) * 27;
+        c.beginPath(); c.moveTo(gx, gy); c.lineTo(tx, ty); c.lineTo(px, py); c.fill();
+      }
+
+      c.fillStyle = "rgba(180, 80, 30, 0.45)";
+      [[50, 42, 2.5], [62, 38, 2.8], [72, 44, 2.2], [54, 50, 2], [42, 54, 2.4]].forEach(([dx, dy, dr]) => {
+        c.beginPath(); c.arc(dx, dy, dr, 0, Math.PI * 2); c.fill();
+      });
+
+      c.fillStyle = "#f4a261"; c.beginPath();
+      c.ellipse(54, 68, 5, 3, -0.4, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = "#e76f51"; c.lineWidth = 0.8; c.stroke();
+
+      c.fillStyle = "rgba(255, 99, 132, 0.45)"; c.beginPath(); c.ellipse(74, 65, 6, 4, 0, 0, Math.PI * 2); c.fill();
+
+      c.strokeStyle = "#c1121f"; c.lineWidth = 1.8; c.lineCap = "round";
+      c.beginPath();
+      c.arc(88, 58, 2.5, Math.PI * 0.7, Math.PI * 1.8);
+      c.arc(88, 62, 2.5, Math.PI * 0.2, Math.PI * 1.3);
+      c.stroke();
+
+      drawCuteEye(c, 74, 50, 6);
+
+      c.strokeStyle = "rgba(255, 255, 255, 0.75)"; c.lineWidth = 1;
+      c.beginPath(); c.arc(98, 48, 3, 0, Math.PI * 2); c.stroke();
+      c.beginPath(); c.arc(104, 38, 2, 0, Math.PI * 2); c.stroke();
+
+      drawSparkleStar(c, 94, 28, 5);
+      drawSparkleStar(c, 24, 28, 4);
+    },
+
+    // 8. Rùa vàng (turtle, rare)
+    turtle: (c) => {
+      c.fillStyle = "rgba(0,0,0,0.08)"; c.beginPath(); c.ellipse(60, 96, 38, 6, 0, 0, Math.PI * 2); c.fill();
+
+      c.fillStyle = "#90be6d";
+      c.beginPath(); c.ellipse(74, 73, 8, 4.5, 0.5, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = "#40916c"; c.lineWidth = 1.2; c.stroke();
+      c.beginPath(); c.ellipse(40, 73, 7, 4, -0.4, 0, Math.PI * 2); c.fill(); c.stroke();
+
+      c.fillStyle = "#6b9080";
+      c.beginPath(); c.ellipse(70, 47, 7, 3.8, -0.4, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.ellipse(36, 49, 6, 3.5, 0.4, 0, Math.PI * 2); c.fill();
+
+      c.fillStyle = "#90be6d"; c.beginPath();
+      c.moveTo(33, 62); c.lineTo(24, 63); c.lineTo(33, 66); c.closePath(); c.fill();
+      c.stroke();
+
+      const hg = c.createLinearGradient(74, 52, 94, 62);
+      hg.addColorStop(0, "#90be6d"); hg.addColorStop(1, "#c7f9cc");
+      c.fillStyle = hg;
+      c.beginPath();
+      c.moveTo(74, 54);
+      c.bezierCurveTo(76, 44, 92, 44, 93, 56);
+      c.bezierCurveTo(94, 66, 80, 68, 74, 62);
+      c.closePath();
+      c.fill();
+      c.strokeStyle = "#40916c"; c.lineWidth = 1.4; c.stroke();
+
+      c.fillStyle = "rgba(255, 100, 130, 0.4)"; c.beginPath(); c.ellipse(84, 60, 3.5, 2.2, 0, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = "#2d6a4f"; c.lineWidth = 1.3; c.lineCap = "round";
+      c.beginPath(); c.moveTo(92, 57); c.quadraticCurveTo(89, 61, 86, 59); c.stroke();
+
+      drawCuteEye(c, 85, 50, 4.2);
+
+      const mg = c.createRadialGradient(54, 52, 6, 54, 58, 26);
+      mg.addColorStop(0, "#ffe066");
+      mg.addColorStop(0.5, "#f4a261");
+      mg.addColorStop(0.85, "#e76f51");
+      mg.addColorStop(1, "#9c6644");
+      c.fillStyle = mg;
+      c.beginPath();
+      c.ellipse(54, 58, 24, 18, 0, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = "#6b4a35"; c.lineWidth = 2; c.stroke();
+
+      c.strokeStyle = "#ffd166"; c.lineWidth = 2.5; c.beginPath();
+      c.ellipse(54, 58, 23, 17, 0, 0, Math.PI * 2); c.stroke();
+
+      c.strokeStyle = "rgba(255, 255, 255, 0.65)"; c.lineWidth = 1.4;
+      c.beginPath();
+      c.moveTo(54, 46); c.lineTo(60, 50); c.lineTo(60, 58);
+      c.lineTo(54, 62); c.lineTo(48, 58); c.lineTo(48, 50);
+      c.closePath();
+      c.stroke();
+      [[54, 46, 54, 41], [60, 50, 68, 48], [60, 58, 68, 64], [54, 62, 54, 75], [48, 58, 38, 64], [48, 50, 38, 48]].forEach(([x1, y1, x2, y2]) => {
+        c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+      });
+
+      drawSparkleStar(c, 96, 32, 5);
+      drawSparkleStar(c, 24, 34, 4);
+    },
+
+    // 9. Chiếc ủng cũ (boot)
+    boot: (c) => {
+      c.fillStyle = "rgba(0,0,0,0.08)"; c.beginPath(); c.ellipse(60, 96, 36, 6, 0, 0, Math.PI * 2); c.fill();
+      const bg = c.createLinearGradient(40, 30, 85, 85);
+      bg.addColorStop(0, "#7f5539");
+      bg.addColorStop(0.5, "#9c6644");
+      bg.addColorStop(1, "#582f0e");
+      c.fillStyle = bg;
+      c.beginPath();
+      c.moveTo(42, 34);
+      c.lineTo(66, 34);
+      c.quadraticCurveTo(68, 56, 72, 64);
+      c.bezierCurveTo(84, 68, 92, 70, 90, 82);
+      c.lineTo(84, 85);
+      c.lineTo(38, 85);
+      c.lineTo(38, 76);
+      c.lineTo(42, 34);
+      c.closePath();
+      c.fill();
+      c.strokeStyle = "#381a08"; c.lineWidth = 2; c.stroke();
+
+      c.fillStyle = "#381a08"; c.fillRect(36, 84, 52, 6);
+      c.strokeStyle = "#241005"; c.lineWidth = 1.2;
+      for (let sx = 42; sx <= 82; sx += 8) {
+        c.beginPath(); c.moveTo(sx, 84); c.lineTo(sx, 90); c.stroke();
+      }
+
+      c.strokeStyle = "#ddb892"; c.lineWidth = 1; c.setLineDash([2, 2]);
+      c.beginPath();
+      c.moveTo(40, 81); c.lineTo(84, 81); c.quadraticCurveTo(86, 76, 74, 67);
+      c.stroke();
+      c.setLineDash([]);
+
+      c.fillStyle = "#b08968"; c.beginPath(); c.rect(48, 44, 12, 10); c.fill();
+      c.strokeStyle = "#462208"; c.lineWidth = 1; c.stroke();
+      c.strokeStyle = "#fff"; c.lineWidth = 0.9;
+      c.beginPath(); c.moveTo(50, 49); c.lineTo(54, 49); c.moveTo(52, 47); c.lineTo(52, 51); c.stroke();
+
+      c.fillStyle = "#241005"; c.beginPath(); c.ellipse(82, 76, 4, 3, 0.3, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#52b788"; c.beginPath(); c.arc(83, 75, 2.8, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#111"; c.beginPath(); c.arc(84, 74, 0.8, 0, Math.PI * 2); c.fill();
+
+      c.strokeStyle = "#74c69d"; c.lineWidth = 1.8; c.lineCap = "round";
+      c.beginPath(); c.moveTo(40, 56); c.quadraticCurveTo(55, 62, 64, 52); c.stroke();
+      c.fillStyle = "#52b788"; c.beginPath(); c.ellipse(56, 59, 3, 1.8, 0.4, 0, Math.PI * 2); c.fill();
+
+      c.fillStyle = "#90e0ef";
+      c.beginPath(); c.ellipse(39, 94, 1.8, 2.5, 0, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(40, 100, 1.2, 0, Math.PI * 2); c.fill();
+
+      drawCuteEye(c, 54, 40, 4);
+      drawCuteEye(c, 62, 40, 4);
+      c.strokeStyle = "#241005"; c.lineWidth = 1.2;
+      c.beginPath(); c.arc(58, 46, 3, 0.3, Math.PI - 0.3); c.stroke();
+    }
+  };
+
+  // Bộ nhớ đệm icon cá đã vẽ theo id + kích thước (cache kết quả per id+size)
+  const _fishIconCache = new Map();
+
+  // Hàm tạo icon minh họa chi tiết cho từng loại cá trên canvas offscreen, trả về Data URL
+  function fishIcon(id, size) {
+    if (!id || typeof id !== "string") return null;
+    const cleanId = id.startsWith("fish_") ? id.slice(5) : id;
+    if (!FISH_DRAWERS[cleanId]) return null;
+    size = Math.round(size || 32);
+    const key = cleanId + "_" + size;
+    if (_fishIconCache.has(key)) return _fishIconCache.get(key);
+
+    ensureFishStyles();
+    if (typeof document === "undefined") return null;
+
+    const cv = document.createElement("canvas");
+    const dpr = 2; // Nhân đôi độ phân giải để ảnh siêu sắc nét
+    cv.width = size * dpr;
+    cv.height = size * dpr;
+    const c = cv.getContext("2d");
+    if (!c) return null;
+
+    c.scale((size * dpr) / 120, (size * dpr) / 120);
+    FISH_DRAWERS[cleanId](c);
+
+    const url = cv.toDataURL();
+    _fishIconCache.set(key, url);
+    return url;
+  }
+  if (typeof window !== "undefined") window.fishIcon = fishIcon;
+
+  // Vẽ chú cá nhảy vọt lên khỏi hồ nước kèm bọt sóng và giọt nước bắn tung tóe
+  function drawJumpingFish(ctx, t, night) {
+    const PJ = 5.2; // chu kỳ mỗi 5.2 giây
+    const jCycle = Math.floor(t / PJ);
+    const jTime = t % PJ;
+    const jDur = 1.15; // thời gian nhảy 1.15 giây
+    if (jTime >= jDur) return;
+
+    const p = jTime / jDur; // tiến độ từ 0 đến 1
+    const JUMP_SPOTS = [
+      {x: 270, y: 220, dir: 1, type: "koi"},
+      {x: 840, y: 195, dir: -1, type: "gold"},
+      {x: 360, y: 175, dir: 1, type: "carp"},
+      {x: 750, y: 235, dir: -1, type: "koi"},
+      {x: 220, y: 255, dir: 1, type: "gold"},
+      {x: 890, y: 180, dir: -1, type: "silver"}
+    ];
+    const spot = JUMP_SPOTS[jCycle % JUMP_SPOTS.length];
+    const dist = 64 * spot.dir;
+    const hMax = 42;
+    const curX = spot.x - dist * 0.5 + dist * p;
+    const curY = spot.y - Math.sin(p * Math.PI) * hMax;
+
+    const vx = dist;
+    const vy = -Math.cos(p * Math.PI) * hMax * Math.PI;
+    const angle = Math.atan2(vy, Math.abs(vx)) * spot.dir;
+
+    const shadowDist = spot.y - curY;
+    if (shadowDist > 0) {
+      ctx.fillStyle = night ? "rgba(5, 12, 28, 0.4)" : "rgba(10, 40, 70, 0.22)";
+      ctx.beginPath();
+      ctx.ellipse(curX, spot.y, Math.max(3, 11 - shadowDist * 0.12), Math.max(1.5, 3.5 - shadowDist * 0.04), 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (p < 0.35) {
+      const sp = p / 0.35;
+      const spX = spot.x - dist * 0.5, spY = spot.y;
+      const spFade = 1 - sp;
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.7 * spFade})`;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.ellipse(spX, spY, 3 + sp * 14, 1.2 + sp * 5, 0, 0, Math.PI * 2); ctx.stroke();
+
+      ctx.fillStyle = `rgba(240, 250, 255, ${0.8 * spFade})`;
+      ctx.beginPath();
+      ctx.moveTo(spX - 7, spY);
+      ctx.quadraticCurveTo(spX - 3, spY - 14 * spFade, spX, spY - 2 * spFade);
+      ctx.quadraticCurveTo(spX + 3, spY - 14 * spFade, spX + 7, spY);
+      ctx.fill();
+
+      [[-6, -16], [-2, -22], [3, -19], [6, -14], [0, -24]].forEach(([dx, dy]) => {
+        const dropX = spX + dx * sp;
+        const dropY = spY + dy * sp + sp * sp * 20;
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.85 * spFade})`;
+        ctx.beginPath(); ctx.arc(dropX, dropY, 1.2, 0, Math.PI * 2); ctx.fill();
+      });
+    }
+
+    if (p > 0.65) {
+      const rp = (p - 0.65) / 0.35;
+      const epX = spot.x + dist * 0.5, epY = spot.y;
+      const reFade = Math.sin(rp * Math.PI);
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.75 * (1 - rp)})`;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.ellipse(epX, epY, 4 + rp * 16, 1.5 + rp * 6, 0, 0, Math.PI * 2); ctx.stroke();
+
+      ctx.fillStyle = `rgba(240, 250, 255, ${0.85 * reFade})`;
+      ctx.beginPath();
+      ctx.moveTo(epX - 8, epY);
+      ctx.quadraticCurveTo(epX - 4, epY - 16 * reFade, epX, epY - 3 * reFade);
+      ctx.quadraticCurveTo(epX + 4, epY - 16 * reFade, epX + 8, epY);
+      ctx.fill();
+
+      [[-7, -18], [-3, -24], [2, -21], [7, -16], [0, -26]].forEach(([dx, dy]) => {
+        const dropX = epX + dx * rp;
+        const dropY = epY + dy * rp + rp * rp * 22;
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.9 * (1 - rp)})`;
+        ctx.beginPath(); ctx.arc(dropX, dropY, 1.3, 0, Math.PI * 2); ctx.fill();
+      });
+    }
+
+    ctx.save();
+    ctx.translate(curX, curY);
+    ctx.scale(spot.dir, 1);
+    ctx.rotate(angle);
+    ctx.globalAlpha = 1.0;
+
+    const bend = Math.sin(p * Math.PI) * 2;
+    const isKoi = spot.type === "koi";
+    const isGold = spot.type === "gold";
+
+    ctx.fillStyle = isKoi ? "#ff6b6b" : (isGold ? "#ffb703" : "#ced4da");
+    ctx.beginPath();
+    ctx.moveTo(-10, -bend);
+    ctx.quadraticCurveTo(-15, -6 - bend * 1.5, -18, -7 - bend * 2);
+    ctx.lineTo(-14, -bend);
+    ctx.lineTo(-18, 7 - bend * 0.5);
+    ctx.quadraticCurveTo(-15, 6, -10, -bend);
+    ctx.fill();
+
+    ctx.fillStyle = isKoi ? "#e63946" : (isGold ? "#fb8500" : "#6c757d");
+    ctx.beginPath();
+    ctx.moveTo(2, -4.5 - bend);
+    ctx.quadraticCurveTo(-2, -9 - bend * 1.2, -6, -4 - bend);
+    ctx.fill();
+
+    const fg = ctx.createLinearGradient(0, -6, 0, 6);
+    if (isKoi) { fg.addColorStop(0, "#ffffff"); fg.addColorStop(1, "#f1faee"); }
+    else if (isGold) { fg.addColorStop(0, "#ffd166"); fg.addColorStop(1, "#fb8500"); }
+    else { fg.addColorStop(0, "#e9ecef"); fg.addColorStop(1, "#6c757d"); }
+    ctx.fillStyle = fg;
+    ctx.beginPath();
+    ctx.moveTo(11, 0);
+    ctx.quadraticCurveTo(5, -5.5 - bend, -3, -5 - bend);
+    ctx.quadraticCurveTo(-8, -2.5 - bend, -10, -bend);
+    ctx.quadraticCurveTo(-8, 2.5 - bend, -3, 5 - bend);
+    ctx.quadraticCurveTo(5, 5.5 - bend, 11, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    if (isKoi) {
+      ctx.fillStyle = "#e63946";
+      ctx.beginPath(); ctx.ellipse(6, -bend, 2.6, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-1, -1 - bend, 3.2, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#222";
+      ctx.beginPath(); ctx.ellipse(-4, 1 - bend, 1.2, 0.9, 0, 0, Math.PI * 2); ctx.fill();
+    }
+
+    ctx.fillStyle = isKoi ? "rgba(255,255,255,0.85)" : "rgba(255,183,3,0.85)";
+    ctx.beginPath(); ctx.ellipse(3, 2 - bend, 4.5, 2.2, 0.4, 0, Math.PI * 2); ctx.fill();
+
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(7.5, -1.5 - bend, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#111"; ctx.beginPath(); ctx.arc(7.8, -1.5 - bend, 1.0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(7.5, -1.9 - bend, 0.5, 0, Math.PI * 2); ctx.fill();
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+    ctx.beginPath(); ctx.arc(1, -1.5 - bend, 1.2, 0, Math.PI * 2); ctx.fill();
+
+    ctx.restore();
+  }
+
+  // Vẽ cá bơi dưới hồ nước: uốn lượn hình sin, vảy lấp lánh, vây ve vẩy, các loài cá đa dạng
+  function drawFishInPond(ctx, f, i, rep, fx, fy, dir, t, night) {
+    let sp = (i + rep * 3) % 4; // 0: koi, 1: gold, 2: carp, 3: silver
+    if (f.id === "koi") sp = 0;
+    else if (f.id === "gold") sp = 1;
+    else if (f.id === "carp") sp = 2;
+    else if (f.id === "perch") sp = 2;
+
+    const isKoi = sp === 0;
+    const isGold = sp === 1;
+    const isCarp = sp === 2;
+    const isSilver = sp === 3;
+
+    const bh = isGold ? 5.2 : (isSilver ? 3.4 : 4.4);
+    const swimSpeed = isSilver ? 11 : 8.5;
+    const swimPhase = t * swimSpeed + i * 1.8 + rep * 2.4;
+
+    const spineDy = (x) => Math.sin(swimPhase - x * 0.16) * Math.max(0, (12 - x) / 24) * 3.3;
+
+    ctx.save();
+    ctx.translate(fx, fy);
+    ctx.scale(dir, 1);
+    ctx.globalAlpha = night ? 0.6 : 0.72;
+
+    let finColor = "rgba(255,255,255,0.7)";
+    if (isGold) finColor = "rgba(255, 183, 3, 0.75)";
+    else if (isCarp) finColor = "rgba(108, 117, 125, 0.65)";
+    else if (isSilver) finColor = "rgba(202, 240, 248, 0.75)";
+
+    // Vây lưng
+    ctx.fillStyle = finColor;
+    ctx.beginPath();
+    ctx.moveTo(1, -bh * 0.7 + spineDy(1));
+    ctx.quadraticCurveTo(-2, -bh * 1.5 + spineDy(-2), -6, -bh * 0.6 + spineDy(-6));
+    ctx.lineTo(-6, -bh * 0.2 + spineDy(-6));
+    ctx.closePath();
+    ctx.fill();
+
+    // Vây ngực xa
+    const finFlap = Math.sin(t * 12 + i) * 0.32;
+    ctx.save();
+    ctx.translate(3, -bh * 0.4 + spineDy(3));
+    ctx.rotate(-0.35 - finFlap);
+    ctx.beginPath(); ctx.ellipse(3, 0, 4, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+
+    // Vây đuôi
+    const tBaseY = spineDy(-10);
+    const tTip1 = -bh * 1.25 + spineDy(-17);
+    const tTip2 = bh * 1.25 + spineDy(-17);
+    const tNotch = spineDy(-13);
+    ctx.fillStyle = finColor;
+    ctx.beginPath();
+    ctx.moveTo(-10, tBaseY);
+    ctx.quadraticCurveTo(-14, tTip1 * 0.75, -17, tTip1);
+    ctx.quadraticCurveTo(-14, tNotch, -12, tNotch);
+    ctx.quadraticCurveTo(-14, tNotch, -17, tTip2);
+    ctx.quadraticCurveTo(-14, tTip2 * 0.75, -10, tBaseY);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.45)";
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(-10, tBaseY); ctx.lineTo(-16, tTip1 * 0.85);
+    ctx.moveTo(-10, tBaseY); ctx.lineTo(-16, tTip2 * 0.85);
+    ctx.stroke();
+
+    // Thân cá uốn lượn
+    const bg = ctx.createLinearGradient(0, -bh, 0, bh);
+    if (isKoi) {
+      bg.addColorStop(0, "#f8f9fa"); bg.addColorStop(0.5, "#e9ecef"); bg.addColorStop(1, "#ffffff");
+    } else if (isGold) {
+      bg.addColorStop(0, "#fb8500"); bg.addColorStop(0.5, "#ffb703"); bg.addColorStop(1, "#fff3b0");
+    } else if (isCarp) {
+      bg.addColorStop(0, "#495057"); bg.addColorStop(0.5, "#6c757d"); bg.addColorStop(1, "#ced4da");
+    } else {
+      bg.addColorStop(0, "#90e0ef"); bg.addColorStop(0.5, "#caf0f8"); bg.addColorStop(1, "#ffffff");
+    }
+    ctx.fillStyle = bg;
+    ctx.beginPath();
+    ctx.moveTo(11, spineDy(11));
+    ctx.quadraticCurveTo(5, -bh + spineDy(5), -2, -bh * 0.95 + spineDy(-2));
+    ctx.quadraticCurveTo(-7, -bh * 0.5 + spineDy(-7), -10, -0.9 + spineDy(-10));
+    ctx.lineTo(-10, 0.9 + spineDy(-10));
+    ctx.quadraticCurveTo(-7, bh * 0.5 + spineDy(-7), -2, bh + spineDy(-2));
+    ctx.quadraticCurveTo(5, bh * 0.9 + spineDy(5), 11, spineDy(11));
+    ctx.closePath();
+    ctx.fill();
+
+    // Hoa văn loài cá
+    if (isKoi) {
+      ctx.fillStyle = "#ff4500";
+      ctx.beginPath(); ctx.ellipse(6, -0.4 + spineDy(6), 2.8, 1.8, 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0, -0.8 + spineDy(0), 3.4, 2.2, -0.1, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-6, -0.3 + spineDy(-6), 2.5, 1.6, 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#1e1e24";
+      ctx.beginPath(); ctx.ellipse(-2, 1.1 + spineDy(-2), 1.3, 0.9, 0, 0, Math.PI * 2); ctx.fill();
+    } else if (isCarp) {
+      ctx.strokeStyle = "rgba(40, 50, 40, 0.35)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(3, -bh * 0.65 + spineDy(3)); ctx.lineTo(3, bh * 0.5 + spineDy(3));
+      ctx.moveTo(-1, -bh * 0.65 + spineDy(-1)); ctx.lineTo(-1, bh * 0.5 + spineDy(-1));
+      ctx.moveTo(-5, -bh * 0.55 + spineDy(-5)); ctx.lineTo(-5, bh * 0.4 + spineDy(-5));
+      ctx.stroke();
+    }
+
+    // Vảy cá lấp lánh phản quang (Scale shimmer)
+    const shimmer = Math.sin(t * 6 + i * 2.3 + rep * 1.7);
+    if (shimmer > 0.15) {
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.7 * shimmer})`;
+      ctx.beginPath(); ctx.arc(1.5, -0.5 + spineDy(1.5), 1.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(-2.5, 0.7 + spineDy(-2.5), 1.0, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Vây ngực gần
+    ctx.save();
+    ctx.translate(4, bh * 0.35 + spineDy(4));
+    ctx.rotate(0.35 + finFlap);
+    ctx.fillStyle = finColor;
+    ctx.beginPath(); ctx.ellipse(3, 0, 4.6, 2.3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+
+    // Mắt cá
+    ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(7.6, -1.3 + spineDy(7.6), 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#111118"; ctx.beginPath(); ctx.arc(7.9, -1.3 + spineDy(7.6), 1.0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(7.6, -1.7 + spineDy(7.6), 0.5, 0, Math.PI * 2); ctx.fill();
+
+    // Lớp phủ xanh ngọc mặt nước tạo cảm giác chìm dưới nước
+    ctx.fillStyle = night ? "rgba(10, 25, 60, 0.18)" : "rgba(40, 140, 200, 0.14)";
+    ctx.beginPath();
+    ctx.ellipse(0, spineDy(0), 12, bh, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
   function drawFishing(t) {                          // 🎣 hồ câu NGANG 1120x600: mặt hồ phía trên, cầu gỗ giữa, bờ cỏ phía dưới
     const {L, R, T, B} = bleed(), wv = R - L, night = Life.darkness() > .5;
     const g = ctx.createLinearGradient(0, -100, 0, 80);                  // trời hoàng hôn / đêm
@@ -1601,14 +2528,31 @@ const Areas = (() => {
     for (let k2 = 0; k2 < 7; k2++) ctx.fillRect(M.x - 16 + Math.sin(t * 2 + k2) * 4, 96 + k2 * 10, 32 - k2 * 3, 2);
     ctx.strokeStyle = "rgba(255,255,255,.25)"; ctx.lineWidth = 1;
     for (let k2 = 0; k2 < 40; k2++) { const wx = (k2 * 67 + t * 6) % (W + 40) - 20, wy = 110 + (k2 * 41) % 210; ctx.beginPath(); ctx.moveTo(wx, wy); ctx.lineTo(wx + 14, wy); ctx.stroke(); }
-    // cá bơi dưới nước (bóng cá)
+    // cá bơi dưới nước (vẽ chi tiết theo góc nhìn nghiêng/trên, thân uốn lượn hình sin, vảy lấp lánh)
     for (let rep = 0; rep < 2; rep++) SWIM.forEach((f, i) => {
-      const dir = (i + rep) % 2 ? 1 : -1, span = W + 40, fx = (((t * (10 + i * 2) * dir + i * 90 + rep * 500) % span) + span) % span - 20, fy = 140 + i * 24 + Math.sin(t + i + rep) * 6;
-      ctx.save(); ctx.translate(fx, fy); ctx.scale(dir, 1); ctx.globalAlpha = .55;
-      ctx.fillStyle = f.color; ctx.beginPath(); ctx.ellipse(0, 0, 8, 3.5, 0, 0, 7); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(-7, 0); ctx.lineTo(-12, -3.5 + Math.sin(t * 8 + i) * 1.5); ctx.lineTo(-12, 3.5 + Math.sin(t * 8 + i) * 1.5); ctx.fill();
-      ctx.restore(); ctx.globalAlpha = 1;
+      const dir = (i + rep) % 2 ? 1 : -1, span = W + 40;
+      const fx = (((t * (10 + i * 2) * dir + i * 90 + rep * 500) % span) + span) % span - 20;
+      const fy = 140 + i * 24 + Math.sin(t + i + rep) * 6;
+
+      // Gợn sóng nước mềm mại thỉnh thoảng xuất hiện phía trên cá bơi
+      const ripP = (t * 0.75 + i * 1.3 + rep * 2.1) % 3.5;
+      if (ripP < 1.4) {
+        const rp = ripP / 1.4;
+        ctx.save();
+        ctx.strokeStyle = `rgba(220, 245, 255, ${0.28 * (1 - rp)})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(fx, fy - 2, 4 + rp * 16, 1.5 + rp * 5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Vẽ thân cá bơi cử động sinh động
+      drawFishInPond(ctx, f, i, rep, fx, fy, dir, t, night);
     });
+
+    // Thỉnh thoảng (mỗi vài giây) có một chú cá nhảy vọt lên khỏi mặt nước kèm bọt nước và giọt bắn
+    drawJumpingFish(ctx, t, night);
     // bong bóng nổi
     for (let k = 0; k < 6; k++) { const ph = (t * .3 + k / 6) % 1; ctx.strokeStyle = `rgba(255,255,255,${.5 * (1 - ph)})`; ctx.beginPath(); ctx.arc(120 + k * 170, 320 - ph * 150, 1.5 + ph * 2, 0, 7); ctx.stroke(); }
     // lá sen + hoa sen
@@ -1750,7 +2694,19 @@ const Areas = (() => {
         const fish = FISH[r.fish];
         Life.apply({fun: 6, xp: fish.rare ? 8 : 3}); Life.commit();
         if (fish.rare) { send({t: "emote", e: "😂"}); if (fishState) fishState.lastRare = fish.name; }
-        end(`<div class="wheelBig">${fish.e}</div><div class="pomoSub">Câu được <b style="color:var(--accent)">${fish.name}</b>${fish.rare ? " ✨ hiếm!" : ""} · bán được ${fish.price} 💰</div>`);
+        const fIcon = fishIcon(fish.id, 120);
+        const fishVisual = fIcon
+          ? (fish.rare
+              ? `<div style="position:relative;display:inline-block;line-height:0">
+                   <img src="${fIcon}" width="120" height="120" style="display:block;margin:0 auto;animation:fishBounce 1.8s ease-in-out infinite;filter:drop-shadow(0 8px 18px rgba(255,200,50,0.4))" alt="${esc(fish.name)}"/>
+                   <span style="position:absolute;top:-6px;right:-8px;font-size:22px;animation:fishSparkle 1.2s ease-in-out infinite alternate">✨</span>
+                   <span style="position:absolute;bottom:-2px;left:-8px;font-size:18px;animation:fishSparkle 1.4s ease-in-out infinite alternate 0.5s">⭐</span>
+                   <span style="position:absolute;top:10px;left:-6px;font-size:14px;animation:fishSparkle 1.1s ease-in-out infinite alternate 0.8s">✨</span>
+                 </div>`
+              : `<img src="${fIcon}" width="120" height="120" style="display:inline-block;animation:fishBounce 1.8s ease-in-out infinite;filter:drop-shadow(0 6px 14px rgba(0,0,0,0.18))" alt="${esc(fish.name)}"/>`
+            )
+          : fish.e;
+        end(`<div class="wheelBig" style="line-height:1;min-height:120px;display:flex;align-items:center;justify-content:center">${fishVisual}</div><div class="pomoSub">Câu được <b style="color:var(--accent)">${fish.name}</b>${fish.rare ? " ✨ hiếm!" : ""} · bán được ${fish.price} 💰</div>`);
       };
       timers.push(setTimeout(() => {
         if (!fishState) return;
@@ -1768,7 +2724,14 @@ const Areas = (() => {
       `${Life.coinLine()}<div class="sec">Mua mồi câu</div>
        <div class="grid">${BAITS.map(b => `<button class="opt" data-b="${b.id}">${b.e} ${b.name} ×${b.pack}<small>${b.price} 💰 · đang có ${st.bait[b.id] || 0}</small></button>`).join("")}</div>
        <div class="sec">🐟 Bán cá</div>
-       ${fish.length ? `<div class="board">${fish.map(([, x]) => `<div><span>${x.e} ${esc(x.name)} ×${x.n}</span><b>${x.n * x.sell} 💰</b></div>`).join("")}</div>
+       ${fish.length ? `<div class="board">${fish.map(([id, x]) => {
+         const fId = id.startsWith("fish_") ? id.slice(5) : id;
+         const fIcon = fishIcon(fId, 28);
+         const iconHtml = fIcon
+           ? `<img src="${fIcon}" width="28" height="28" style="vertical-align:middle;margin-right:6px;object-fit:contain;display:inline-block" alt="${esc(x.name)}"/>`
+           : `<span style="margin-right:4px">${x.e}</span>`;
+         return `<div><span style="display:inline-flex;align-items:center">${iconHtml}${esc(x.name)} ×${x.n}</span><b>${x.n * x.sell} 💰</b></div>`;
+       }).join("")}</div>
        <button class="primary" id="sellFish" style="margin-top:8px">Bán hết (+${total} 💰)</button>` : `<div class="vol" style="margin:0">Chưa có cá nào để bán.</div>`}`,
       el => {
         el.querySelectorAll("[data-b]").forEach(btn => btn.onclick = async () => {
@@ -2690,6 +3653,6 @@ const Areas = (() => {
   function setHome(items) { homeItems = Array.isArray(items) ? items : []; }
 
   return {has: a => NEW.has(a), TXT, draw, seat, ents, tap, holes, act, over: drawSeason, drawAvatar, onJoin, onArea, setHome,
-          openWardrobe, owns, ownLabel, cleanOutfit, outfit: () => cleanOutfit(), npcPos, FARM_LAMPS,
+          openWardrobe, owns, ownLabel, cleanOutfit, outfit: () => cleanOutfit(), npcPos, FARM_LAMPS, fishIcon,
           say: (id, text, sec = 4) => { npcTalk[id] = {text, until: performance.now() / 1000 + sec}; }};   // NPC tự nói (tiệm tóc)
 })();
