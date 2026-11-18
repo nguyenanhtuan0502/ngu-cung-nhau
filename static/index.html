@@ -5331,7 +5331,7 @@ function frame() {
     const d = pendingDoor;
     if (m && !m.walking && Math.hypot(m.x - d.spot.x, m.y - d.spot.y) < 3) { pendingDoor = false; openMap(); }   // tới lối ra → mở bản đồ
   }
-  const target = outdoor() ? Life.darkness() : room.light ? 0 : 1;   // công viên: tối dần theo giờ game
+  const target = outdoor() ? Math.min(1, Life.darkness() + (typeof Weather !== "undefined" ? Weather.dim() : 0)) : room.light ? 0 : 1;   // công viên: tối dần theo giờ game
   lightLevel += (target - lightLevel) * Math.min(1, dt * 2.5);
   if (room.music.on && (noteAcc += dt) > .7) {
     noteAcc = 0; notes.push({x: RADIO.x + 24 + (Math.random() - .5) * 20, y: RADIO.y - 5, t, s: ["♪", "♫", "♩"][Math.random() * 3 | 0]});
@@ -5379,8 +5379,10 @@ function frame() {
     ents.sort((a, b) => a.y - b.y).forEach(e => e.f());
 
     if (!Power.on()) Areas.over(t);                                 // trang trí theo mùa (tiết kiệm pin: tắt)
+    if (typeof Weather !== "undefined") Weather.draw(t, outdoor());                    // thời tiết (weather.js): mưa, sương, tuyết… trước lớp tối
     if (outdoor()) Life.drawTint(ctx);                                 // nắng sáng vàng nhạt / chiều cam hồng
     drawDarkness(t);
+    if (typeof Weather !== "undefined") Weather.top(t, outdoor());                     // thời tiết: chớp sáng, giọt mưa trên kính… sau lớp tối
 
     // top layer: notes, names, zzz, bubbles, emotes
     ctx.font = "14px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -6160,6 +6162,7 @@ function frame() {
 <script src="/static/areas.js"></script>
 <script src="/static/zones.js"></script>
 <script src="/static/salon.js"></script>
+<script src="/static/weather.js"></script>   <!-- thời tiết chung theo giờ server -->
 <script>
 // Chạy vòng vẽ sau khi mọi file (kể cả areas.js) đã nạp xong
 resize();
