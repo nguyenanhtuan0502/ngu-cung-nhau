@@ -212,8 +212,8 @@ def a_buy(st, data, d):
 
 def a_ticket(st, data, d):
     _need_area(st, "cinema", "Máy bán vé")
-    if st.get("ticket"):
-        raise EcoError("🎟️ Bạn đã có vé rồi, chọn ghế ngồi đi!")
+    if st.get("ticket"):                            # đã có vé (máy mất đồng bộ): báo có vé, không trừ xu
+        return {"already": True}
     pay(data, CAT["TICKET_PRICE"])
     st["ticket"] = True
     return {}

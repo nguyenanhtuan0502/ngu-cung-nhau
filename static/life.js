@@ -294,9 +294,10 @@ const Life = (() => {
       `${coinLine()}<div class="opt" style="text-align:center;margin-bottom:10px">Đang chiếu: <b>${esc(film)}</b><br><small style="color:var(--muted)">Vé dùng tới khi bạn rời rạp · ngồi xem phim tăng 😊 vui vẻ</small></div>
        <button class="primary" id="buyTk" style="margin-top:0">Mua vé (${TICKET_PRICE} 💰)</button>`,
       el => el.querySelector("#buyTk").onclick = async () => {
-        if (!(await eco("ticket"))) return;
-        ticket = true; apply({xp: 2}); save(); render(); closeSheet();
-        toast(`🎟️ Đã mua vé! (−${TICKET_PRICE} 💰)`);
+        const r = await eco("ticket"); if (!r) return;
+        ticket = true; render(); closeSheet();
+        if (r.already) toast("🎟️ Bạn đã có vé rồi, đi lên phòng chiếu chọn ghế nhé!");   // server đã ghi nhận vé từ trước
+        else { apply({xp: 2}); save(); toast(`🎟️ Đã mua vé! (−${TICKET_PRICE} 💰)`); }
         if (seat != null && !bedOwner(seat)) send({t: "sleep", bed: seat});
       });
   }
