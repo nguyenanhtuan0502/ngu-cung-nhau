@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 450" width="300" height="450">
+  <defs>
+    <linearGradient id="bg_a327" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#f4a261"/>
+      <stop offset="60%" stop-color="#f4a261" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#0c0a18"/>
+    </linearGradient>
+    <linearGradient id="card_a327" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.15)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.5)"/>
+    </linearGradient>
+    <filter id="shadow_a327" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="300" height="450" rx="16" fill="url(#bg_a327)"/>
+
+  <!-- Subtle inner border -->
+  <rect x="12" y="12" width="276" height="426" rx="12" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"/>
+
+  <!-- Top Header: Genre Tag & Blender Open Movie -->
+  <g transform="translate(24, 24)">
+    <rect width="70" height="22" rx="11" fill="rgba(0,0,0,0.3)" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+    <text x="35" y="15" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="700" letter-spacing="0.5">HÀNH ĐỘNG</text>
+  </g>
+  <text x="276" y="39" text-anchor="end" fill="rgba(255,255,255,0.7)" font-family="system-ui, -apple-system, sans-serif" font-size="8.5" font-weight="700" letter-spacing="1.2">BLENDER OPEN MOVIE</text>
+
+  <!-- Art Scene -->
+  <g id="art" filter="url(#shadow_a327)">
+    <!-- Target Scope Circles -->
+    <circle cx="150" cy="190" r="95" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-dasharray="6 4"/>
+    <circle cx="150" cy="190" r="60" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+    <line x1="45" y1="190" x2="255" y2="190" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+    <line x1="150" y1="85" x2="150" y2="295" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+    <!-- Barber Pole on the left -->
+    <g transform="translate(42, 140)">
+      <rect x="0" y="0" width="16" height="110" rx="8" fill="#ffffff" stroke="#333" stroke-width="1"/>
+      <!-- Diagonal stripes -->
+      <path d="M 0 20 L 16 10 L 16 22 L 0 32 Z" fill="#e63946"/>
+      <path d="M 0 45 L 16 35 L 16 47 L 0 57 Z" fill="#1d3557"/>
+      <path d="M 0 70 L 16 60 L 16 72 L 0 82 Z" fill="#e63946"/>
+      <path d="M 0 95 L 16 85 L 16 97 L 0 107 Z" fill="#1d3557"/>
+      <circle cx="8" cy="-4" r="6" fill="#ffd166"/>
+      <circle cx="8" cy="114" r="6" fill="#ffd166"/>
+    </g>
+    <!-- Agent 327 Trench Coat & Fedora -->
+    <!-- Trench Coat Torso -->
+    <path d="M 115 220 L 185 220 L 205 310 L 95 310 Z" fill="#bc6c25"/>
+    <!-- Popped Collars -->
+    <polygon points="110,215 135,210 120,240" fill="#dda15e"/>
+    <polygon points="190,215 165,210 180,240" fill="#dda15e"/>
+    <!-- Red Tie -->
+    <polygon points="146,215 154,215 156,260 150,270 144,260" fill="#ae2012"/>
+    <!-- Head & Nose -->
+    <ellipse cx="150" cy="180" rx="24" ry="26" fill="#fcd5ce"/>
+    <!-- Signature Prominent Nose -->
+    <path d="M 150 170 Q 175 180 162 195 Q 148 198 145 185 Z" fill="#f8ad9d"/>
+    <!-- Fedora Hat -->
+    <ellipse cx="150" cy="160" rx="46" ry="12" fill="#8c5835"/>
+    <path d="M 120 160 Q 125 125 150 125 Q 175 125 180 160 Z" fill="#8c5835"/>
+    <rect x="122" y="152" width="56" height="7" fill="#2b2d42"/>
+    <!-- Dark Sunglasses -->
+    <rect x="130" y="166" width="18" height="12" rx="3" fill="#1a1a2e"/>
+    <rect x="152" y="166" width="18" height="12" rx="3" fill="#1a1a2e"/>
+    <line x1="148" y1="172" x2="152" y2="172" stroke="#1a1a2e" stroke-width="2"/>
+    <line x1="133" y1="168" x2="142" y2="176" stroke="#ffffff" stroke-width="1.5" opacity="0.7"/>
+  </g>
+
+  <!-- Bottom Title Box -->
+  <rect x="16" y="340" width="268" height="90" rx="10" fill="url(#card_a327)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+  
+  <text x="150" y="382" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="900" letter-spacing="0.8">Agent 327</text>
+  <text x="150" y="408" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-family="system-ui, -apple-system, sans-serif" font-size="10.5" font-weight="500">Điệp viên 327 đột nhập tiệm cắt tóc bí ẩn</text>
+</svg>

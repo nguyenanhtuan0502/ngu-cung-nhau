@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 450" width="300" height="450">
+  <defs>
+    <linearGradient id="bg_sprite" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#7b2cbf"/>
+      <stop offset="60%" stop-color="#7b2cbf" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#0c0a18"/>
+    </linearGradient>
+    <linearGradient id="card_sprite" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.15)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.5)"/>
+    </linearGradient>
+    <filter id="shadow_sprite" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="300" height="450" rx="16" fill="url(#bg_sprite)"/>
+
+  <!-- Subtle inner border -->
+  <rect x="12" y="12" width="276" height="426" rx="12" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"/>
+
+  <!-- Top Header: Genre Tag & Blender Open Movie -->
+  <g transform="translate(24, 24)">
+    <rect width="70" height="22" rx="11" fill="rgba(0,0,0,0.3)" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+    <text x="35" y="15" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="700" letter-spacing="0.5">KINH DỊ HÀI</text>
+  </g>
+  <text x="276" y="39" text-anchor="end" fill="rgba(255,255,255,0.7)" font-family="system-ui, -apple-system, sans-serif" font-size="8.5" font-weight="700" letter-spacing="1.2">BLENDER OPEN MOVIE</text>
+
+  <!-- Art Scene -->
+  <g id="art" filter="url(#shadow_sprite)">
+    <!-- Spooky Night Sky: Crescent Moon & Twisted Pines -->
+    <circle cx="235" cy="115" r="28" fill="#ffd166"/>
+    <circle cx="245" cy="110" r="26" fill="#7b2cbf"/>
+    <!-- Pine Silhouettes -->
+    <polygon points="40,280 60,160 80,280" fill="#240046"/>
+    <polygon points="70,285 90,185 110,285" fill="#3c096c"/>
+    <polygon points="210,290 230,175 250,290" fill="#240046"/>
+    <!-- Camping Tent Silhouette with glowing lantern -->
+    <polygon points="55,275 85,215 115,275" fill="#5a189a"/>
+    <polygon points="75,275 85,230 95,275" fill="#ffb703" opacity="0.8"/>
+    <!-- Ground Mound -->
+    <ellipse cx="150" cy="290" rx="120" ry="32" fill="#10002b"/>
+    <!-- Cute & Menacing Mushroom Sprite -->
+    <!-- Stem/Body -->
+    <ellipse cx="150" cy="245" rx="32" ry="36" fill="#f8f9fa"/>
+    <ellipse cx="132" cy="265" rx="8" ry="12" fill="#f8f9fa" transform="rotate(-20 132 265)"/>
+    <ellipse cx="168" cy="265" rx="8" ry="12" fill="#f8f9fa" transform="rotate(20 168 265)"/>
+    <!-- Mischievous Glowing Yellow Eyes -->
+    <ellipse cx="138" cy="235" rx="8" ry="10" transform="rotate(15 138 235)" fill="#ffb703"/>
+    <ellipse cx="138" cy="235" rx="3" ry="8" transform="rotate(15 138 235)" fill="#10002b"/>
+    <ellipse cx="162" cy="235" rx="8" ry="10" transform="rotate(-15 162 235)" fill="#ffb703"/>
+    <ellipse cx="162" cy="235" rx="3" ry="8" transform="rotate(-15 162 235)" fill="#10002b"/>
+    <!-- Cheeky Fanged Grin -->
+    <path d="M 136 254 Q 150 266 164 254 Z" fill="#9d0208"/>
+    <polygon points="142,254 145,258 148,254" fill="#ffffff"/>
+    <polygon points="152,254 155,258 158,254" fill="#ffffff"/>
+    <!-- Huge Red Spotted Mushroom Cap -->
+    <path d="M 90 205 Q 150 120 210 205 C 190 216 110 216 90 205 Z" fill="#d90429"/>
+    <!-- White Spots -->
+    <ellipse cx="150" cy="160" rx="14" ry="10" fill="#ffffff"/>
+    <ellipse cx="118" cy="180" rx="10" ry="8" fill="#ffffff"/>
+    <ellipse cx="182" cy="180" rx="11" ry="8" fill="#ffffff"/>
+    <ellipse cx="135" cy="195" rx="6" ry="5" fill="#ffffff"/>
+    <ellipse cx="168" cy="198" rx="6" ry="5" fill="#ffffff"/>
+    <!-- Floating Spooky Spores -->
+    <circle cx="105" cy="140" r="3" fill="#ff758f" opacity="0.8"/>
+    <circle cx="195" cy="145" r="3.5" fill="#ff758f" opacity="0.8"/>
+    <circle cx="150" cy="105" r="2.5" fill="#ff758f" opacity="0.7"/>
+  </g>
+
+  <!-- Bottom Title Box -->
+  <rect x="16" y="340" width="268" height="90" rx="10" fill="url(#card_sprite)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+  
+  <text x="150" y="382" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="900" letter-spacing="0.8">Sprite Fright</text>
+  <text x="150" y="408" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-family="system-ui, -apple-system, sans-serif" font-size="10.5" font-weight="500">Nhóm bạn cắm trại gặp tinh linh nấm… quậy phá</text>
+</svg>

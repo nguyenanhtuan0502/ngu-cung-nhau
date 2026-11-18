@@ -28,12 +28,12 @@ const Life = (() => {
     d = d || {};
     if (loaded) { applyEco(d); save(); return; }
     S = {...fresh(), ...d};
-    if (!Array.isArray(S.farm) || S.farm.length !== FARM_PLOTS) S.farm = Array(FARM_PLOTS).fill(null);
+    if (!Array.isArray(S.farm)) S.farm = Array(S.land || FARM_PLOTS).fill(null);   // số ô = đất đã mua (server quyết định)
     loaded = true; lastLevel = levelOf(S.xp);
     bagSeen = bagCounts();                      // đồ có sẵn lúc vào game không tính là "mới"
   }
   // ---------- Kinh tế: mọi giao dịch xu/đồ do SERVER xử lý ----------
-  const ECO = ["coins", "inv", "owned", "bait", "farm", "daily", "wheelDay", "wheelUsed", "hairs", "salonFree"];
+  const ECO = ["coins", "inv", "owned", "bait", "farm", "land", "daily", "wheelDay", "wheelUsed", "hairs", "salonFree"];
   const waiting = new Map(); let rid = 0;
   function applyEco(e) { if (e) for (const k of ECO) if (k in e) S[k] = e[k]; bagBadge(); }
   // Chấm đỏ 🎒: số món mới nhận kể từ lần mở túi đồ gần nhất

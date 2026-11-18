@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 450" width="300" height="450">
+  <defs>
+    <linearGradient id="bg_edream" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#6d597a"/>
+      <stop offset="60%" stop-color="#6d597a" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#0c0a18"/>
+    </linearGradient>
+    <linearGradient id="card_edream" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.15)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.5)"/>
+    </linearGradient>
+    <filter id="shadow_edream" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="300" height="450" rx="16" fill="url(#bg_edream)"/>
+
+  <!-- Subtle inner border -->
+  <rect x="12" y="12" width="276" height="426" rx="12" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"/>
+
+  <!-- Top Header: Genre Tag & Blender Open Movie -->
+  <g transform="translate(24, 24)">
+    <rect width="70" height="22" rx="11" fill="rgba(0,0,0,0.3)" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+    <text x="35" y="15" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="700" letter-spacing="0.5">KỲ ẢO</text>
+  </g>
+  <text x="276" y="39" text-anchor="end" fill="rgba(255,255,255,0.7)" font-family="system-ui, -apple-system, sans-serif" font-size="8.5" font-weight="700" letter-spacing="1.2">BLENDER OPEN MOVIE</text>
+
+  <!-- Art Scene -->
+  <g id="art" filter="url(#shadow_edream)">
+    <!-- Tangled Looping Cables Across Frame -->
+    <path d="M 20 80 Q 90 140 150 70 T 280 100" fill="none" stroke="#212529" stroke-width="2.5"/>
+    <path d="M 30 110 Q 120 180 200 90 T 270 140" fill="none" stroke="#212529" stroke-width="2"/>
+    <path d="M 150 180 Q 180 250 260 270" fill="none" stroke="#212529" stroke-width="2"/>
+    <!-- Interlocking Steampunk Gears -->
+    <!-- Large Central Gear -->
+    <g transform="translate(185, 160)" fill="#355070">
+      <circle cx="0" cy="0" r="42" fill="#355070"/>
+      <!-- Cog Teeth -->
+      <rect x="-5" y="-50" width="10" height="12" rx="2"/>
+      <rect x="-5" y="38" width="10" height="12" rx="2"/>
+      <rect x="-50" y="-5" width="12" height="10" rx="2"/>
+      <rect x="38" y="-5" width="12" height="10" rx="2"/>
+      <rect x="-35" y="-35" width="10" height="10" rx="2" transform="rotate(45)"/>
+      <rect x="25" y="-35" width="10" height="10" rx="2" transform="rotate(45)"/>
+      <rect x="-35" y="25" width="10" height="10" rx="2" transform="rotate(45)"/>
+      <rect x="25" y="25" width="10" height="10" rx="2" transform="rotate(45)"/>
+      <!-- Inner hole -->
+      <circle cx="0" cy="0" r="22" fill="#6d597a"/>
+      <circle cx="0" cy="0" r="10" fill="#355070"/>
+    </g>
+    <!-- Secondary Smaller Gear -->
+    <g transform="translate(105, 130)" fill="#4a4e69">
+      <circle cx="0" cy="0" r="25" fill="#4a4e69"/>
+      <rect x="-3" y="-30" width="6" height="8" rx="1"/>
+      <rect x="-3" y="22" width="6" height="8" rx="1"/>
+      <rect x="-30" y="-3" width="8" height="6" rx="1"/>
+      <rect x="22" y="-3" width="8" height="6" rx="1"/>
+      <circle cx="0" cy="0" r="12" fill="#6d597a"/>
+      <circle cx="0" cy="0" r="5" fill="#4a4e69"/>
+    </g>
+    <!-- Glowing Vintage Vacuum Tube -->
+    <g transform="translate(60, 180)">
+      <rect x="0" y="0" width="22" height="42" rx="11" fill="rgba(255,210,122,0.2)" stroke="#ced4da" stroke-width="1"/>
+      <rect x="3" y="35" width="16" height="8" fill="#495057"/>
+      <!-- Glowing Filament -->
+      <path d="M 8 30 L 11 12 L 14 30" fill="none" stroke="#ffb703" stroke-width="1.8"/>
+      <circle cx="11" cy="18" r="4" fill="#ffea00" opacity="0.6"/>
+    </g>
+    <!-- Industrial Catwalk Gantry Bridge -->
+    <rect x="20" y="275" width="260" height="8" fill="#1b263b"/>
+    <line x1="20" y1="260" x2="280" y2="260" stroke="#1b263b" stroke-width="2"/>
+    <line x1="50" y1="260" x2="50" y2="275" stroke="#1b263b" stroke-width="2"/>
+    <line x1="110" y1="260" x2="110" y2="275" stroke="#1b263b" stroke-width="2"/>
+    <line x1="170" y1="260" x2="170" y2="275" stroke="#1b263b" stroke-width="2"/>
+    <line x1="230" y1="260" x2="230" y2="275" stroke="#1b263b" stroke-width="2"/>
+    <!-- Two Explorer Silhouettes: Proog & Emo -->
+    <!-- Proog (Elder with walking cane) -->
+    <g transform="translate(130, 222)">
+      <circle cx="10" cy="0" r="5.5" fill="#0d1b2a"/>
+      <path d="M 5 6 L 15 6 L 18 38 L 2 38 Z" fill="#0d1b2a"/>
+      <line x1="1" y1="12" x2="-4" y2="38" stroke="#0d1b2a" stroke-width="2" stroke-linecap="round"/>
+    </g>
+    <!-- Emo (Youth) -->
+    <g transform="translate(100, 228)">
+      <circle cx="8" cy="0" r="5" fill="#0d1b2a"/>
+      <path d="M 4 5 L 12 5 L 14 32 L 2 32 Z" fill="#0d1b2a"/>
+      <!-- Headphone silhouette -->
+      <path d="M 4 -1 Q 8 -5 12 -1" fill="none" stroke="#e0e1dd" stroke-width="1.5"/>
+    </g>
+  </g>
+
+  <!-- Bottom Title Box -->
+  <rect x="16" y="340" width="268" height="90" rx="10" fill="url(#card_edream)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+  
+  <text x="150" y="382" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="900" letter-spacing="0.8">Elephants Dream</text>
+  <text x="150" y="408" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-family="system-ui, -apple-system, sans-serif" font-size="10.5" font-weight="500">Hai người lạc trong cỗ máy khổng lồ kỳ dị</text>
+</svg>

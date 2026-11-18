@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 450" width="300" height="450">
+  <defs>
+    <linearGradient id="bg_tos" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#457b9d"/>
+      <stop offset="60%" stop-color="#457b9d" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#0c0a18"/>
+    </linearGradient>
+    <linearGradient id="card_tos" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.15)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.5)"/>
+    </linearGradient>
+    <filter id="shadow_tos" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="300" height="450" rx="16" fill="url(#bg_tos)"/>
+
+  <!-- Subtle inner border -->
+  <rect x="12" y="12" width="276" height="426" rx="12" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"/>
+
+  <!-- Top Header: Genre Tag & Blender Open Movie -->
+  <g transform="translate(24, 24)">
+    <rect width="70" height="22" rx="11" fill="rgba(0,0,0,0.3)" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+    <text x="35" y="15" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="700" letter-spacing="0.5">KHOA HỌC VIỄN TƯỞNG</text>
+  </g>
+  <text x="276" y="39" text-anchor="end" fill="rgba(255,255,255,0.7)" font-family="system-ui, -apple-system, sans-serif" font-size="8.5" font-weight="700" letter-spacing="1.2">BLENDER OPEN MOVIE</text>
+
+  <!-- Art Scene -->
+  <g id="art" filter="url(#shadow_tos)">
+    <!-- Sci-Fi High Tech Grid / HUD Rings -->
+    <circle cx="150" cy="180" r="95" fill="none" stroke="#00b4d8" stroke-width="1.2" opacity="0.3"/>
+    <circle cx="150" cy="180" r="65" fill="none" stroke="#90e0ef" stroke-width="1.5" stroke-dasharray="8 6" opacity="0.4"/>
+    <circle cx="150" cy="180" r="35" fill="none" stroke="#00f5d4" stroke-width="1" opacity="0.5"/>
+    <line x1="150" y1="75" x2="150" y2="285" stroke="#00b4d8" stroke-width="1" opacity="0.2"/>
+    <line x1="45" y1="180" x2="255" y2="180" stroke="#00b4d8" stroke-width="1" opacity="0.2"/>
+    <!-- Amsterdam Canal Silhouette & Bridge -->
+    <path d="M 40 280 L 60 240 L 75 240 L 75 280 L 90 250 L 105 250 L 105 280 L 195 280 L 195 245 L 210 245 L 210 280 L 230 235 L 245 235 L 255 280 Z" fill="#1d3557"/>
+    <!-- Arched Bridge -->
+    <path d="M 100 280 Q 150 255 200 280" fill="none" stroke="#0b132b" stroke-width="6"/>
+    <rect x="30" y="280" width="240" height="25" fill="#0b132b"/>
+    <!-- Massive Cybernetic Squid Tentacles -->
+    <g fill="none" stroke="#1d2d44" stroke-width="16" stroke-linecap="round">
+      <path d="M 150 140 Q 90 90 60 170 Q 40 230 80 270"/>
+      <path d="M 150 140 Q 210 90 240 170 Q 260 230 220 270"/>
+      <path d="M 150 140 Q 120 80 150 60 Q 180 80 150 140"/>
+    </g>
+    <!-- Glowing Neon Joints & Cable Veins -->
+    <g fill="none" stroke="#00f5d4" stroke-width="3" stroke-linecap="round">
+      <path d="M 148 140 Q 92 92 64 170"/>
+      <path d="M 152 140 Q 208 92 236 170"/>
+    </g>
+    <!-- Central Robotic Optical Eye Core -->
+    <circle cx="150" cy="150" r="28" fill="#111827" stroke="#457b9d" stroke-width="3"/>
+    <circle cx="150" cy="150" r="18" fill="#03045e"/>
+    <circle cx="150" cy="150" r="10" fill="#00b4d8"/>
+    <circle cx="150" cy="150" r="4" fill="#ffffff"/>
+    <circle cx="153" cy="147" r="1.5" fill="#ffffff"/>
+  </g>
+
+  <!-- Bottom Title Box -->
+  <rect x="16" y="340" width="268" height="90" rx="10" fill="url(#card_tos)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+  
+  <text x="150" y="382" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="900" letter-spacing="0.8">Tears of Steel</text>
+  <text x="150" y="408" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-family="system-ui, -apple-system, sans-serif" font-size="10.5" font-weight="500">Nhóm khoa học gia Amsterdam giải cứu thế giới</text>
+</svg>

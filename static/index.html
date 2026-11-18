@@ -328,6 +328,40 @@
   .dbtns{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
   .hobs{display:flex;flex-wrap:wrap;gap:4px}.hob{background:var(--panel2);border-radius:20px;padding:4px 9px;font-size:12px;border:1px solid transparent}.hob.on{border-color:#ff8fab;background:rgba(255,143,171,.25)}
   @media (max-width:520px){.stkWrap{grid-template-columns:1fr}.stkList{max-height:120px}}
+
+  /* ================== MENU PHIM RẠP (CINEMA) ================== */
+  .cin-now{display:flex;gap:12px;background:var(--panel2);border-radius:16px;padding:12px;border:1px solid rgba(255,255,255,.08);margin-bottom:12px;align-items:flex-start}
+  .cin-now-thumb{width:80px;height:120px;border-radius:10px;object-fit:cover;flex:0 0 80px;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+  .cin-now-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+  .cin-badge{display:inline-block;font-size:10.5px;color:var(--accent);font-weight:700;letter-spacing:.3px}
+  .cin-now-title{font-size:16px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cin-now-desc{font-size:11.5px;color:var(--muted);line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .cin-prog-wrap{margin-top:4px}
+  .cin-prog-bar{width:100%;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
+  .cin-prog-fill{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:3px}
+  .cin-prog-txt{font-size:10.5px;color:var(--muted);margin-top:3px;font-variant-numeric:tabular-nums}
+  .cin-btn-sched{margin-top:8px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--accent);background:rgba(255,210,122,.15);border:1px solid rgba(255,210,122,.35);border-radius:10px;text-align:center;cursor:pointer;width:fit-content}
+  .cin-btn-sched:active{transform:scale(.96)}
+
+  .cin-row{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 10px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+  .cin-row::-webkit-scrollbar{height:4px}
+  .cin-row::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:2px}
+  .cin-card{flex:0 0 96px;scroll-snap-align:start;background:var(--panel2);border-radius:12px;padding:8px 6px;border:1px solid transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;transition:transform .12s,border-color .15s}
+  .cin-card:active{transform:scale(.95)}
+  .cin-card.active{border-color:var(--accent);box-shadow:0 0 10px rgba(255,210,122,.25)}
+  .cin-card-img{width:80px;height:120px;border-radius:8px;object-fit:cover;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+  .cin-card-title{font-size:11.5px;font-weight:700;color:var(--text);margin-top:6px;text-align:center;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cin-card-meta{font-size:10px;color:var(--muted);margin-top:2px;text-align:center}
+  .cin-card-genre{color:var(--accent2)}
+
+  .cin-sched-box{background:var(--panel2);border-radius:14px;padding:4px 8px;border:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column}
+  .cin-sched-row{display:flex;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px;cursor:pointer}
+  .cin-sched-row:last-child{border-bottom:none}
+  .cin-sched-row.now{color:var(--accent);font-weight:700}
+  .cin-sched-time{font-family:monospace;font-size:12px;font-weight:700;min-width:44px}
+  .cin-sched-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cin-sched-tag{font-size:10px;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.08);color:var(--muted)}
+  .cin-sched-row.now .cin-sched-tag{background:rgba(255,210,122,.2);color:var(--accent)}
 </style>
 </head>
 <body>
@@ -846,6 +880,56 @@ function ytIdFrom(s) {
 }
 const serverNow = () => Date.now() / 1000 + clockOff;
 const mediaPos = m => m.pos + (m.paused ? 0 : Math.max(0, serverNow() - m.at));
+
+// Phim rạp chiếu từ catalog.json (CATALOG.CINEMA.films)
+const FILMS = (typeof CATALOG !== "undefined" && CATALOG.CINEMA && Array.isArray(CATALOG.CINEMA.films))
+  ? CATALOG.CINEMA.films.map(f => ({...f, name: f.title, c1: f.color, c2: "#14112b"}))
+  : [
+      {id: "aqz-KE-bpKQ", title: "Big Buck Bunny", desc: "Chú thỏ bự hiền lành ra tay dạy dỗ ba con gặm nhấm quậy phá.", len: 635, genre: "Hài", color: "#8ecae6", name: "Big Buck Bunny", c1: "#8ecae6", c2: "#14112b"},
+      {id: "eRsGyueVLvQ", title: "Sintel", desc: "Cô gái đi khắp thế giới tìm lại chú rồng nhỏ của mình.", len: 888, genre: "Phiêu lưu", color: "#e76f51", name: "Sintel", c1: "#e76f51", c2: "#14112b"},
+      {id: "mN0zPOpADL4", title: "Agent 327", desc: "Điệp viên 327 đột nhập tiệm cắt tóc bí ẩn.", len: 232, genre: "Hành động", color: "#f4a261", name: "Agent 327", c1: "#f4a261", c2: "#14112b"},
+      {id: "WhWc3b3KhnY", title: "Spring", desc: "Cô bé chăn cừu và chú chó vượt qua nỗi sợ để đón mùa xuân.", len: 464, genre: "Thần thoại", color: "#90be6d", name: "Spring", c1: "#90be6d", c2: "#14112b"},
+      {id: "_cMxraX_5RE", title: "Sprite Fright", desc: "Nhóm teen đi cắm trại gặp những tinh linh nấm… không hề dễ thương.", len: 630, genre: "Kinh dị hài", color: "#7b2cbf", name: "Sprite Fright", c1: "#7b2cbf", c2: "#14112b"},
+      {id: "PVGeM40dABA", title: "Coffee Run", desc: "Một cốc cà phê và cả một chuyến đi trong tâm trí.", len: 185, genre: "Ngắn", color: "#9c6644", name: "Coffee Run", c1: "#9c6644", c2: "#14112b"},
+      {id: "R6MlUcmOul8", title: "Tears of Steel", desc: "Nhóm khoa học gia ở Amsterdam cố cứu thế giới khỏi người máy.", len: 734, genre: "Khoa học viễn tưởng", color: "#457b9d", name: "Tears of Steel", c1: "#457b9d", c2: "#14112b"},
+      {id: "u9lj-c29dxI", title: "Wing It!", desc: "Mèo và chó tự chế tên lửa trong nhà kho, chuyện gì sẽ xảy ra?", len: 238, genre: "Hài", color: "#ffb703", name: "Wing It!", c1: "#ffb703", c2: "#14112b"},
+      {id: "Y-rmzh0PI3c", title: "Cosmos Laundromat", desc: "Chú cừu Franck chán đời gặp người bán hàng kỳ lạ.", len: 731, genre: "Kỳ ảo", color: "#2a9d8f", name: "Cosmos Laundromat", c1: "#2a9d8f", c2: "#14112b"},
+      {id: "UXqq0ZvbOnk", title: "Charge", desc: "Cuộc rượt đuổi giành giật năng lượng trong thế giới tương lai.", len: 263, genre: "Hành động", color: "#e63946", name: "Charge", c1: "#e63946", c2: "#14112b"},
+      {id: "Z4C82eyhwgU", title: "Caminandes 2", desc: "Chú lạc đà Koro cố vượt hàng rào để ăn cỏ ngon.", len: 146, genre: "Hài", color: "#e9c46a", name: "Caminandes 2", c1: "#e9c46a", c2: "#14112b"},
+      {id: "pKmSdY56VtY", title: "Hero", desc: "Cuộc phiêu lưu vẽ tay bằng bút chì 2D trong Blender.", len: 237, genre: "Hành động", color: "#f72585", name: "Hero", c1: "#f72585", c2: "#14112b"},
+      {id: "TLkA0RELQ1g", title: "Elephants Dream", desc: "Hai người lạc trong cỗ máy khổng lồ kỳ dị.", len: 654, genre: "Kỳ ảo", color: "#6d597a", name: "Elephants Dream", c1: "#6d597a", c2: "#14112b"}
+    ];
+
+// Tải trước ảnh SVG poster cho từng phim để vẽ lên sảnh rạp
+const POSTER_IMGS = {};
+FILMS.forEach(f => {
+  const img = new Image();
+  img.src = `/static/posters/${f.id}.svg`;
+  POSTER_IMGS[f.id] = img;
+});
+
+// Tính lịch chiếu theo giờ thật (lặp vòng neo tại mốc unix 0)
+function getCinemaSched(now = serverNow()) {
+  const total = FILMS.reduce((s, f) => s + f.len, 0);
+  if (!total) return null;
+  let off = ((now % total) + total) % total;
+  let accum = 0;
+  for (let i = 0; i < FILMS.length; i++) {
+    const f = FILMS[i];
+    if (off < accum + f.len) {
+      const pos = off - accum;
+      return {
+        film: f,
+        index: i,
+        pos,
+        startTime: now - pos,
+        total
+      };
+    }
+    accum += f.len;
+  }
+  return {film: FILMS[0], index: 0, pos: 0, startTime: now, total};
+}
 function loadYTApi() {
   if (ytApiLoading) return; ytApiLoading = true;
   const s = document.createElement("script"); s.src = "https://www.youtube.com/iframe_api";
@@ -1498,9 +1582,81 @@ function bindYt(el, slot) {
   const big = el.querySelector("#ytBig"); if (big) big.onclick = () => { tvBig = !tvBig; placeTV(); closeSheet(); };
   const stop = el.querySelector("#ytStop"); if (stop) stop.onclick = () => { send({t: "media", slot, a: "stop"}); closeSheet(); };
 }
+// Giao diện menu chọn phim rạp (phim đang chiếu, danh sách phim cuộn ngang, lịch chiếu hôm nay)
+function cinemaSectionHtml() {
+  const sched = getCinemaSched();
+  const isSched = !!(media.tv && media.tv.sched);
+  const activeFilm = (media.tv && FILMS.find(f => f.id === media.tv.id)) || (sched ? sched.film : FILMS[0]);
+  const pos = (media.tv && media.tv.id === activeFilm.id) ? mediaPos(media.tv) : (sched ? sched.pos : 0);
+  const progressPct = Math.min(100, Math.max(0, (pos / activeFilm.len) * 100));
+
+  const next6 = [];
+  if (sched) {
+    let tCursor = sched.startTime;
+    for (let s = 0; s < 6; s++) {
+      const idx = (sched.index + s) % FILMS.length;
+      const f = FILMS[idx];
+      const d = new Date(tCursor * 1000);
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mm = String(d.getMinutes()).padStart(2, "0");
+      next6.push({
+        film: f,
+        timeStr: `${hh}:${mm}`,
+        isNow: s === 0
+      });
+      tCursor += f.len;
+    }
+  }
+
+  return `
+    <div class="sec">Phim của rạp</div>
+    <!-- Thẻ Phim đang chiếu -->
+    <div class="cin-now">
+      <img class="cin-now-thumb" src="/static/posters/${activeFilm.id}.svg" alt="${esc(activeFilm.title)}">
+      <div class="cin-now-info">
+        <div class="cin-badge">${isSched ? "🔴 Đang chiếu theo lịch" : "🎬 Đang phát"}</div>
+        <div class="cin-now-title">${esc(activeFilm.title)}</div>
+        <div class="cin-now-desc">${esc(activeFilm.desc)}</div>
+        <div class="cin-prog-wrap">
+          <div class="cin-prog-bar"><div class="cin-prog-fill" style="width:${progressPct.toFixed(1)}%"></div></div>
+          <div class="cin-prog-txt">${fmtTime(pos)} / ${fmtTime(activeFilm.len)} (${Math.round(progressPct)}%)</div>
+        </div>
+        ${!isSched ? `<button class="opt cin-btn-sched" id="cinBackSched">📅 Về lịch chiếu</button>` : ""}
+      </div>
+    </div>
+
+    <!-- Hàng poster cuộn ngang cho tất cả phim -->
+    <div class="sec">Danh sách phim (${FILMS.length} phim)</div>
+    <div class="cin-row">
+      ${FILMS.map(f => `
+        <div class="cin-card ${activeFilm && activeFilm.id === f.id ? "active" : ""}" data-film-id="${f.id}" title="${esc(f.title)}">
+          <img class="cin-card-img" src="/static/posters/${f.id}.svg" alt="${esc(f.title)}" loading="lazy">
+          <div class="cin-card-title">${esc(f.title)}</div>
+          <div class="cin-card-meta"><span class="cin-card-genre">${f.genre}</span> · ${Math.round(f.len / 60)} phút</div>
+        </div>
+      `).join("")}
+    </div>
+
+    <!-- Lịch chiếu hôm nay: 6 phim tiếp theo theo giờ thật -->
+    <div class="sec">Lịch chiếu hôm nay</div>
+    <div class="cin-sched-box">
+      ${next6.map(item => `
+        <div class="cin-sched-row ${item.isNow ? "now" : ""}" data-film-id="${item.film.id}">
+          <span class="cin-sched-time">${item.timeStr}</span>
+          <span class="cin-sched-name">${esc(item.film.title)}</span>
+          <span class="cin-sched-tag">${item.isNow ? "Đang chiếu" : item.film.genre}</span>
+        </div>
+      `).join("")}
+    </div>
+    <div class="sec" style="margin-top:14px">YouTube & Kênh TV</div>
+  `;
+}
+
 function openTV() {
+  const cinHtml = cinema() ? cinemaSectionHtml() : "";
   openSheet("🎬 Màn chiếu phim",
-    `${ytControls("tv")}
+    `${cinHtml}
+     ${ytControls("tv")}
      <div class="sec">Kênh thư giãn</div>
      <div class="grid">${TV_CH.map((c, i) => `<button class="opt ${room.tv.on && room.tv.ch === i ? "active" : ""}" data-i="${i}">${c.name}</button>`).join("")}
      ${room.tv.on ? `<button class="opt off" data-i="-1">⏻ Tắt TV</button>` : ""}</div>
@@ -1509,13 +1665,30 @@ function openTV() {
        ${tvTimerEnd ? `<button class="cancel" data-m="0">✕ Hủy hẹn giờ</button>` : ""}</div>` : ""}
      <div class="vol">🔈 <input type="range" min="0" max="1" step="0.05" value="${Sound.vol}" id="vol"> 🔊</div>`,
     el => {
+      if (cinema()) {
+        const backBtn = el.querySelector("#cinBackSched");
+        if (backBtn) {
+          backBtn.onclick = () => {
+            send({t: "media", slot: "tv", a: "sched"});
+            closeSheet();
+          };
+        }
+        el.querySelectorAll("[data-film-id]").forEach(card => {
+          card.onclick = () => {
+            const fid = card.dataset.filmId;
+            send({t: "media", slot: "tv", a: "load", id: fid});
+            send({t: "light", on: false});
+            closeSheet();
+          };
+        });
+      }
       bindYt(el, "tv");
       el.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { send({t: "tvtimer", min: +b.dataset.m}); closeSheet(); });
       el.querySelector("#vol").oninput = e => { Sound.setVol(+e.target.value); showVol(); };
       el.querySelectorAll("[data-i]").forEach(b => b.onclick = () => {
         const i = +b.dataset.i;
         send(i < 0 ? {t: "tv", on: false, ch: Math.max(0, room.tv.ch)} : {t: "tv", on: true, ch: i});
-      if (cinema()) send({t: "light", on: i < 0});                  // phim chiếu thì tắt đèn, hết phim bật đèn
+        if (cinema()) send({t: "light", on: i < 0});                  // phim chiếu thì tắt đèn, hết phim bật đèn
         closeSheet();
       });
     });
@@ -2419,14 +2592,10 @@ function drawBench(i, t) {
 }
 
 // ---- 🎬 rạp kiểu Nhật: phòng chiếu (trong) + sảnh (ngay sau cửa) ----
-const FILMS = [
-  {name: "Mèo Mây Bay", c1: "#4cc9f0", c2: "#f72585"}, {name: "Đêm Sao Băng", c1: "#3a0ca3", c2: "#ffd166"},
-  {name: "Nhà Ma Tầng 4", c1: "#1b1b1b", c2: "#e63946"}, {name: "Kỳ Nghỉ Hè", c1: "#06d6a0", c2: "#ffb703"},
-];
 const PRIZES = ["🧸 gấu bông mèo", "🐰 thỏ trắng", "🐼 gấu trúc mini", "🦊 cáo nhỏ"];
 const LOBBY_ITEMS = [                                                      // vật trong sảnh rạp (khu ngang 1000x600)
   {x: 40, y: 432, w: 40, h: 48, act: () => Life.openTicket(null)},          // máy bán vé (life.js)
-  {x: 120, y: 434, w: 22, h: 40, act: () => toast(`📄 Bạn lấy 1 tờ rơi phim "${FILMS[Math.random() * FILMS.length | 0].name}" làm kỷ niệm`)},
+  {x: 120, y: 434, w: 22, h: 40, act: () => toast(`📄 Bạn lấy 1 tờ rơi phim "${(FILMS[Math.random() * FILMS.length | 0].title || FILMS[Math.random() * FILMS.length | 0].name)}" làm kỷ niệm`)},
   {x: 440, y: 452, w: 120, h: 50, act: () => Life.openPopcorn()},           // quầy bắp nước
   {x: 820, y: 432, w: 76, h: 50, act: () => Life.openSouvenir()},           // kệ đồ lưu niệm
   {x: 200, y: 500, w: 34, h: 46, act: () => Life.claw()},                   // 2 máy gắp thú
@@ -2452,7 +2621,7 @@ function drawCinema(t) {                             // 🎬 rạp NGANG 1000x60
   if (!room.tv.on) {
     ctx.fillStyle = "rgba(255,255,255,.4)"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillText("🎬 Chạm màn hình để chọn phim", W / 2, 76);
-    ctx.fillStyle = "rgba(255,255,255,.25)"; ctx.font = "10px system-ui"; ctx.fillText("Sắp chiếu: " + FILMS.map(f => f.name).join(" · "), W / 2, 98);
+    ctx.fillStyle = "rgba(255,255,255,.25)"; ctx.font = "10px system-ui"; ctx.fillText("Sắp chiếu: " + FILMS.slice(0, 4).map(f => f.title || f.name).join(" · ") + "…", W / 2, 98);
   }
   drawSwitch();
   // vách ngăn: phòng máy chiếu + lối vào phòng chiếu
@@ -2487,18 +2656,36 @@ function drawCinema(t) {                             // 🎬 rạp NGANG 1000x60
     }
   }
   // poster phim + bảng giờ chiếu điện tử (dời các biển bên phải tránh bị nút HUD che)
+  const schedNow = getCinemaSched();
+  const curSchedIdx = schedNow ? schedNow.index : 0;
   [30, 74, 250, 670, 730, 790].forEach((px, k) => {
-    const f = FILMS[k % FILMS.length], py = 390;
+    const f = FILMS[(curSchedIdx + k) % FILMS.length], py = 390;
     ctx.fillStyle = "#e9e3d6"; rr(ctx, px, py, 40, 34, 2); ctx.fill();
-    const pg = ctx.createLinearGradient(0, py, 0, py + 30); pg.addColorStop(0, f.c1); pg.addColorStop(1, f.c2);
-    ctx.fillStyle = pg; ctx.fillRect(px + 2, py + 2, 36, 22);
-    ctx.fillStyle = "#222"; ctx.font = "700 5.5px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(f.name, px + 20, py + 29);
+    const img = POSTER_IMGS[f.id];
+    if (img && img.complete && img.naturalWidth > 0) {
+      ctx.save();
+      rr(ctx, px + 2, py + 2, 36, 22, 1);
+      ctx.clip();
+      ctx.drawImage(img, px + 2, py + 2, 36, 22);
+      ctx.restore();
+    } else {
+      const pg = ctx.createLinearGradient(0, py, 0, py + 30);
+      pg.addColorStop(0, f.color || f.c1);
+      pg.addColorStop(1, f.c2 || "#14112b");
+      ctx.fillStyle = pg;
+      ctx.fillRect(px + 2, py + 2, 36, 22);
+    }
+    ctx.fillStyle = "#222"; ctx.font = "700 5px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    const titleTxt = f.title || f.name;
+    ctx.fillText(titleTxt.length > 11 ? titleTxt.slice(0, 10) + "…" : titleTxt, px + 20, py + 29);
   });
   ctx.save(); ctx.translate(320, 0);
   ctx.fillStyle = "#0c0c0c"; rr(ctx, 124, 390, 112, 30, 3); ctx.fill();
   ctx.fillStyle = "#39ff88"; ctx.font = "700 7px monospace"; ctx.textAlign = "center";
-  const sh = Math.floor(t / 3) % FILMS.length;
-  ctx.fillText(`${FILMS[sh].name}  ${TIME_CFG.SHOWTIMES[0]}`, 180, 399); ctx.fillText(`${FILMS[(sh + 1) % 4].name}  ${TIME_CFG.SHOWTIMES[1]}`, 180, 411);
+  const sh = (curSchedIdx + Math.floor(t / 4)) % FILMS.length;
+  const f1 = FILMS[sh], f2 = FILMS[(sh + 1) % FILMS.length];
+  ctx.fillText(`${f1.title || f1.name}  ${TIME_CFG.SHOWTIMES[0]}`, 180, 399);
+  ctx.fillText(`${f2.title || f2.name}  ${TIME_CFG.SHOWTIMES[1]}`, 180, 411);
   ctx.restore();
   // biển neon dọc 2 bên sảnh
   for (const [nx, txt] of [[372, "映画館"], [612, "シネマ"]]) {
@@ -2512,7 +2699,7 @@ function drawCinema(t) {                             // 🎬 rạp NGANG 1000x60
   ctx.restore();
   ctx.save(); ctx.translate(28, 0);
   ctx.fillStyle = "#5e3d27"; rr(ctx, 92, 434, 22, 40, 2); ctx.fill();
-  for (let k = 0; k < 4; k++) { ctx.fillStyle = FILMS[k].c1; ctx.fillRect(95, 437 + k * 9, 16, 7); }
+  for (let k = 0; k < Math.min(4, FILMS.length); k++) { ctx.fillStyle = FILMS[k].color || FILMS[k].c1; ctx.fillRect(95, 437 + k * 9, 16, 7); }
   ctx.restore();
   // quầy bắp nước + bảng menu đèn (giữa sảnh)
   ctx.save(); ctx.translate(320, 0);

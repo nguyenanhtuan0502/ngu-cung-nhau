@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 450" width="300" height="450">
+  <defs>
+    <linearGradient id="bg_wingit" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffb703"/>
+      <stop offset="60%" stop-color="#ffb703" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#0c0a18"/>
+    </linearGradient>
+    <linearGradient id="card_wingit" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.15)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.5)"/>
+    </linearGradient>
+    <filter id="shadow_wingit" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="300" height="450" rx="16" fill="url(#bg_wingit)"/>
+
+  <!-- Subtle inner border -->
+  <rect x="12" y="12" width="276" height="426" rx="12" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"/>
+
+  <!-- Top Header: Genre Tag & Blender Open Movie -->
+  <g transform="translate(24, 24)">
+    <rect width="70" height="22" rx="11" fill="rgba(0,0,0,0.3)" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+    <text x="35" y="15" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="700" letter-spacing="0.5">HÀI</text>
+  </g>
+  <text x="276" y="39" text-anchor="end" fill="rgba(255,255,255,0.7)" font-family="system-ui, -apple-system, sans-serif" font-size="8.5" font-weight="700" letter-spacing="1.2">BLENDER OPEN MOVIE</text>
+
+  <!-- Art Scene -->
+  <g id="art" filter="url(#shadow_wingit)">
+    <!-- Stars & Motion Streaks -->
+    <circle cx="70" cy="100" r="2.5" fill="#fff"/>
+    <circle cx="230" cy="90" r="3" fill="#fff"/>
+    <circle cx="60" cy="180" r="2" fill="#fff"/>
+    <circle cx="240" cy="210" r="2.5" fill="#fff"/>
+    <!-- Exhaust Fire Plumes -->
+    <path d="M 132 265 Q 110 320 150 340 Q 190 320 168 265 Z" fill="#e63946"/>
+    <path d="M 138 265 Q 130 310 150 325 Q 170 310 162 265 Z" fill="#fb8500"/>
+    <path d="M 144 265 Q 140 295 150 305 Q 160 295 156 265 Z" fill="#ffea00"/>
+    <!-- Tin-Can Rocket Fuselage -->
+    <!-- Fins -->
+    <polygon points="120,255 95,275 122,230" fill="#d90429"/>
+    <polygon points="180,255 205,275 178,230" fill="#d90429"/>
+    <!-- Body -->
+    <path d="M 120 160 Q 120 260 120 265 L 180 265 Q 180 260 180 160 Z" fill="#e0e1dd"/>
+    <rect x="120" y="210" width="60" height="4" fill="#778da9"/>
+    <!-- Rivet Dots -->
+    <circle cx="123" cy="170" r="1.5" fill="#415a77"/><circle cx="123" cy="200" r="1.5" fill="#415a77"/>
+    <circle cx="177" cy="170" r="1.5" fill="#415a77"/><circle cx="177" cy="200" r="1.5" fill="#415a77"/>
+    <!-- Rocket Cone -->
+    <polygon points="120,160 150,105 180,160" fill="#d90429"/>
+    <circle cx="150" cy="105" r="4" fill="#ffd166"/>
+    <!-- Top Porthole: Cat with Aviator Goggles -->
+    <circle cx="150" cy="170" r="18" fill="#1b263b" stroke="#778da9" stroke-width="3"/>
+    <circle cx="150" cy="170" r="15" fill="#48cae4"/>
+    <!-- Cat Face -->
+    <circle cx="150" cy="174" r="11" fill="#f77f00"/>
+    <polygon points="142,166 146,160 148,166" fill="#f77f00"/>
+    <polygon points="158,166 154,160 152,166" fill="#f77f00"/>
+    <!-- Aviator Goggles -->
+    <rect x="141" y="167" width="8" height="6" rx="2" fill="#212529" stroke="#6c584c" stroke-width="1"/>
+    <rect x="151" y="167" width="8" height="6" rx="2" fill="#212529" stroke="#6c584c" stroke-width="1"/>
+    <line x1="148" y1="170" x2="152" y2="170" stroke="#6c584c" stroke-width="1.5"/>
+    <!-- Bottom Porthole: Happy Dog -->
+    <circle cx="150" cy="235" r="18" fill="#1b263b" stroke="#778da9" stroke-width="3"/>
+    <circle cx="150" cy="235" r="15" fill="#48cae4"/>
+    <!-- Dog Face -->
+    <circle cx="150" cy="237" r="11" fill="#dda15e"/>
+    <ellipse cx="138" cy="235" rx="4" ry="8" fill="#bc6c25" transform="rotate(-15 138 235)"/>
+    <ellipse cx="162" cy="235" rx="4" ry="8" fill="#bc6c25" transform="rotate(15 162 235)"/>
+    <circle cx="146" cy="234" r="1.8" fill="#212529"/><circle cx="154" cy="234" r="1.8" fill="#212529"/>
+    <ellipse cx="150" cy="239" rx="3" ry="2" fill="#212529"/>
+    <!-- Cute Tongue -->
+    <path d="M 148 241 Q 150 247 152 241 Z" fill="#ff758f"/>
+  </g>
+
+  <!-- Bottom Title Box -->
+  <rect x="16" y="340" width="268" height="90" rx="10" fill="url(#card_wingit)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+  
+  <text x="150" y="382" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="900" letter-spacing="0.8">Wing It!</text>
+  <text x="150" y="408" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-family="system-ui, -apple-system, sans-serif" font-size="10.5" font-weight="500">Mèo và Chó tự chế tên lửa bay vào không gian</text>
+</svg>

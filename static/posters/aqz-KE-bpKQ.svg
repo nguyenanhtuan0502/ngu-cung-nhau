@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 450" width="300" height="450">
+  <defs>
+    <linearGradient id="bg_bbb" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#8ecae6"/>
+      <stop offset="60%" stop-color="#8ecae6" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#0c0a18"/>
+    </linearGradient>
+    <linearGradient id="card_bbb" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.15)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.5)"/>
+    </linearGradient>
+    <filter id="shadow_bbb" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="300" height="450" rx="16" fill="url(#bg_bbb)"/>
+
+  <!-- Subtle inner border -->
+  <rect x="12" y="12" width="276" height="426" rx="12" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"/>
+
+  <!-- Top Header: Genre Tag & Blender Open Movie -->
+  <g transform="translate(24, 24)">
+    <rect width="70" height="22" rx="11" fill="rgba(0,0,0,0.3)" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+    <text x="35" y="15" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="700" letter-spacing="0.5">HÀI</text>
+  </g>
+  <text x="276" y="39" text-anchor="end" fill="rgba(255,255,255,0.7)" font-family="system-ui, -apple-system, sans-serif" font-size="8.5" font-weight="700" letter-spacing="1.2">BLENDER OPEN MOVIE</text>
+
+  <!-- Art Scene -->
+  <g id="art" filter="url(#shadow_bbb)">
+    <!-- Hills & Forest backdrop -->
+    <ellipse cx="150" cy="270" rx="125" ry="55" fill="#40916c"/>
+    <ellipse cx="70" cy="280" rx="80" ry="40" fill="#52b788"/>
+    <ellipse cx="230" cy="280" rx="80" ry="40" fill="#2d6a4f"/>
+    <!-- Sun/Moon Glow -->
+    <circle cx="150" cy="180" r="85" fill="#ffffff" opacity="0.12"/>
+    <!-- Bunny Body -->
+    <ellipse cx="150" cy="235" rx="58" ry="65" fill="#f8f9fa"/>
+    <ellipse cx="150" cy="245" rx="42" ry="48" fill="#e9ecef"/>
+    <!-- Ears -->
+    <ellipse cx="120" cy="120" rx="14" ry="45" transform="rotate(-12 120 120)" fill="#f8f9fa"/>
+    <ellipse cx="120" cy="120" rx="8" ry="36" transform="rotate(-12 120 120)" fill="#ffb4a2"/>
+    <ellipse cx="180" cy="120" rx="14" ry="45" transform="rotate(12 180 120)" fill="#f8f9fa"/>
+    <ellipse cx="180" cy="120" rx="8" ry="36" transform="rotate(12 180 120)" fill="#ffb4a2"/>
+    <!-- Head -->
+    <ellipse cx="150" cy="180" rx="46" ry="40" fill="#f8f9fa"/>
+    <!-- Cheeks & Blush -->
+    <circle cx="124" cy="194" r="9" fill="#ffb4a2" opacity="0.6"/>
+    <circle cx="176" cy="194" r="9" fill="#ffb4a2" opacity="0.6"/>
+    <!-- Eyes -->
+    <ellipse cx="132" cy="174" rx="5" ry="7" fill="#212529"/>
+    <circle cx="134" cy="172" r="2" fill="#ffffff"/>
+    <ellipse cx="168" cy="174" rx="5" ry="7" fill="#212529"/>
+    <circle cx="170" cy="172" r="2" fill="#ffffff"/>
+    <!-- Nose & Mouth & Buck Teeth -->
+    <polygon points="146,186 154,186 150,191" fill="#e5989b"/>
+    <path d="M 144 193 Q 150 197 156 193" fill="none" stroke="#495057" stroke-width="2" stroke-linecap="round"/>
+    <rect x="146" y="194" width="4" height="6" rx="1" fill="#ffffff" stroke="#ced4da" stroke-width="0.5"/>
+    <rect x="150" y="194" width="4" height="6" rx="1" fill="#ffffff" stroke="#ced4da" stroke-width="0.5"/>
+    <!-- Apple in hands -->
+    <circle cx="150" cy="246" r="13" fill="#e63946"/>
+    <ellipse cx="150" cy="235" rx="3" ry="5" fill="#38b000" transform="rotate(25 150 235)"/>
+    <path d="M 149 237 Q 148 232 153 230" fill="none" stroke="#6f1d1b" stroke-width="2"/>
+    <!-- Little Butterfly -->
+    <g transform="translate(210, 130) rotate(15)">
+      <ellipse cx="-6" cy="0" rx="7" ry="5" fill="#ffb703"/>
+      <ellipse cx="6" cy="0" rx="7" ry="5" fill="#ffb703"/>
+      <line x1="0" y1="-7" x2="0" y2="7" stroke="#212529" stroke-width="1.5"/>
+    </g>
+    <!-- Daisy Flowers -->
+    <circle cx="65" cy="295" r="4" fill="#ffffff"/><circle cx="65" cy="295" r="2" fill="#ffd166"/>
+    <circle cx="240" cy="290" r="4" fill="#ffffff"/><circle cx="240" cy="290" r="2" fill="#ffd166"/>
+  </g>
+
+  <!-- Bottom Title Box -->
+  <rect x="16" y="340" width="268" height="90" rx="10" fill="url(#card_bbb)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+  
+  <text x="150" y="382" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="900" letter-spacing="0.8">Big Buck Bunny</text>
+  <text x="150" y="408" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-family="system-ui, -apple-system, sans-serif" font-size="10.5" font-weight="500">Chú thỏ bự hiền lành ra tay dạy dỗ ba con gặm nhấm</text>
+</svg>
