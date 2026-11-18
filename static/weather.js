@@ -114,7 +114,10 @@ const Weather = (() => {
   }
 
   // Ép thời tiết qua tham số URL phục vụ kiểm thử (&weather=rain|storm|fog|snow|cloudy|clear|rainbow)
-  function getUrlWeatherOverride() {
+  // Đọc 1 lần lúc tải trang: sau khi vào game, đường dẫn bị viết lại (mất &weather=)
+  const URL_OVERRIDE = readUrlWeatherOverride();
+  function getUrlWeatherOverride() { return URL_OVERRIDE; }
+  function readUrlWeatherOverride() {
     try {
       if (typeof window !== 'undefined' && window.location && window.location.search) {
         const param = new URLSearchParams(window.location.search).get('weather');
@@ -147,10 +150,8 @@ const Weather = (() => {
       try {
         const bl = bleed();
         if (bl) {
-          l = -(bl.L || 0);
-          r = w + (bl.R || 0);
-          t = -(bl.T || 0);
-          b = h + (bl.B || 0);
+          // bleed() trả về toạ độ thật của mép vùng nhìn thấy (L có thể âm), không phải khoảng lề
+          l = bl.L; r = bl.R; t = Math.max(bl.T, -120); b = bl.B;
         }
       } catch (e) {}
     }
