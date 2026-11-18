@@ -379,7 +379,7 @@ def a_cast(st, data, d):
     if data["bait"][b["id"]] <= 0:
         del data["bait"][b["id"]]
     wait = RNG.uniform(2, 6)                       # server quyết định lúc cá cắn
-    st["fish"] = {"bait": b["id"], "bite": time.time() + wait}
+    st["fish"] = {"phase": "cast", "bait": b["id"], "bite": time.time() + wait}
     return {"wait": round(wait, 2)}
 
 
@@ -387,17 +387,72 @@ def a_pull(st, data, d):
     f = st.get("fish")
     if not f:
         raise EcoError("Chưa thả câu")
-    st["fish"] = None
+    if f.get("phase") == "hook":
+        raise EcoError("Đang kéo cá rồi, hãy bấm liên tục!")
     dt = time.time() - f["bite"]
     if dt < -0.25:
+        st["fish"] = None
         return {"r": "early"}
     if dt > 2.0:                                   # 1.4 giây + bù độ trễ mạng
+        st["fish"] = None
         return {"r": "late"}
     rare = BAITS[f["bait"]]["rare"]
     i = pick(CAT["FISH"], lambda x: x["w"] * (rare if x.get("rare") else 1))
     fish = CAT["FISH"][i]
-    add_item(data, "fish_" + fish["id"], fish["e"], fish["name"], "fish")
-    return {"r": "ok", "fish": i}
+    kgr = fish["kg"]
+    kg = round(RNG.uniform(kgr[0], kgr[1]), 2)
+    kg = max(kgr[0], min(kgr[1], kg))
+
+    # Tính độ khó màn kéo cá (fight, taps, power) dựa theo giá bán và cân nặng
+    score = fish["price"] * 0.7 + kg * 3.5
+    fight = round(1.5 + (score / 126.0) * 8.5, 1)
+    fight = max(1.5, min(12.0, fight))
+    taps = int(max(3, round(4 + (score / 126.0) * 26)))
+
+    if fish.get("rare") or fish["price"] >= 40:
+        power = 5 if fish["price"] >= 100 else 4
+    elif score >= 12:
+        power = 3
+    elif score >= 6:
+        power = 2
+    else:
+        power = 1
+
+    # Lưu trạng thái cá đang mắc câu ở server, chưa cho cá vào túi đồ
+    st["fish"] = {
+        "phase": "hook",
+        "fish": i,
+        "kg": kg,
+        "fight": fight,
+        "taps": taps,
+        "power": power,
+        "hook_time": time.time(),
+    }
+    return {"r": "hook", "fight": fight, "taps": taps, "power": power, "kg": kg}
+
+
+def a_reel(st, data, d):
+    """Kéo cá sau khi đã giật trúng: kiểm tra khu vực, số lần bấm và thời gian."""
+    _need_area(st, "fishing", "Kéo cá")
+    f = st.get("fish")
+    if not f or f.get("phase") != "hook":
+        raise EcoError("Chưa có cá mắc câu")
+    taps = d.get("taps")
+    if not isinstance(taps, int) or isinstance(taps, bool) or taps < 0:
+        raise EcoError("Số lần bấm không hợp lệ")
+
+    elapsed = time.time() - f["hook_time"]
+    st["fish"] = None                              # kết thúc màn kéo, cá không còn mắc câu
+
+    # Quá nhanh (chưa tới fight * 0.5s) hoặc quá lâu (hơn fight + 8s) hoặc thiếu lần bấm -> sổng cá
+    if elapsed < f["fight"] * 0.5 or elapsed > f["fight"] + 8.0 or taps < f["taps"]:
+        return {"r": "lost"}
+
+    # Thành công: thêm cá vào rương đồ
+    fish_idx = f["fish"]
+    fish_item = CAT["FISH"][fish_idx]
+    add_item(data, "fish_" + fish_item["id"], fish_item["e"], fish_item["name"], "fish")
+    return {"r": "ok", "fish": fish_idx, "kg": f["kg"]}
 
 
 def a_buy_cloth(st, data, d):
@@ -471,7 +526,7 @@ ACTIONS = {
     "buy": a_buy, "ticket": a_ticket, "claw": a_claw, "wheel": a_wheel,
     "quizStart": a_quiz_start, "quizAns": a_quiz_ans,
     "buyLand": a_buy_land, "buySeed": a_buy_seed, "plant": a_plant, "water": a_water, "harvest": a_harvest, "sellCrops": a_sell_crops,
-    "buyBait": a_buy_bait, "cast": a_cast, "pull": a_pull, "sellFish": a_sell_fish,
+    "buyBait": a_buy_bait, "cast": a_cast, "pull": a_pull, "reel": a_reel, "sellFish": a_sell_fish,
     "buyCloth": a_buy_cloth, "adopt": a_adopt, "treat": a_treat, "buyFurn": a_buy_furn, "lotto": a_lotto,
     "drop": a_drop, "reset": a_reset,
 }

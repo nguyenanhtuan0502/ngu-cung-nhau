@@ -2998,77 +2998,701 @@ const Areas = (() => {
       ctx.fillStyle = "#7a5236"; ctx.fillRect(x - 3, y + 6, 6, 16);
       ctx.fillStyle = "#3f8f47"; ctx.beginPath(); ctx.arc(x + Math.sin(t + x) * 1, y, 16, 0, 7); ctx.fill();
     }
+    updateFishingHUD(t);
   }
+  let lastRareFish = "";
+  let fishingHudEl = null;
+  let spaceListenerBound = false;
+
+  // Khởi tạo giao diện HUD câu cá (nút tròn to + thanh tiến trình kéo cá)
+  function ensureFishingHUD() {
+    if (fishingHudEl && fishingHudEl.isConnected) return fishingHudEl;
+    if (!document.getElementById("fishingStyles")) {
+      const st = document.createElement("style");
+      st.id = "fishingStyles";
+      st.textContent = `
+        .fish-hud-box {
+          position: fixed;
+          right: calc(20px + var(--sr, 0px));
+          bottom: calc(20px + var(--sb, 0px));
+          z-index: 15;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+          pointer-events: none;
+          user-select: none;
+          -webkit-user-select: none;
+        }
+        body.touch .fish-hud-box {
+          bottom: calc(96px + var(--sb, 0px));
+          right: calc(18px + var(--sr, 0px));
+        }
+        body.lefty .fish-hud-box {
+          right: auto;
+          left: calc(18px + var(--sl, 0px));
+        }
+        .fish-hud-box * {
+          pointer-events: auto;
+        }
+        .fish-reel-card {
+          background: rgba(20, 17, 45, 0.92);
+          border: 1.5px solid rgba(255, 210, 122, 0.7);
+          border-radius: 16px;
+          padding: 10px 14px;
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+          min-width: 175px;
+          max-width: 220px;
+          animation: fishCardPop 0.2s ease-out;
+        }
+        .fish-reel-card.hidden {
+          display: none !important;
+        }
+        @keyframes fishCardPop {
+          from { transform: scale(0.85); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+        .fish-weight-hint {
+          font-size: 13px;
+          font-weight: 800;
+          color: var(--accent, #ffd166);
+          text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+        .fish-prog-track {
+          width: 100%;
+          height: 12px;
+          background: rgba(255, 255, 255, 0.15);
+          border-radius: 6px;
+          overflow: hidden;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .fish-prog-fill {
+          height: 100%;
+          width: 0%;
+          background: linear-gradient(90deg, #38b000, #70e000, #ffff3f);
+          border-radius: 5px;
+          transition: width 0.08s ease-out;
+          box-shadow: 0 0 8px rgba(112, 224, 0, 0.7);
+        }
+        .fish-prog-label {
+          font-size: 11px;
+          font-weight: 700;
+          color: rgba(255, 255, 255, 0.95);
+        }
+        .fish-action-btn {
+          width: 74px;
+          height: 74px;
+          border-radius: 50%;
+          background: rgba(255, 210, 122, 0.28);
+          border: 2px solid rgba(255, 210, 122, 0.65);
+          font-size: 22px;
+          font-weight: 800;
+          color: var(--accent, #ffd166);
+          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          touch-action: manipulation;
+          transition: transform 0.08s, background 0.15s, border-color 0.15s;
+          outline: none;
+        }
+        .fish-action-btn:active {
+          transform: scale(0.92);
+        }
+        .fish-action-btn.bite {
+          background: radial-gradient(circle, #ff4d6d, #d90429);
+          border-color: #ffccd5;
+          color: #fff;
+          box-shadow: 0 0 24px rgba(255, 77, 109, 0.9), 0 6px 18px rgba(0, 0, 0, 0.45);
+          animation: fishBitePulse 0.35s infinite alternate;
+        }
+        @keyframes fishBitePulse {
+          from { transform: scale(1); box-shadow: 0 0 16px rgba(255, 77, 109, 0.7); }
+          to { transform: scale(1.12); box-shadow: 0 0 28px rgba(255, 77, 109, 1); }
+        }
+        .fish-action-btn.fight {
+          width: 84px;
+          height: 84px;
+          background: radial-gradient(circle, #ff9e00, #e85d04);
+          border-color: #ffe6a7;
+          color: #fff;
+          box-shadow: 0 0 22px rgba(255, 158, 0, 0.8), 0 6px 18px rgba(0,0,0,0.4);
+          animation: fishFightPulse 0.25s infinite alternate;
+        }
+        @keyframes fishFightPulse {
+          from { transform: scale(1); }
+          to { transform: scale(1.08); }
+        }
+        .fish-btn-icon {
+          font-size: 22px;
+          line-height: 1;
+        }
+        .fish-btn-txt {
+          font-size: 11px;
+          font-weight: 800;
+          line-height: 1.1;
+          margin-top: 2px;
+        }
+        .fish-btn-hint {
+          font-size: 9px;
+          opacity: 0.75;
+          font-weight: 600;
+        }
+      `;
+      document.head.appendChild(st);
+    }
+
+    const el = document.createElement("div");
+    el.id = "fishingHUD";
+    el.className = "fish-hud-box hidden";
+    el.innerHTML = `
+      <div id="fishReelCard" class="fish-reel-card hidden">
+        <div class="fish-weight-hint" id="fishWeightHint">🐟 Cá nặng ~0 kg</div>
+        <div class="fish-prog-track">
+          <div class="fish-prog-fill" id="fishProgFill" style="width:0%"></div>
+        </div>
+        <div class="fish-prog-label" id="fishProgLabel">Cá đã kéo lên: 0%</div>
+      </div>
+      <button id="fishActionBtn" class="fish-action-btn" aria-label="Câu cá">
+        <span class="fish-btn-icon" id="fishBtnIcon">🎣</span>
+        <span class="fish-btn-txt" id="fishBtnTxt">Quăng cần</span>
+        <small class="fish-btn-hint" id="fishBtnHint">(Space)</small>
+      </button>
+    `;
+    document.body.appendChild(el);
+    fishingHudEl = el;
+
+    const btn = el.querySelector("#fishActionBtn");
+    btn.addEventListener("pointerdown", e => {
+      e.preventDefault();
+      e.stopPropagation();
+      handleFishingAction();
+    });
+    btn.addEventListener("click", e => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    return el;
+  }
+
+  // Cập nhật trạng thái nút và bảng kéo cá
+  let currentHUDState = "";
+  function setHUDState(state, data) {
+    if (currentHUDState === state && state !== "fight") return;
+    currentHUDState = state;
+    const hud = ensureFishingHUD();
+    const btn = hud.querySelector("#fishActionBtn");
+    const icon = hud.querySelector("#fishBtnIcon");
+    const txt = hud.querySelector("#fishBtnTxt");
+    const hint = hud.querySelector("#fishBtnHint");
+    const rc = hud.querySelector("#fishReelCard");
+
+    btn.className = "fish-action-btn";
+    if (state === "idle") {
+      icon.textContent = "🎣";
+      txt.textContent = "Quăng cần";
+      hint.textContent = "(Space)";
+      rc.classList.add("hidden");
+    } else if (state === "cast") {
+      icon.textContent = "🎣";
+      txt.textContent = "Đang quăng";
+      hint.textContent = "…";
+      rc.classList.add("hidden");
+    } else if (state === "wait") {
+      icon.textContent = "🎣";
+      txt.textContent = "Chờ cá…";
+      hint.textContent = "(Chờ ❗)";
+      rc.classList.add("hidden");
+    } else if (state === "bite") {
+      btn.classList.add("bite");
+      icon.textContent = "❗";
+      txt.textContent = "GIẬT!";
+      hint.textContent = "(Bấm ngay!)";
+      rc.classList.add("hidden");
+    } else if (state === "busy") {
+      icon.textContent = "⏳";
+      txt.textContent = "Chờ xíu";
+      hint.textContent = "…";
+      rc.classList.add("hidden");
+    } else if (state === "fight") {
+      btn.classList.add("fight");
+      icon.textContent = "⚡";
+      txt.textContent = "BẤM LIÊN TỤC!";
+      hint.textContent = "(Space/Chạm)";
+      rc.classList.remove("hidden");
+      if (data && data.kg != null) {
+        hud.querySelector("#fishWeightHint").textContent = `🐟 Cá nặng ~${data.kg} kg`;
+      }
+      setReelProgress(0);
+    }
+  }
+
+  // Cập nhật phần trăm thanh tiến trình kéo cá
+  function setReelProgress(pct) {
+    if (!fishingHudEl) return;
+    const fill = fishingHudEl.querySelector("#fishProgFill");
+    const lbl = fishingHudEl.querySelector("#fishProgLabel");
+    if (fill) fill.style.width = pct + "%";
+    if (lbl) lbl.textContent = `Cá đã kéo lên: ${pct}%`;
+  }
+
+  // Lắng nghe phím Space trên máy tính
+  function bindSpaceListener() {
+    if (spaceListenerBound) return;
+    spaceListenerBound = true;
+    window.addEventListener("keydown", e => {
+      if (myArea !== "fishing") return;
+      if (e.code === "Space" || e.key === " ") {
+        if (/INPUT|TEXTAREA/.test((e.target || {}).tagName || "")) return;
+        const m = me();
+        if (m && m.bed != null && m.lying) {
+          e.preventDefault();
+          handleFishingAction();
+        }
+      }
+    });
+  }
+
+  // Xử lý hành động bấm nút / Space tùy theo trạng thái câu hiện tại
+  function handleFishingAction() {
+    if (!fishState || fishState.phase === "idle") {
+      checkAndCast();
+    } else if (fishState.phase === "cast") {
+      // Đang quăng dây ra hồ, chờ phao chạm nước
+    } else if (fishState.phase === "wait" || fishState.phase === "bite") {
+      handlePull();
+    } else if (fishState.phase === "fight") {
+      handleReelTap();
+    }
+  }
+
+  // Kiểm tra mồi và quăng cần (mở chọn mồi nếu có nhiều hơn 1 loại)
+  function checkAndCast() {
+    const m = me();
+    if (!m || m.bed == null || !m.lying) {
+      toast("🎣 Chạm vào một ghế đẩu bên bờ hồ để ngồi câu trước nhé");
+      return;
+    }
+    const st = S();
+    const baits = BAITS.filter(b => (st.bait[b.id] || 0) > 0);
+    if (!baits.length) {
+      toast("🐛 Hết mồi rồi! Mua mồi ở quầy của cô Lan");
+      openBait();
+      return;
+    }
+    if (baits.length === 1) {
+      castLine(baits[0]);
+    } else {
+      openSheet("🎣 Chọn mồi câu",
+        `<div class="vol" style="margin:0 0 10px">Chọn loại mồi để câu cá:</div>
+         <div class="grid">${baits.map(b => `<button class="opt" data-b="${b.id}">${b.e} ${b.name}<small>còn ${st.bait[b.id]} · ${b.rare > 1 ? "dễ ra cá hiếm" : "mồi thường"}</small></button>`).join("")}</div>`,
+        el => el.querySelectorAll("[data-b]").forEach(btn => btn.onclick = () => {
+          closeSheet();
+          castLine(BAITS.find(b => b.id === btn.dataset.b));
+        }));
+    }
+  }
+
+  // Gửi lệnh thả câu lên server
+  async function castLine(bait) {
+    const m = me();
+    if (!m || m.bed == null || !m.lying) return;
+    const cast = await Life.eco("cast", {bait: bait.id});
+    if (!cast) return;
+
+    const seat = m.bed;
+    const now = performance.now() / 1000;
+    fishState = {
+      seat,
+      phase: "cast",
+      castStart: now,
+      castDur: 0.6,
+      biteTime: now + cast.wait,
+      bait: bait.id,
+      wait: cast.wait,
+      finishing: false,
+    };
+    setHUDState("cast");
+  }
+
+  // Giật cần câu khi cá cắn hoặc giật sớm
+  async function handlePull() {
+    if (!fishState || (fishState.phase !== "bite" && fishState.phase !== "wait")) return;
+    fishState.phase = "pulling";
+    setHUDState("busy");
+
+    const r = await Life.eco("pull");
+    if (!r || r.r === "early") {
+      fishState = null;
+      showEarly();
+      return;
+    }
+    if (r.r === "late") {
+      fishState = null;
+      showLate();
+      return;
+    }
+    if (r.r === "hook") {
+      startReelMiniGame(r);
+    }
+  }
+
+  // Khởi động màn chơi kéo cá mini-game
+  function startReelMiniGame(r) {
+    const m = me();
+    fishState = {
+      seat: m ? m.bed : 0,
+      phase: "fight",
+      fight: r.fight,
+      targetTaps: r.taps,
+      power: r.power,
+      kg: r.kg,
+      taps: 0,
+      fightStart: performance.now() / 1000,
+      finishing: false,
+    };
+    setHUDState("fight", r);
+  }
+
+  // Xử lý mỗi lần người chơi bấm nút / Space khi kéo cá
+  function handleReelTap() {
+    if (!fishState || fishState.phase !== "fight" || fishState.finishing) return;
+    fishState.taps++;
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      try { navigator.vibrate(20); } catch (_) {}
+    }
+    Sound.ensure();
+    if (Sound.ctx) {
+      Sound.tone(Sound.master, 420 + (fishState.taps % 10) * 35, Sound.ctx.currentTime, 0.035, "triangle", 0.08, 0.005);
+    }
+    const elapsed = (performance.now() / 1000) - fishState.fightStart;
+    let pct = Math.floor((fishState.taps / fishState.targetTaps) * 100);
+    if (fishState.taps >= fishState.targetTaps && elapsed < fishState.fight * 0.6) {
+      pct = 99; // Giữ ở 99% cho đến khi qua 60% thời gian kéo
+    }
+    pct = Math.min(100, Math.max(0, pct));
+    setReelProgress(pct);
+
+    if (fishState.taps >= fishState.targetTaps && elapsed >= fishState.fight * 0.6) {
+      finishFight();
+    }
+  }
+
+  // Kết thúc màn kéo cá: gọi server kiểm tra kết quả và hiển thị
+  async function finishFight() {
+    if (!fishState || fishState.finishing) return;
+    fishState.finishing = true;
+    const taps = fishState.taps;
+    const c = document.getElementById("c");
+    if (c) c.style.transform = "";
+    setHUDState("idle");
+
+    const rr = await Life.eco("reel", {taps});
+    fishState = null;
+    if (!rr || rr.r === "lost") {
+      showLost();
+    } else if (rr.r === "ok") {
+      showWon(rr);
+    }
+  }
+
+  function showEarly() {
+    setHUDState("idle");
+    openSheet("🎣 Câu cá",
+      `<div class="wheelBig">💨</div>
+       <div class="pomoSub" style="font-size:15px;font-weight:700">Giật sớm quá, cá chạy mất rồi 😅</div>
+       <div class="vol" style="margin-top:6px">Chờ phao chìm và hiện ❗ rồi hãy giật nhé!</div>
+       <div class="grid" style="margin-top:14px">
+         <button class="opt" id="again" style="text-align:center">🎣 Quăng tiếp</button>
+         <button class="opt" id="stop" style="text-align:center">✓ Nghỉ</button>
+       </div>`,
+      el => {
+        el.querySelector("#again").onclick = () => { closeSheet(); checkAndCast(); };
+        el.querySelector("#stop").onclick = closeSheet;
+      });
+  }
+
+  function showLate() {
+    setHUDState("idle");
+    openSheet("🎣 Câu cá",
+      `<div class="wheelBig">🌊</div>
+       <div class="pomoSub" style="font-size:15px;font-weight:700">Chậm quá, cá ăn mồi rồi bơi mất…</div>
+       <div class="vol" style="margin-top:6px">Khi thấy ❗ và nút GIẬT sáng lên, hãy bấm ngay nhé!</div>
+       <div class="grid" style="margin-top:14px">
+         <button class="opt" id="again" style="text-align:center">🎣 Quăng tiếp</button>
+         <button class="opt" id="stop" style="text-align:center">✓ Nghỉ</button>
+       </div>`,
+      el => {
+        el.querySelector("#again").onclick = () => { closeSheet(); checkAndCast(); };
+        el.querySelector("#stop").onclick = closeSheet;
+      });
+  }
+
+  function showLost() {
+    openSheet("🎣 Câu cá",
+      `<div class="wheelBig">💨</div>
+       <div class="pomoSub" style="font-size:15px;font-weight:700;color:#ff6b6b">Cá giãy thoát mất rồi…!</div>
+       <div class="vol" style="margin-top:6px">Lần sau hãy bấm liên tục thật nhanh tay nhé!</div>
+       <div class="grid" style="margin-top:14px">
+         <button class="opt" id="again" style="text-align:center">🎣 Quăng tiếp</button>
+         <button class="opt" id="stop" style="text-align:center">✓ Nghỉ</button>
+       </div>`,
+      el => {
+        el.querySelector("#again").onclick = () => { closeSheet(); checkAndCast(); };
+        el.querySelector("#stop").onclick = closeSheet;
+      });
+  }
+
+  function showWon(rr) {
+    const fish = FISH[rr.fish];
+    Life.apply({fun: 6, xp: fish.rare ? 8 : 3});
+    Life.commit();
+    if (fish.rare) {
+      send({t: "emote", e: "😂"});
+      lastRareFish = fish.name;
+    }
+    const fIcon = fishIcon(fish.id, 120);
+    const fishVisual = fIcon
+      ? (fish.rare
+          ? `<div style="position:relative;display:inline-block;line-height:0">
+               <img src="${fIcon}" width="120" height="120" style="display:block;margin:0 auto;animation:fishBounce 1.8s ease-in-out infinite;filter:drop-shadow(0 8px 18px rgba(255,200,50,0.4))" alt="${esc(fish.name)}"/>
+               <span style="position:absolute;top:-6px;right:-8px;font-size:22px;animation:fishSparkle 1.2s ease-in-out infinite alternate">✨</span>
+               <span style="position:absolute;bottom:-2px;left:-8px;font-size:18px;animation:fishSparkle 1.4s ease-in-out infinite alternate 0.5s">⭐</span>
+               <span style="position:absolute;top:10px;left:-6px;font-size:14px;animation:fishSparkle 1.1s ease-in-out infinite alternate 0.8s">✨</span>
+             </div>`
+          : `<img src="${fIcon}" width="120" height="120" style="display:inline-block;animation:fishBounce 1.8s ease-in-out infinite;filter:drop-shadow(0 6px 14px rgba(0,0,0,0.18))" alt="${esc(fish.name)}"/>`
+        )
+      : fish.e;
+
+    openSheet("🎣 Câu cá",
+      `<div class="wheelBig" style="line-height:1;min-height:120px;display:flex;align-items:center;justify-content:center">${fishVisual}</div>
+       <div class="pomoSub">Câu được <b style="color:var(--accent)">${fish.name}</b> · <b>${rr.kg} kg</b>${fish.rare ? " ✨ hiếm!" : ""} · bán được ${fish.price} 💰</div>
+       <div class="grid" style="margin-top:14px">
+         <button class="opt" id="again" style="text-align:center">🎣 Quăng tiếp</button>
+         <button class="opt" id="stop" style="text-align:center">✓ Nghỉ</button>
+       </div>`,
+      el => {
+        el.querySelector("#again").onclick = () => { closeSheet(); checkAndCast(); };
+        el.querySelector("#stop").onclick = closeSheet;
+      });
+  }
+
+  // Cập nhật trạng thái câu và HUD mỗi frame
+  function updateFishingHUD(t) {
+    const m = me();
+    const isSeated = m && myArea === "fishing" && m.bed != null && m.lying;
+    if (!isSeated) {
+      cleanupFishing();
+      return;
+    }
+    const hud = ensureFishingHUD();
+    hud.classList.remove("hidden");
+    bindSpaceListener();
+
+    if (!fishState) {
+      setHUDState("idle");
+      return;
+    }
+
+    const now = performance.now() / 1000;
+    if (fishState.phase === "cast") {
+      setHUDState("cast");
+      if (now - fishState.castStart >= (fishState.castDur || 0.6)) {
+        fishState.phase = "wait";
+        setHUDState("wait");
+      }
+    } else if (fishState.phase === "wait") {
+      setHUDState("wait");
+      if (now >= fishState.biteTime) {
+        fishState.phase = "bite";
+        fishState.biteAt = now;
+        Sound.ensure();
+        if (Sound.ctx) Sound.tone(Sound.master, 880, Sound.ctx.currentTime, .15, "square", .06);
+        if (typeof navigator !== "undefined" && navigator.vibrate) {
+          try { navigator.vibrate([40, 30, 40]); } catch (_) {}
+        }
+        setHUDState("bite");
+      }
+    } else if (fishState.phase === "bite") {
+      setHUDState("bite");
+      if (now - fishState.biteAt > 1.8 && !fishState.finishing) {
+        handlePull();
+      }
+    } else if (fishState.phase === "fight") {
+      const pwr = fishState.power || 1;
+      const mult = pwr >= 4 ? 2.5 : 1.6;
+      const shakeX = (Math.random() * 2 - 1) * pwr * mult;
+      const shakeY = (Math.random() * 2 - 1) * pwr * mult;
+      const c = document.getElementById("c");
+      if (c) c.style.transform = `translate(${shakeX.toFixed(1)}px, ${shakeY.toFixed(1)}px)`;
+
+      const elapsed = now - fishState.fightStart;
+      if (fishState.taps >= fishState.targetTaps && elapsed >= fishState.fight * 0.6) {
+        finishFight();
+      } else if (elapsed >= fishState.fight + 6.0) {
+        finishFight();
+      } else {
+        let pct = Math.floor((fishState.taps / fishState.targetTaps) * 100);
+        if (fishState.taps >= fishState.targetTaps && elapsed < fishState.fight * 0.6) {
+          pct = 99;
+        }
+        pct = Math.min(100, Math.max(0, pct));
+        setReelProgress(pct);
+      }
+    }
+  }
+
+  // Dọn dẹp trạng thái khi người chơi rời ghế hoặc đổi khu
+  function cleanupFishing() {
+    fishState = null;
+    const c = document.getElementById("c");
+    if (c) c.style.transform = "";
+    if (fishingHudEl) {
+      fishingHudEl.classList.add("hidden");
+      const rc = fishingHudEl.querySelector("#fishReelCard");
+      if (rc) rc.classList.add("hidden");
+    }
+  }
+
+  function openFishing() {
+    checkAndCast();
+  }
+
   function fishSeat(i, t) {
     const b = BEDS[i], o = bedOwner(i), sit = o && o.lying, sx = b.x + 35, sy = b.y + 44;
     ctx.fillStyle = "#8d6346"; rr(ctx, sx - 10, sy - 6, 20, 6, 2); ctx.fill(); ctx.fillRect(sx - 8, sy, 3, 8); ctx.fillRect(sx + 5, sy, 3, 8);
     if (!sit) { ctx.fillStyle = "rgba(255,255,255,.5)"; ctx.font = "11px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🎣", sx, sy - 16); return; }
-    const mine = o.id === myId && fishState && fishState.seat === i, bite = mine && fishState.phase === "bite";
-    const bx = sx + 16, by = b.y - 30 + (bite ? 3 + Math.sin(t * 30) * 2 : Math.sin(t * 2 + i) * 1.2);
-    ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(bx, by + 3, 6 + (t * 6 % 5), 2, 0, 0, 7); ctx.stroke();
+
+    const mine = o.id === myId && fishState && fishState.seat === i;
+    const phase = mine ? fishState.phase : "idle";
+    const bite = phase === "bite";
+    const fight = phase === "fight";
+    const casting = phase === "cast";
+    const pwr = (mine && fishState.power) || 1;
+
+    const targetBx = sx + 16, targetBy = b.y - 30;
+    let tipX = sx + 22, tipY = sy - 66;
+    let bx = targetBx, by = targetBy;
+    let showFloat = false;
+
+    if (casting) {
+      showFloat = true;
+      const cp = Math.min(1, Math.max(0, (performance.now() / 1000 - fishState.castStart) / (fishState.castDur || 0.6)));
+      const arcY = -Math.sin(cp * Math.PI) * 45;
+      bx = (sx + 22) + (targetBx - (sx + 22)) * cp;
+      by = (sy - 66) + (targetBy - (sy - 66)) * cp + arcY;
+      tipX = sx + 22 + Math.sin(cp * Math.PI) * 5;
+      tipY = sy - 66 + Math.sin(cp * Math.PI) * 3;
+    } else if (phase === "wait") {
+      showFloat = true;
+      bx = targetBx;
+      by = targetBy + Math.sin(t * 2.5 + i) * 1.5;
+      // Vòng gợn nước nhẹ quanh phao
+      ctx.strokeStyle = "rgba(255,255,255,.4)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(bx, by + 3, 5 + Math.sin(t * 2.2) * 1.5, 1.8, 0, 0, 7); ctx.stroke();
+    } else if (bite) {
+      showFloat = true;
+      bx = targetBx;
+      by = targetBy + 4.5 + Math.sin(t * 32) * 2.2;
+      tipY += Math.sin(t * 32) * 2;
+      // Vòng gợn nước dồn dập
+      ctx.strokeStyle = "rgba(255,255,255,.65)"; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.ellipse(bx, by + 3, 7 + Math.sin(t * 14) * 2.5, 2.2, 0, 0, 7); ctx.stroke();
+    } else if (fight) {
+      showFloat = true;
+      const rShakeX = Math.sin(t * (30 + pwr * 8)) * (pwr * 1.5);
+      const rShakeY = pwr * 2.5 + Math.cos(t * (35 + pwr * 8)) * (pwr * 1.5);
+      tipX += rShakeX;
+      tipY += rShakeY;
+
+      const fShakeX = Math.sin(t * (40 + pwr * 10)) * (pwr * 2.0);
+      const fShakeY = Math.cos(t * (45 + pwr * 10)) * (pwr * 1.8);
+      bx = targetBx + fShakeX;
+      by = targetBy + 4 + fShakeY;
+
+      // Hiệu ứng sóng nước té nước quanh phao
+      for (let r = 0; r < 3; r++) {
+        const rad = ((t * 8 + r * 3) % 12) + 4;
+        const alpha = Math.max(0, 1 - rad / 16) * 0.7;
+        ctx.strokeStyle = `rgba(255,255,255,${alpha})`; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.ellipse(bx, by + 3, rad, rad * 0.35, 0, 0, 7); ctx.stroke();
+      }
+      // Giọt nước bắn lên
+      for (let s = 0; s < 4 + pwr; s++) {
+        const spP = (t * (4 + s) + s * 1.7) % 1;
+        const spX = bx + (Math.sin(s * 99) * 14 * spP);
+        const spY = by - (Math.sin(spP * Math.PI) * (10 + pwr * 3));
+        ctx.fillStyle = `rgba(255,255,255,${0.8 - spP * 0.5})`;
+        ctx.beginPath(); ctx.arc(spX, spY, 1.4, 0, 7); ctx.fill();
+      }
+      // Cá hiếm (power >= 4): hiệu ứng lấp lánh vàng trên mặt nước
+      if (pwr >= 4) {
+        for (let g = 0; g < 5; g++) {
+          const gp = (t * 2.5 + g * 1.3) % 1;
+          const gx = bx + Math.sin(g * 47) * 22;
+          const gy = by - 4 + Math.cos(g * 31) * 9 - gp * 14;
+          const ga = (1 - gp) * 0.9;
+          ctx.fillStyle = `rgba(255, 215, 0, ${ga})`;
+          ctx.font = "800 10px system-ui"; ctx.textAlign = "center";
+          ctx.fillText("✨", gx, gy);
+        }
+      }
+    } else {
+      // Người chơi khác đang ngồi câu hoặc bản thân chưa quăng
+      showFloat = !mine;
+      if (showFloat) {
+        bx = targetBx;
+        by = targetBy + Math.sin(t * 2 + i) * 1.2;
+        ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = 1; ctx.beginPath();
+        ctx.ellipse(bx, by + 3, 6 + (t * 6 % 5), 2, 0, 0, 7); ctx.stroke();
+      }
+    }
+
     drawPlayer({...o, x: sx, y: sy, walking: false, up: true, sit: true}, t);
-    ctx.strokeStyle = "#5c3d2a"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(sx + 6, sy - 18); ctx.lineTo(sx + 22, sy - 66); ctx.stroke();   // cần câu
-    ctx.strokeStyle = "rgba(255,255,255,.7)"; ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(sx + 22, sy - 66); ctx.quadraticCurveTo(bx + 4, by - 20, bx, by); ctx.stroke();
-    ctx.fillStyle = "#e63946"; ctx.beginPath(); ctx.arc(bx, by, 2.6, Math.PI, 0); ctx.fill(); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(bx, by, 2.6, 0, Math.PI); ctx.fill();
-    if (bite) { ctx.font = "700 14px system-ui"; ctx.fillStyle = "#ffd166"; ctx.fillText("❗", bx, by - 14); }
-  }
-  function openFishing() {
-    const m = me();
-    if (!m || m.bed == null || !m.lying) { toast("🎣 Chạm vào một ghế đẩu bên bờ hồ để ngồi câu trước nhé"); return; }
-    const st = S(), baits = BAITS.filter(b => (st.bait[b.id] || 0) > 0);
-    if (!baits.length) { toast("🐛 Hết mồi rồi! Mua mồi ở quầy của cô Lan"); openBait(); return; }
-    openSheet("🎣 Câu cá",
-      `<div class="vol" style="margin:0 0 10px">Chọn mồi rồi chờ phao chìm. Thấy <b>❗ CÁ CẮN</b> thì bấm <b>KÉO</b> thật nhanh!</div>
-       <div class="grid">${baits.map(b => `<button class="opt" data-b="${b.id}">${b.e} ${b.name}<small>còn ${st.bait[b.id]} · ${b.rare > 1 ? "dễ ra cá hiếm" : "mồi thường"}</small></button>`).join("")}</div>`,
-      el => el.querySelectorAll("[data-b]").forEach(btn => btn.onclick = () => castLine(BAITS.find(b => b.id === btn.dataset.b))));
-  }
-  async function castLine(bait) {
-    const m = me();
-    if (!m || m.bed == null) return;
-    const cast = await Life.eco("cast", {bait: bait.id}); if (!cast) return;   // server trừ mồi + hẹn giờ cá cắn
-    const seat = m.bed;
-    fishState = {seat, phase: "wait"};
-    let timers = [];
-    const clear = () => { timers.forEach(clearTimeout); timers = []; };
-    const end = (html) => {
-      clear(); fishState = null;
-      openSheet("🎣 Câu cá", `${html}<div class="grid" style="margin-top:12px"><button class="opt" id="again" style="text-align:center">🎣 Câu tiếp</button><button class="opt" id="stop" style="text-align:center">✓ Nghỉ</button></div>`,
-        el => { el.querySelector("#again").onclick = openFishing; el.querySelector("#stop").onclick = closeSheet; });
-    };
-    openSheet("🎣 Đang câu…", `<div class="wheelBig" id="fz">🎣</div><div class="pomoSub" id="ft">Đang chờ cá cắn… kiên nhẫn nhé</div>
-      <button class="primary" id="pull">KÉO!</button>`, el => {
-      const pull = el.querySelector("#pull");
-      let pulling = false;
-      pull.onclick = async () => {
-        if (!fishState || pulling) return;
-        pulling = true; clear();
-        const r = await Life.eco("pull");
-        if (!r || r.r === "early") return end(`<div class="wheelBig">💨</div><div class="pomoSub">Giật sớm quá, cá chạy mất rồi 😅</div>`);
-        if (r.r === "late") return end(`<div class="wheelBig">🌊</div><div class="pomoSub">Chậm quá, cá ăn mồi rồi bơi mất…</div>`);
-        const fish = FISH[r.fish];
-        Life.apply({fun: 6, xp: fish.rare ? 8 : 3}); Life.commit();
-        if (fish.rare) { send({t: "emote", e: "😂"}); if (fishState) fishState.lastRare = fish.name; }
-        const fIcon = fishIcon(fish.id, 120);
-        const fishVisual = fIcon
-          ? (fish.rare
-              ? `<div style="position:relative;display:inline-block;line-height:0">
-                   <img src="${fIcon}" width="120" height="120" style="display:block;margin:0 auto;animation:fishBounce 1.8s ease-in-out infinite;filter:drop-shadow(0 8px 18px rgba(255,200,50,0.4))" alt="${esc(fish.name)}"/>
-                   <span style="position:absolute;top:-6px;right:-8px;font-size:22px;animation:fishSparkle 1.2s ease-in-out infinite alternate">✨</span>
-                   <span style="position:absolute;bottom:-2px;left:-8px;font-size:18px;animation:fishSparkle 1.4s ease-in-out infinite alternate 0.5s">⭐</span>
-                   <span style="position:absolute;top:10px;left:-6px;font-size:14px;animation:fishSparkle 1.1s ease-in-out infinite alternate 0.8s">✨</span>
-                 </div>`
-              : `<img src="${fIcon}" width="120" height="120" style="display:inline-block;animation:fishBounce 1.8s ease-in-out infinite;filter:drop-shadow(0 6px 14px rgba(0,0,0,0.18))" alt="${esc(fish.name)}"/>`
-            )
-          : fish.e;
-        end(`<div class="wheelBig" style="line-height:1;min-height:120px;display:flex;align-items:center;justify-content:center">${fishVisual}</div><div class="pomoSub">Câu được <b style="color:var(--accent)">${fish.name}</b>${fish.rare ? " ✨ hiếm!" : ""} · bán được ${fish.price} 💰</div>`);
-      };
-      timers.push(setTimeout(() => {
-        if (!fishState) return;
-        fishState.phase = "bite"; Sound.ensure(); if (Sound.ctx) Sound.tone(Sound.master, 880, Sound.ctx.currentTime, .15, "square", .05);
-        if (pull.isConnected) { el.querySelector("#fz").textContent = "❗"; el.querySelector("#ft").innerHTML = "<b style='color:var(--accent)'>CÁ CẮN! BẤM KÉO NGAY!</b>"; pull.style.background = "#ff4d6d"; pull.style.color = "#fff"; }
-        timers.push(setTimeout(() => { if (fishState && fishState.phase === "bite" && !pulling) end(`<div class="wheelBig">🌊</div><div class="pomoSub">Chậm quá, cá ăn mồi rồi bơi mất…</div>`); }, 1400));
-      }, cast.wait * 1000));
-    });
+
+    // Cần câu (uốn cong khi giãy cá)
+    ctx.strokeStyle = "#5c3d2a"; ctx.lineWidth = fight ? 2.5 : 2; ctx.beginPath();
+    if (fight) {
+      ctx.moveTo(sx + 6, sy - 18);
+      ctx.quadraticCurveTo(sx + 15, sy - 42, tipX, tipY);
+    } else {
+      ctx.moveTo(sx + 6, sy - 18);
+      ctx.lineTo(tipX, tipY);
+    }
+    ctx.stroke();
+
+    // Dây câu + phao
+    if (showFloat) {
+      ctx.strokeStyle = fight ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.7)";
+      ctx.lineWidth = fight ? 1 : 0.8;
+      ctx.beginPath();
+      ctx.moveTo(tipX, tipY);
+      if (fight) {
+        ctx.lineTo(bx, by);
+      } else {
+        ctx.quadraticCurveTo(bx + 4, by - 20, bx, by);
+      }
+      ctx.stroke();
+
+      // Phao câu (nửa đỏ nửa trắng)
+      ctx.fillStyle = "#e63946"; ctx.beginPath(); ctx.arc(bx, by, 2.8, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(bx, by, 2.8, 0, Math.PI); ctx.fill();
+    }
+
+    if (bite) {
+      ctx.font = "700 15px system-ui"; ctx.fillStyle = "#ffd166"; ctx.textAlign = "center";
+      ctx.fillText("❗", bx, by - 14);
+    }
   }
   function openBait() {
     const st = S(), FI = Object.fromEntries(FISH.map(f => [f.id, f]));
@@ -4009,7 +4633,7 @@ const Areas = (() => {
     cleanOutfit();
     if (SEASON) setTimeout(() => log(SEASON.banner), 2200);
   }
-  function onArea(a) { placing = null; if (fishState) fishState = null; }
+  function onArea(a) { placing = null; cleanupFishing(); }
   function setHome(items) { homeItems = Array.isArray(items) ? items : []; }
 
   return {has: a => NEW.has(a), TXT, draw, seat, ents, tap, holes, act, over: drawSeason, drawAvatar, onJoin, onArea, setHome,

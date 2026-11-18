@@ -529,7 +529,8 @@
    "name": "Cá chép",
    "w": 30,
    "price": 8,
-   "color": "#e0a458"
+   "color": "#e0a458",
+   "kg": [0.8, 4]
   },
   {
    "id": "perch",
@@ -537,7 +538,8 @@
    "name": "Cá rô",
    "w": 25,
    "price": 10,
-   "color": "#8d9440"
+   "color": "#8d9440",
+   "kg": [0.2, 1]
   },
   {
    "id": "gold",
@@ -545,7 +547,8 @@
    "name": "Cá vàng",
    "w": 14,
    "price": 16,
-   "color": "#ffb703"
+   "color": "#ffb703",
+   "kg": [0.1, 0.5]
   },
   {
    "id": "shrimp",
@@ -553,7 +556,8 @@
    "name": "Tôm càng",
    "w": 12,
    "price": 12,
-   "color": "#ff8fab"
+   "color": "#ff8fab",
+   "kg": [0.05, 0.2]
   },
   {
    "id": "crab",
@@ -561,7 +565,8 @@
    "name": "Cua đồng",
    "w": 8,
    "price": 15,
-   "color": "#e63946"
+   "color": "#e63946",
+   "kg": [0.1, 0.4]
   },
   {
    "id": "koi",
@@ -570,7 +575,8 @@
    "w": 5,
    "price": 40,
    "color": "#ff6b6b",
-   "rare": true
+   "rare": true,
+   "kg": [1.5, 6]
   },
   {
    "id": "puffer",
@@ -579,7 +585,8 @@
    "w": 3,
    "price": 55,
    "color": "#f4d35e",
-   "rare": true
+   "rare": true,
+   "kg": [0.5, 2.5]
   },
   {
    "id": "turtle",
@@ -588,7 +595,8 @@
    "w": 1,
    "price": 120,
    "color": "#90be6d",
-   "rare": true
+   "rare": true,
+   "kg": [3, 12]
   },
   {
    "id": "boot",
@@ -596,7 +604,8 @@
    "name": "Chiếc ủng cũ",
    "w": 6,
    "price": 1,
-   "color": "#6d4c41"
+   "color": "#6d4c41",
+   "kg": [0.5, 1]
   }
  ],
  "BAITS": [
