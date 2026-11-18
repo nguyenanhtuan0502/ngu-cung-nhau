@@ -2888,10 +2888,11 @@ function clampCinemaMove(tx, ty, fromX, fromY, isUserTap) {
     tx = Math.max(465, Math.min(535, tx));
     if (isUserTap && now - lastTicketToastAt > 2.0) { lastTicketToastAt = now; toast("🎟️ Đi qua cổng soát vé ở giữa nhé"); }
   };
+  // Đi vào cổng thì đi XUYÊN qua luôn (chỉ dừng giữa cổng là đứng kẹt: camera sảnh không thấy chỗ nào cao hơn để chạm)
   if (fromLobby) {
-    if (!inGateX && ty < 475) toGate();                 // sảnh -> phòng chiếu
+    if (ty < 475) { if (!inGateX) toGate(); ty = Math.min(ty, 420); }    // sảnh -> phòng chiếu
   } else if (fromHall) {
-    if (!inGateX && ty > 435) toGate();                 // phòng chiếu -> sảnh
+    if (ty > 435) { if (!inGateX) toGate(); ty = Math.max(ty, 490); }    // phòng chiếu -> sảnh
   }
 
   return {x: tx, y: ty};
