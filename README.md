@@ -84,6 +84,7 @@ dùng cùng trình duyệt để giữ token. Dữ liệu bản cũ trong trình
   - Có đôi: 🌹 tặng hoa (15 xu), 🏮 thả đèn hoa đăng (5 xu, cả khu thấy), 📸 photobooth tải ảnh đôi.
 
 ## Cách chơi
+- 🔍 **Độ gần camera** (⚙️ Cài đặt hoặc phím **+ / −**): Gần (mặc định, nhân vật to như game điện thoại) · Vừa · Xa (thấy nhiều cảnh)
 Game chơi ở **màn hình ngang** cho cả điện thoại và máy tính (điện thoại cầm dọc sẽ hiện nhắc xoay ngang).
 
 | Hành động | Điện thoại | Máy tính |

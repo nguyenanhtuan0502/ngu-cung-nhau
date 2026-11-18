@@ -426,7 +426,13 @@
 // Khung hình chuẩn NGANG 1280x720 (scale vừa màn hình). Mỗi khu có "thế giới" riêng:
 //  - Khu đã vẽ lại ngang (LAYOUT.ww/wh): thế giới rộng hơn khung, camera đi theo nhân vật, VIEW_W đơn vị thế giới vừa 1280px.
 //  - Khu chưa vẽ lại: thế giới dọc cũ 360x640 đặt giữa khung ngang.
-const STAGE_W = 1280, STAGE_H = 720, VIEW_W = 800;          // 800 đơn vị thế giới = 1280px khung → nhân vật ~80px
+const STAGE_W = 1280, STAGE_H = 720;
+// Độ gần của camera: số đơn vị thế giới vừa 1280px khung. Số càng nhỏ → nhân vật càng to (giống game điện thoại).
+// "Gần" ≈ nhân vật cao 1/6 màn hình như các game avatar trên điện thoại; "Xa" = kiểu cũ, thấy nhiều cảnh hơn.
+const ZOOMS = {near: {w: 500, name: "🔍 Gần"}, mid: {w: 580, name: "Vừa"}, far: {w: 800, name: "🗺️ Xa"}};
+let zoomKey = (() => { try { return ZOOMS[localStorage.getItem("nc_zoom")] ? localStorage.getItem("nc_zoom") : "near"; } catch { return "near"; } })();
+let VIEW_W = ZOOMS[zoomKey].w;
+function setZoom(k) { if (!ZOOMS[k]) return; zoomKey = k; VIEW_W = ZOOMS[k].w; try { localStorage.setItem("nc_zoom", k); } catch {} cam.snap = true; }
 const OLD_W = 360, OLD_H = 640, OLD_FLOOR = {x1: 16, y1: 175, x2: 344, y2: 575};
 let W = OLD_W, H = OLD_H, FLOOR = OLD_FLOOR, WIDE = false;
 let VIEW = {x0: 0, y0: 0, x1: W, y1: H};                    // phần thế giới đang thấy trên màn hình (để vẽ nền tràn)
@@ -1152,6 +1158,8 @@ function openSettings() {
      ${chk("sLefty", lefty, "🫲 Chơi tay trái", "Cần ảo sang phải; nút E và thanh nhanh sang trái")}
      ${chk("sAuto", auto, "⏱️ Tự thu gọn thanh nhanh", "Sau 6 giây không chạm thì tự thu vào mép màn hình")}
      ${chk("sFast", fastTravel(), "🚌 Bỏ hiệu ứng chuyển khu", "Đi thẳng tới khu mới, không mờ dần")}
+     <div class="sec">🔍 Độ gần camera (nhân vật to / thấy nhiều cảnh) · phím <b>+</b> <b>−</b></div>
+     <div class="timers" style="grid-template-columns:repeat(3,1fr)">${Object.entries(ZOOMS).map(([k, z]) => `<button data-zoom="${k}" class="${zoomKey === k ? "cur" : ""}">${z.name}</button>`).join("")}</div>
      <div class="sec">🪫 Tiết kiệm pin (30 FPS, bớt hiệu ứng)${Power.supported() ? "" : " · máy này không cho đọc % pin"}</div>
      <div class="timers" style="grid-template-columns:repeat(3,1fr)">${[["auto", "Tự động (pin ≤15%)"], ["on", "Luôn bật"], ["off", "Tắt"]]
        .map(([k, n]) => `<button data-pw="${k}" class="${Power.mode() === k ? "cur" : ""}">${n}</button>`).join("")}</div>
@@ -1165,6 +1173,7 @@ function openSettings() {
       };
       el.querySelector("#sAuto").onchange = e => localStorage.setItem("nc_qauto", e.target.checked ? "1" : "0");
       el.querySelector("#sFast").onchange = e => localStorage.setItem(FAST_KEY, e.target.checked ? "1" : "0");
+      el.querySelectorAll("[data-zoom]").forEach(b => b.onclick = () => { setZoom(b.dataset.zoom); el.querySelectorAll("[data-zoom]").forEach(x => x.classList.toggle("cur", x === b)); });
       el.querySelectorAll("[data-pw]").forEach(b => b.onclick = () => {
         Power.set(b.dataset.pw); el.querySelectorAll("[data-pw]").forEach(x => x.classList.toggle("cur", x === b));
         toast(Power.on() ? "🪫 Đang tiết kiệm pin" : "⚡ Đã tắt tiết kiệm pin");
@@ -1717,6 +1726,10 @@ document.addEventListener("keydown", e => {
   else if (e.key === "i" || e.key === "I") Quick.act("bag");            // I: túi đồ
   else if (e.key === "l" || e.key === "L") Quick.act("rank");           // L: xếp hạng
   else if (e.key === "b" || e.key === "B") Quick.toggle();              // B: thu gọn / mở thanh nhanh
+  else if (e.key === "+" || e.key === "=" || e.key === "-" || e.key === "_") {    // +/−: camera gần / xa
+    const ks = Object.keys(ZOOMS), i = ks.indexOf(zoomKey) + (e.key === "-" || e.key === "_" ? 1 : -1);
+    if (ks[i]) { setZoom(ks[i]); toast(`Camera: ${ZOOMS[ks[i]].name}`); }
+  }
   else if (e.key === "Enter") { e.preventDefault(); $("#chatBar").classList.remove("hidden"); $("#chatInput").focus(); }
   else if (e.key === "Escape") closeSheet();
   else if (/^[1-6]$/.test(e.key) && !sheetOpen) send({t: "emote", e: EMOTES[+e.key - 1]});
