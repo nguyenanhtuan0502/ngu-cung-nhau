@@ -27,7 +27,7 @@ FURN = {f["id"]: f for f in CAT["FURNITURE"]}
 PETS = {p["id"]: p for p in CAT["PET_SHOP"]}
 DEFAULT_OUTFIT = {"gender": "g_f", "hair": "short", "hairColor": "nau", "shirt": "", "hat": "hat_nightcap",
                   "glasses": "gl_none", "neck": "neck_none", "back": "back_none"}
-ECO_KEYS = ("coins", "inv", "owned", "bait", "farm", "daily", "wheelDay", "wheelUsed", "hairs", "salonFree")
+ECO_KEYS = ("coins", "inv", "owned", "bait", "farm", "daily", "wheelDay", "wheelUsed", "hairs", "salonFree", "land")
 # Móc cho tiệm tóc (salon.py gắn vào lúc khởi động, tránh import vòng):
 ENSURE_HOOKS = []          # hàm(data) chạy đầu ensure(): chuyển tóc bản cũ, thêm data["hairs"]/["salonFree"]
 HAIR = None                # hàm(data, kiểu muốn để, outfit hiện tại) -> (kiểu, màu) hợp lệ
@@ -60,9 +60,18 @@ def ensure(data):
     data["owned"] = {k: v for k, v in owned.items() if k in CLOTHES and isinstance(v, (int, float))}
     bait = data.get("bait") if isinstance(data.get("bait"), dict) else {"worm": CAT["START_BAIT"]}
     data["bait"] = {k: int(v) for k, v in bait.items() if k in BAITS and isinstance(v, (int, float)) and v > 0}
+    cat_land = CAT.get("FARM_LAND") or {}
+    start_land = cat_land.get("start", CAT.get("FARM_PLOTS", 8))
+    prices = cat_land.get("prices", [])
+    max_land = start_land + len(prices)
+    raw_land = data.get("land")
+    if isinstance(raw_land, int) and not isinstance(raw_land, bool):
+        data["land"] = max(start_land, min(max_land, raw_land))
+    else:
+        data["land"] = start_land
     farm = data.get("farm") if isinstance(data.get("farm"), list) else []
-    farm = [p if isinstance(p, dict) and p.get("c") in CROPS else None for p in farm][:CAT["FARM_PLOTS"]]
-    data["farm"] = farm + [None] * (CAT["FARM_PLOTS"] - len(farm))
+    farm = [p if isinstance(p, dict) and p.get("c") in CROPS else None for p in farm][:data["land"]]
+    data["farm"] = farm + [None] * (data["land"] - len(farm))
     for k in ("daily", "wheelDay"):
         data[k] = data.get(k) if isinstance(data.get(k), str) else ""
     data["wheelUsed"] = data.get("wheelUsed") if isinstance(data.get("wheelUsed"), int) else 0
@@ -71,7 +80,7 @@ def ensure(data):
 
 
 def snapshot(data):
-    return {k: data[k] for k in ECO_KEYS}
+    return {k: data[k] for k in ECO_KEYS if k in data}
 
 
 def daily_bonus(data):
@@ -264,6 +273,22 @@ def a_quiz_ans(st, data, d):
     return res
 
 
+def a_buy_land(st, data, d):
+    """Mua thêm 1 ô đất nông trại, ô sau đắt hơn ô trước."""
+    _need_area(st, "farm", "Mở rộng đất")
+    cfg = CAT.get("FARM_LAND") or {}
+    start = cfg.get("start", CAT.get("FARM_PLOTS", 8))
+    prices = cfg.get("prices", [])
+    idx = data["land"] - start
+    if idx >= len(prices):
+        raise EcoError("Bạn đã mở rộng hết đất rồi, không thể mua thêm!")
+    price = prices[idx]
+    pay(data, price)
+    data["land"] += 1
+    data["farm"].append(None)
+    return {"land": data["land"], "price": price}
+
+
 def a_buy_seed(st, data, d):
     _need_area(st, "farm", "Hạt giống")
     c = CROPS.get(d.get("c"))
@@ -445,7 +470,7 @@ def a_reset(st, data, d):
 ACTIONS = {
     "buy": a_buy, "ticket": a_ticket, "claw": a_claw, "wheel": a_wheel,
     "quizStart": a_quiz_start, "quizAns": a_quiz_ans,
-    "buySeed": a_buy_seed, "plant": a_plant, "water": a_water, "harvest": a_harvest, "sellCrops": a_sell_crops,
+    "buyLand": a_buy_land, "buySeed": a_buy_seed, "plant": a_plant, "water": a_water, "harvest": a_harvest, "sellCrops": a_sell_crops,
     "buyBait": a_buy_bait, "cast": a_cast, "pull": a_pull, "sellFish": a_sell_fish,
     "buyCloth": a_buy_cloth, "adopt": a_adopt, "treat": a_treat, "buyFurn": a_buy_furn, "lotto": a_lotto,
     "drop": a_drop, "reset": a_reset,

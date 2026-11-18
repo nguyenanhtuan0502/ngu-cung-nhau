@@ -508,6 +508,20 @@
   }
  ],
  "FARM_PLOTS": 8,
+ "FARM_LAND": {
+  "_note": "Mở rộng đất nông trại: số ô ban đầu và bảng giá mua thêm từng ô (ô sau đắt hơn ô trước)",
+  "start": 8,
+  "prices": [
+   150,
+   250,
+   400,
+   600,
+   850,
+   1150,
+   1500,
+   2000
+  ]
+ },
  "FISH": [
   {
    "id": "carp",
