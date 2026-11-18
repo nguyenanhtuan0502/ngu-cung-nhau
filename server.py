@@ -1040,9 +1040,25 @@ async def start_background(app):
     dating.SESSIONS, dating.FILTER = SESSIONS, filter_chat
 
 
+async def sw_js(request):
+    # service worker phải nằm ở gốc "/" thì mới quản lý được cả trang game
+    return web.FileResponse(os.path.join(STATIC, "app", "sw.js"),
+                            headers={"Content-Type": "application/javascript", "Cache-Control": "no-cache"})
+
+
+async def asset_links(request):
+    # file chứng minh app Android là của trang này (lấy từ PWABuilder, lưu ở static/app/assetlinks.json)
+    p = os.path.join(STATIC, "app", "assetlinks.json")
+    if not os.path.exists(p):
+        return web.json_response([])
+    return web.FileResponse(p, headers={"Content-Type": "application/json"})
+
+
 def make_app():
     app = web.Application(middlewares=[no_cache] if DEV else [])
     app.router.add_get("/", index)
+    app.router.add_get("/sw.js", sw_js)
+    app.router.add_get("/.well-known/assetlinks.json", asset_links)
     app.router.add_get("/ping", ping)
     app.router.add_get("/static/catalog.js", catalog_js)
     app.router.add_get("/ws", ws_handler)
