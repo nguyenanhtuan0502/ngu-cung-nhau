@@ -406,6 +406,122 @@ const Areas = (() => {
       });
     }
   }
+
+  // Danh sách vị trí các con vật đang được vẽ trên màn hình nông trại (để bắt sự kiện chạm tap)
+  let drawnFarmAnimals = [];
+
+  // Hiệu ứng sản phẩm chăn nuôi (trứng gà, sữa bò) bay vào kho lương thực khi thu hoạch
+  function addAnimalFlyAnim(sx, sy, emoji, count = 2) {
+    const tx = BARN.x + BARN.w / 2, ty = BARN.y + BARN.h - 22;
+    const now = performance.now() / 1000;
+    for (let k = 0; k < count; k++) {
+      cropFlyAnims.push({
+        x0: sx + (Math.random() - 0.5) * 12,
+        y0: sy + (Math.random() - 0.5) * 12,
+        x1: tx + (Math.random() - 0.5) * 12,
+        y1: ty + (Math.random() - 0.5) * 8,
+        e: emoji,
+        t0: now + k * 0.08,
+        dur: 0.75 + Math.random() * 0.1,
+        arc: 45 + Math.random() * 20,
+        rot: (Math.random() - 0.5) * 0.8
+      });
+    }
+  }
+
+  // Lấy cấu hình loài vật nuôi từ CATALOG hoặc cấu hình dự phòng
+  function animalCfg(k) {
+    if (typeof CATALOG !== "undefined" && CATALOG.ANIMALS && CATALOG.ANIMALS[k]) {
+      return CATALOG.ANIMALS[k];
+    }
+    if (k === "chicken") {
+      return {
+        name: "Gà mái", e: "🐔", start: 2, max: 8,
+        prices: [60, 90, 130, 180, 240, 300], feed: 3, time: 120,
+        product: { id: "egg", e: "🥚", name: "Trứng gà", sell: 8 }
+      };
+    }
+    return {
+      name: "Bò sữa", e: "🐄", start: 1, max: 4,
+      prices: [250, 400, 600], feed: 8, time: 300,
+      product: { id: "milk", e: "🥛", name: "Sữa bò", sell: 25 }
+    };
+  }
+
+  // Trạng thái hiện tại của con vật: đói (hungry), đang no chờ lớn (waiting), hoặc sẵn sàng thu hoạch (ready)
+  function animalInfo(k, an) {
+    const cfg = animalCfg(k);
+    const time = cfg.time || (k === "chicken" ? 120 : 300);
+    const f = an && typeof an.f === "number" ? an.f : 0;
+    if (f <= 0) return { st: "hungry", f: 0, time, left: time, prog: 0, cfg };
+    const passed = nowS() - f;
+    if (passed >= time) return { st: "ready", f, time, passed, left: 0, prog: 1, cfg };
+    const prog = Math.min(1, Math.max(0, passed / time));
+    const left = Math.max(0, time - passed);
+    return { st: "waiting", f, time, passed, left, prog, cfg };
+  }
+
+  // Vẽ bong bóng trạng thái phía trên con vật (đói / đang chờ / sẵn sàng thu hoạch)
+  function drawAnimalBubble(x, y, k, inf, t, i, isCow) {
+    if (inf.st === "hungry") {
+      // Đang đói: bong bóng nhỏ hiển thị bông lúa mì 🌾 bồng bềnh nhẹ
+      const bx = x, by = y - (isCow ? 20 : 16) + Math.sin(t * 3 + i) * 1.5;
+      ctx.save();
+      ctx.fillStyle = "rgba(0, 0, 0, 0.12)";
+      ctx.beginPath(); ctx.arc(bx, by + 1, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+      ctx.beginPath(); ctx.arc(bx, by, 8.5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.15)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+      ctx.beginPath(); ctx.arc(bx - 2, by + 9.5, 1.8, 0, Math.PI * 2); ctx.fill();
+      ctx.font = '9.5px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",system-ui';
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("🌾", bx, by + 0.5);
+      ctx.restore();
+    } else if (inf.st === "waiting") {
+      // Đang no & chờ: vòng tiến trình nhỏ (progress ring) sắc nét
+      const rx = x, ry = y - (isCow ? 20 : 16);
+      const rad = 6.5;
+      const prog = isFinite(inf.prog) ? inf.prog : 0;
+      ctx.save();
+      ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+      ctx.beginPath(); ctx.arc(rx, ry, rad + 1.8, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(rx, ry, rad, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = "#52b788";
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.arc(rx, ry, rad, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    } else if (inf.st === "ready") {
+      // Sẵn sàng thu hoạch: bong bóng nảy lên xuống, phát sáng lấp lánh (glow) với biểu tượng trứng / sữa
+      const bounce = Math.abs(Math.sin(t * 4.5 + i * 1.3)) * 4.5;
+      const bx = x, by = y - (isCow ? 22 : 18) - bounce;
+      const prodEmoji = (inf.cfg && inf.cfg.product && inf.cfg.product.e) || (isCow ? "🥛" : "🥚");
+      ctx.save();
+      const glowAlpha = 0.4 + 0.25 * Math.sin(t * 5 + i);
+      ctx.fillStyle = `rgba(255, 215, 0, ${glowAlpha})`;
+      ctx.beginPath(); ctx.arc(bx, by, 13.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath(); ctx.arc(bx, by, 9.5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#ffb703";
+      ctx.lineWidth = 1.3;
+      ctx.stroke();
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath(); ctx.arc(bx - 2, by + 10.5, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.font = '11px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",system-ui';
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(prodEmoji, bx, by);
+      ctx.restore();
+    }
+  }
   function plotInfo(pl) {
     if (!pl) return {st: "empty"};
     const c = CR[pl.c]; if (!c) return {st: "empty"};
@@ -1465,7 +1581,7 @@ const Areas = (() => {
 
     // 8. Khi có nông sản trong kho: emoji thò ra từ cửa và huy hiệu tổng số
     const st = S();
-    const cropsInBarn = st && st.inv ? Object.entries(st.inv).filter(([id, x]) => x && x.cat === "crop" && x.n > 0) : [];
+    const cropsInBarn = st && st.inv ? Object.entries(st.inv).filter(([id, x]) => x && (x.cat === "crop" || x.cat === "prod") && x.n > 0) : [];
     const totalCropCount = cropsInBarn.reduce((sum, [, x]) => sum + (x.n || 0), 0);
     if (totalCropCount > 0) {
       // Biểu tượng nông sản nhô ra từ khe cửa
@@ -1489,6 +1605,8 @@ const Areas = (() => {
   }
 
   function drawFarm(t) {
+    drawnFarmAnimals = [];
+    const st = S();
     const {L, R, T, B} = bleed(), wv = R - L;
     const night = Life.darkness() > .5, [s0, s1] = night ? ["#060a22", "#27316b"] : Life.skyColors();
     const g = ctx.createLinearGradient(0, -100, 0, 160); g.addColorStop(0, s0); g.addColorStop(1, s1);
@@ -1690,7 +1808,7 @@ const Areas = (() => {
     ctx.fillStyle = "#333"; ctx.beginPath(); ctx.arc(116, 536, 4, 0, 7); ctx.fill();
     ctx.restore();
     drawRadio(t);
-    // chuồng gà (trái dưới) + gà, gà con chạy lon ton
+    // chuồng gà (trái dưới) + gà mái theo số lượng và gà con trang trí
     ctx.save(); ctx.translate(30, 0);
     // Nhà chuồng gỗ
     ctx.fillStyle = "#c9a36b"; rr(ctx, 8, 474, 84, 50, 4); ctx.fill();
@@ -1702,34 +1820,75 @@ const Areas = (() => {
     // Cửa chuồng + cọng rơm vàng ở lối ra vào
     ctx.fillStyle = "#5c3d2a"; rr(ctx, 40, 498, 20, 26, 3); ctx.fill();
     ctx.fillStyle = "#e9c46a"; ctx.fillRect(38, 521, 24, 3);
-    // Đàn gà mái và gà con chạy lon ton
-    for (let k = 0; k < 6; k++) {
-      const isChick = k > 2, cx = 30 + ((t * (isChick ? 9 : 6) + k * 47) % 170), cy = 540 + Math.sin(t + k * 2) * 10 - (k % 2) * 8;
-      // Đạo hàm dx/dt > 0 do t tăng tuyến tính trong hàm modulo, hướng nhìn quay sang phải (1)
-      const flip = 1;
-      if (isChick) drawChick(cx, cy, 0.75, t, flip, k);
-      else drawHen(cx, cy, 0.95, t, flip, k);
+    // 1. Gà con trang trí chạy lon ton
+    for (let c = 0; c < 3; c++) {
+      const ckPhase = t * 1.5 + c * 2.1;
+      const ckX = 35 + c * 52 + Math.sin(ckPhase) * 14;
+      const ckY = 538 + (c % 2) * 10 + Math.cos(ckPhase * 0.7) * 4;
+      const ckFlip = Math.cos(ckPhase) >= 0 ? 1 : -1;
+      drawChick(ckX, ckY, 0.75, t, ckFlip, c + 5);
+    }
+    // 2. Đàn gà mái của trang trại: số lượng = S().animals.chicken.length
+    const hens = (st && st.animals && Array.isArray(st.animals.chicken)) ? st.animals.chicken : [{f: 0}, {f: 0}];
+    const henSlots = [
+      { bx: 50,  by: 532 },
+      { bx: 110, by: 534 },
+      { bx: 165, by: 532 },
+      { bx: 40,  by: 554 },
+      { bx: 95,  by: 556 },
+      { bx: 150, by: 554 },
+      { bx: 75,  by: 544 },
+      { bx: 130, by: 546 },
+    ];
+    for (let i = 0; i < hens.length; i++) {
+      const slot = henSlots[i % henSlots.length];
+      const phase = t * 0.8 + i * 1.5;
+      const cx = slot.bx + Math.sin(phase) * 10;
+      const cy = slot.by + Math.cos(phase * 0.8) * 4;
+      const flip = Math.cos(phase) >= 0 ? 1 : -1;
+      drawHen(cx, cy, 0.95, t, flip, i);
+      const worldX = 30 + cx, worldY = cy;
+      drawnFarmAnimals.push({ k: "chicken", i, x: worldX, y: worldY });
+      const inf = animalInfo("chicken", hens[i]);
+      drawAnimalBubble(cx, cy, "chicken", inf, t, i, false);
     }
     ctx.restore();
-    // chuồng bò (phải dưới) + bò gặm cỏ
+    // chuồng bò (phải dưới) + bò sữa theo dữ liệu server
     ctx.save(); ctx.translate(700, 40);
-    // Nền rơm lót chuồng bò
+    // Nền rơm lót chuồng bò (mở rộng nhẹ vừa vặn cho tối đa 4 bò)
     ctx.fillStyle = "rgba(233, 196, 106, 0.28)";
-    ctx.beginPath(); ctx.ellipse(308, 476, 40, 26, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(311, 478, 50, 32, 0, 0, Math.PI * 2); ctx.fill();
     // Hàng rào trắng quanh chuồng bò + cọc rào ở góc
-    ctx.strokeStyle = "#f8f9fa"; ctx.lineWidth = 2.5; ctx.strokeRect(262, 438, 92, 76);
-    ctx.lineWidth = 1.5; ctx.strokeRect(262, 448, 92, 56);
+    const penX = 248, penY = 434, penW = 126, penH = 88;
+    ctx.strokeStyle = "#f8f9fa"; ctx.lineWidth = 2.5; ctx.strokeRect(penX, penY, penW, penH);
+    ctx.lineWidth = 1.5; ctx.strokeRect(penX, penY + 10, penW, penH - 20);
     ctx.fillStyle = "#f8f9fa";
-    rr(ctx, 260, 434, 5, 12, 1); ctx.fill();
-    rr(ctx, 351, 434, 5, 12, 1); ctx.fill();
-    rr(ctx, 260, 506, 5, 12, 1); ctx.fill();
-    rr(ctx, 351, 506, 5, 12, 1); ctx.fill();
-    // Hai chú bò sữa gặm cỏ trong chuồng
-    for (let k = 0; k < 2; k++) {
-      const cx = 286 + k * 42 + Math.sin(t * .3 + k * 3) * 6, cy = 470 + k * 22;
-      // Đạo hàm dx/dt = 6 * 0.3 * cos(0.3*t + 3*k), quay mặt theo hướng di chuyển
-      const flip = Math.cos(t * .3 + k * 3) >= 0 ? 1 : -1;
-      drawCow(cx, cy, 0.95, t, flip, k + 1);
+    rr(ctx, penX - 2, penY - 4, 5, 12, 1); ctx.fill();
+    rr(ctx, penX + penW - 3, penY - 4, 5, 12, 1); ctx.fill();
+    rr(ctx, penX - 2, penY + penH - 8, 5, 12, 1); ctx.fill();
+    rr(ctx, penX + penW - 3, penY + penH - 8, 5, 12, 1); ctx.fill();
+    // Đàn bò sữa của trang trại: số lượng = S().animals.cow.length
+    const cows = (st && st.animals && Array.isArray(st.animals.cow)) ? st.animals.cow : [{f: 0}];
+    const cowSlots = [
+      { bx: 280, by: 464 },
+      { bx: 342, by: 464 },
+      { bx: 278, by: 498 },
+      { bx: 340, by: 498 },
+    ];
+    for (let i = 0; i < cows.length; i++) {
+      let slot;
+      if (cows.length === 1) slot = { bx: 310, by: 478 };
+      else if (cows.length === 2) slot = (i === 0) ? { bx: 286, by: 472 } : { bx: 336, by: 486 };
+      else slot = cowSlots[i % cowSlots.length];
+      const cowPhase = t * 0.35 + i * 1.9;
+      const cx = slot.bx + Math.sin(cowPhase) * 7;
+      const cy = slot.by + Math.cos(cowPhase * 0.7) * 3;
+      const flip = Math.cos(cowPhase) >= 0 ? 1 : -1;
+      drawCow(cx, cy, 0.95, t, flip, i + 1);
+      const worldX = 700 + cx, worldY = 40 + cy;
+      drawnFarmAnimals.push({ k: "cow", i, x: worldX, y: worldY });
+      const inf = animalInfo("cow", cows[i]);
+      drawAnimalBubble(cx, cy, "cow", inf, t, i, true);
     }
     ctx.restore();
     // Đèn nông trại mộc mạc (cột gỗ, bóng vàng ấm, bướm đêm/đom đóm) & dây đèn fairy lights
@@ -1895,11 +2054,27 @@ const Areas = (() => {
       });
   }
 
-  // Bảng thông tin kho lương thực (nông sản & hạt giống dự trữ)
+  // Bảng thông tin kho lương thực (nông sản, sản phẩm chăn nuôi & hạt giống dự trữ)
   function openBarn() {
     const st = S();
-    const cropPrice = id => (CR[id.slice(5)] || CR[id] || {}).sell || 0;
-    const crops = Object.entries(st.inv || {}).filter(([id, x]) => x && x.cat === "crop" && x.n > 0).map(([id, x]) => [id, {...x, sell: cropPrice(id)}]);
+    const itemPrice = (id, cat) => {
+      if (cat === "prod") {
+        const pid = id.startsWith("prod_") ? id.slice(5) : id;
+        const anCfg = typeof CATALOG !== "undefined" && CATALOG.ANIMALS;
+        if (anCfg) {
+          for (const a of Object.values(anCfg)) {
+            if (a && a.product && a.product.id === pid) return a.product.sell || 0;
+          }
+        }
+        if (pid === "egg") return 8;
+        if (pid === "milk") return 25;
+        return 0;
+      }
+      return (CR[id.slice(5)] || CR[id] || {}).sell || 0;
+    };
+    const crops = Object.entries(st.inv || {})
+      .filter(([id, x]) => x && (x.cat === "crop" || x.cat === "prod") && x.n > 0)
+      .map(([id, x]) => [id, {...x, sell: itemPrice(id, x.cat)}]);
     const total = crops.reduce((s, [, x]) => s + x.n * x.sell, 0);
     const seeds = Object.entries(st.inv || {}).filter(([id, x]) => x && (x.cat === "seed" || id.startsWith("seed_")) && x.n > 0);
 
@@ -1909,7 +2084,7 @@ const Areas = (() => {
         <span style="opacity:.85">Tổng giá trị:</span><b>${total} 💰</b>
       </div>
       <button class="primary" id="sellAllBarn" style="margin-top:8px">Bán hết (+${total} 💰)</button>
-    ` : `<div class="vol" style="margin:0">Kho còn trống. Trồng rau rồi thu hoạch nhé!</div>`;
+    ` : `<div class="vol" style="margin:0">Kho còn trống. Trồng rau và chăn nuôi rồi thu hoạch nhé!</div>`;
 
     const seedsHtml = seeds.length ? `
       <div class="grid">${seeds.map(([, x]) => `<div class="opt" style="cursor:default"><span>${x.e || "🌱"} ${esc(x.name)}</span><small>Số lượng: ${x.n}</small></div>`).join("")}</div>
@@ -1917,17 +2092,177 @@ const Areas = (() => {
 
     openSheet("🏚️ Kho lương thực",
       `${Life.coinLine()}
-       <div class="sec">🧺 Nông sản</div>
+       <div class="sec">🧺 Nông sản & chăn nuôi</div>
        ${cropsHtml}
        <div class="sec">🌱 Hạt giống trong kho</div>
        ${seedsHtml}
-       <div class="vol" style="font-size:12px;margin-top:10px">💡 Nông sản thu hoạch tự cất vào kho.</div>`,
+       <div class="vol" style="font-size:12px;margin-top:10px">💡 Nông sản và sản phẩm chăn nuôi tự cất vào kho.</div>`,
       el => {
         const sa = el.querySelector("#sellAllBarn");
         if (sa) sa.onclick = async () => {
           const r = await Life.eco("sellCrops"); if (!r) return;
           Life.apply({xp: Math.ceil(r.total / 20)}); Life.commit(); closeSheet(); toast(`💰 Bán được ${r.total} xu!`);
         };
+      }
+    );
+  }
+
+  // Mở bảng quản lý vật nuôi: Chuồng gà hoặc Chuồng bò
+  function openAnimals(k) {
+    const isChicken = (k === "chicken");
+    const title = isChicken ? "🐔 Chuồng gà" : "🐄 Chuồng bò";
+    const cfg = animalCfg(k);
+    const st = S();
+    const list = (st && st.animals && Array.isArray(st.animals[k])) ? st.animals[k] : [];
+    const prod = cfg.product || (isChicken ? {id: "egg", e: "🥚", name: "Trứng gà", sell: 8} : {id: "milk", e: "🥛", name: "Sữa bò", sell: 25});
+    const feedCost = cfg.feed || (isChicken ? 3 : 8);
+    const prodName = prod.name;
+    const prodEmoji = prod.e;
+    const readyText = isChicken ? "Có trứng!" : "Có sữa!";
+
+    const start = cfg.start || 1;
+    const maxN = cfg.max || start;
+    const prices = cfg.prices || [];
+    const count = list.length;
+    const idx = Math.max(0, count - start);
+    const canBuy = (count < maxN && idx >= 0 && idx < prices.length);
+    const nextPrice = canBuy ? prices[idx] : null;
+
+    const rowsHtml = list.map((an, i) => {
+      const inf = animalInfo(k, an);
+      let stHtml = "";
+      if (inf.st === "hungry") {
+        stHtml = `Đang đói · <button class="opt btn-feed" data-i="${i}" style="padding:4px 9px;font-size:12px;margin:0">Cho ăn ${feedCost} 💰</button>`;
+      } else if (inf.st === "ready") {
+        stHtml = `${readyText} <button class="primary btn-collect" data-i="${i}" style="padding:4px 11px;font-size:12px;margin:0">Thu</button>`;
+      } else {
+        stHtml = `<span data-countdown-i="${i}" style="opacity:.85">Đang no · còn ${fmtTime(inf.left)}</span>`;
+      }
+      return `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 4px;border-bottom:1px solid rgba(255,255,255,0.07)">
+          <span style="font-weight:600">${cfg.e || (isChicken ? "🐔" : "🐄")} Con ${i + 1}</span>
+          <div style="display:flex;align-items:center;gap:6px">${stHtml}</div>
+        </div>
+      `;
+    }).join("");
+
+    const buyHtml = canBuy
+      ? `<div class="grid"><button class="opt" id="btnBuyAnimal" style="text-align:center">Mua thêm 1 con: ${nextPrice} 💰</button></div>`
+      : `<div class="vol" style="margin:4px 0;text-align:center">Đã đủ ${maxN} con (tối đa)</div>`;
+
+    openSheet(title,
+      `${Life.coinLine()}
+       <div class="sec">🐾 Danh sách ${cfg.name || (isChicken ? "gà mái" : "bò sữa")}</div>
+       <div class="board" style="padding:2px 8px">
+         ${rowsHtml || `<div class="vol" style="margin:0">Chưa có con vật nào.</div>`}
+       </div>
+       <div class="grid" style="margin-top:10px">
+         <button class="opt" id="btnFeedAll" style="text-align:center">🌾 Cho ăn tất cả</button>
+         <button class="opt" id="btnCollectAll" style="text-align:center">🧺 Thu hoạch tất cả</button>
+       </div>
+       <div class="sec">➕ Mua thêm</div>
+       ${buyHtml}
+       <div class="vol" style="font-size:12px;margin-top:8px">💡 Cho ăn và chờ thời gian để thu hoạch ${prodName.toLowerCase()}.</div>`,
+      el => {
+        // 1. Cho ăn từng con
+        el.querySelectorAll(".btn-feed").forEach(btn => {
+          btn.onclick = async () => {
+            const i = +btn.dataset.i;
+            const r = await Life.eco("feedAnimal", { k, i });
+            if (!r) return;
+            Life.apply({ xp: 1 });
+            Life.commit();
+            toast(`🌾 Đã cho ${cfg.name} (Con ${i + 1}) ăn (-${feedCost} 💰)!`);
+            openAnimals(k);
+          };
+        });
+
+        // 2. Thu hoạch từng con
+        el.querySelectorAll(".btn-collect").forEach(btn => {
+          btn.onclick = async () => {
+            const i = +btn.dataset.i;
+            const r = await Life.eco("collectAnimal", { k, i });
+            if (!r) return;
+            Life.apply({ xp: 2 });
+            Life.commit();
+            const pos = drawnFarmAnimals.find(a => a.k === k && a.i === i);
+            const sx = pos ? pos.x : (isChicken ? 100 : 1000);
+            const sy = pos ? pos.y : (isChicken ? 540 : 500);
+            addAnimalFlyAnim(sx, sy, prodEmoji, 2);
+            toast(`${prodEmoji} +1 ${prodName}`);
+            openAnimals(k);
+          };
+        });
+
+        // 3. Cho ăn tất cả
+        const btnFeedAll = el.querySelector("#btnFeedAll");
+        if (btnFeedAll) {
+          btnFeedAll.onclick = async () => {
+            const r = await Life.eco("feedAll");
+            if (!r) return;
+            Life.apply({ xp: Math.max(1, r.n) });
+            Life.commit();
+            toast(`🌾 Đã cho ăn ${r.n} con vật (-${r.price} 💰)!`);
+            openAnimals(k);
+          };
+        }
+
+        // 4. Thu hoạch tất cả
+        const btnCollectAll = el.querySelector("#btnCollectAll");
+        if (btnCollectAll) {
+          btnCollectAll.onclick = async () => {
+            const r = await Life.eco("collectAll");
+            if (!r) return;
+            Life.apply({ xp: Math.max(2, r.n * 2) });
+            Life.commit();
+            drawnFarmAnimals.forEach(a => {
+              const an = (S().animals && S().animals[a.k] && S().animals[a.k][a.i]);
+              const inf = animalInfo(a.k, an);
+              if (inf.st === "ready") {
+                const pEmoji = (inf.cfg && inf.cfg.product && inf.cfg.product.e) || (a.k === "cow" ? "🥛" : "🥚");
+                addAnimalFlyAnim(a.x, a.y, pEmoji, 2);
+              }
+            });
+            toast(`🧺 Thu hoạch tất cả ${r.n} sản phẩm!`);
+            openAnimals(k);
+          };
+        }
+
+        // 5. Mua thêm con vật
+        const btnBuy = el.querySelector("#btnBuyAnimal");
+        if (btnBuy) {
+          btnBuy.onclick = async () => {
+            btnBuy.disabled = true;
+            const r = await Life.eco("buyAnimal", { k });
+            if (!r) { btnBuy.disabled = false; return; }
+            Life.apply({ xp: 5 });
+            Life.commit();
+            toast(`🎉 Đã mua thêm 1 con ${cfg.name}!`);
+            openAnimals(k);
+          };
+        }
+
+        // 6. Cập nhật đếm ngược mỗi giây trong giao diện
+        const iv = setInterval(() => {
+          if (!document.body.contains(el)) { clearInterval(iv); return; }
+          const curSt = S();
+          const curList = (curSt && curSt.animals && Array.isArray(curSt.animals[k])) ? curSt.animals[k] : [];
+          let shouldRefresh = false;
+          el.querySelectorAll("[data-countdown-i]").forEach(span => {
+            const idx = +span.dataset.countdownI;
+            const an = curList[idx];
+            const inf = animalInfo(k, an);
+            if (inf.st !== "waiting") {
+              shouldRefresh = true;
+            } else {
+              span.textContent = `Đang no · còn ${fmtTime(inf.left)}`;
+            }
+          });
+          if (shouldRefresh) {
+            clearInterval(iv);
+            openAnimals(k);
+          }
+        }, 1000);
       }
     );
   }
@@ -4809,6 +5144,11 @@ const Areas = (() => {
   function tap(x, y) {
     for (const {n, p} of npcsHere()) if (Math.abs(x - p.x) < 15 && y > p.y - AV_TOP + 4 && y < p.y + 6) { talkNpc(n); return true; }
     if (myArea === "farm") {
+      const hitAnimal = drawnFarmAnimals.find(a => Math.hypot(x - a.x, y - a.y) <= 26);
+      if (hitAnimal) {
+        openAnimals(hitAnimal.k);
+        return true;
+      }
       if (inRect(x, y, BARN)) { openBarn(); return true; }
       const i = PLOTS.findIndex(r => inRect(x, y, r));
       if (i >= 0) { tapPlot(i); return true; }
@@ -4877,6 +5217,6 @@ const Areas = (() => {
   function setHome(items) { homeItems = Array.isArray(items) ? items : []; }
 
   return {has: a => NEW.has(a), TXT, draw, seat, ents, tap, holes, act, over: drawSeason, drawAvatar, onJoin, onArea, setHome,
-          openWardrobe, owns, ownLabel, cleanOutfit, outfit: () => cleanOutfit(), npcPos, FARM_LAMPS, fishIcon, BARN, openBarn,
+          openWardrobe, owns, ownLabel, cleanOutfit, outfit: () => cleanOutfit(), npcPos, FARM_LAMPS, fishIcon, BARN, openBarn, openAnimals,
           say: (id, text, sec = 4) => { npcTalk[id] = {text, until: performance.now() / 1000 + sec}; }};   // NPC tự nói (tiệm tóc)
 })();
