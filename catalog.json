@@ -1,0 +1,1424 @@
+{
+ "CLAW_CHANCE": 0.3,
+ "STUDY_COINS_PER_MIN": 1,
+ "SHOP": {
+  "park": [
+   {
+    "id": "icecream",
+    "e": "🍦",
+    "name": "Kem ốc quế",
+    "price": 10,
+    "fun": 15
+   },
+   {
+    "id": "milktea",
+    "e": "🥛",
+    "name": "Trà sữa trân châu",
+    "price": 15,
+    "fun": 20,
+    "energy": 5
+   },
+   {
+    "id": "corn",
+    "e": "🌽",
+    "name": "Bắp nướng",
+    "price": 8,
+    "fun": 5,
+    "energy": 10
+   },
+   {
+    "id": "balloon",
+    "e": "🎈",
+    "name": "Bong bóng bay",
+    "price": 12,
+    "fun": 10,
+    "keep": true,
+    "cat": "misc"
+   }
+  ],
+  "popcorn": [
+   {
+    "id": "pop_salt",
+    "e": "🍿",
+    "name": "Bắp rang muối",
+    "price": 12,
+    "fun": 10,
+    "energy": 5
+   },
+   {
+    "id": "pop_cara",
+    "e": "🍯",
+    "name": "Bắp caramel",
+    "price": 15,
+    "fun": 14,
+    "energy": 5
+   },
+   {
+    "id": "pop_butter",
+    "e": "🍿",
+    "name": "Bắp bơ",
+    "price": 15,
+    "fun": 14,
+    "energy": 5
+   },
+   {
+    "id": "pop_matcha",
+    "e": "🍵",
+    "name": "Bắp trà xanh",
+    "price": 18,
+    "fun": 18,
+    "energy": 5
+   }
+  ],
+  "drinks": [
+   {
+    "id": "greentea",
+    "e": "🍵",
+    "name": "Chai trà xanh",
+    "price": 6,
+    "energy": 6
+   },
+   {
+    "id": "coffee",
+    "e": "☕",
+    "name": "Lon cà phê",
+    "price": 8,
+    "energy": 15
+   },
+   {
+    "id": "soda",
+    "e": "🥤",
+    "name": "Lon nước ngọt",
+    "price": 6,
+    "fun": 6,
+    "energy": 3
+   }
+  ],
+  "souvenir": [
+   {
+    "id": "keychain",
+    "e": "🔑",
+    "name": "Móc khóa mèo mây",
+    "price": 30,
+    "keep": true
+   },
+   {
+    "id": "standee",
+    "e": "🎎",
+    "name": "Standee nhân vật",
+    "price": 45,
+    "keep": true
+   },
+   {
+    "id": "poster",
+    "e": "🖼️",
+    "name": "Áp phích phim",
+    "price": 25,
+    "keep": true
+   },
+   {
+    "id": "figure",
+    "e": "🗿",
+    "name": "Mô hình mini",
+    "price": 60,
+    "keep": true
+   }
+  ]
+ },
+ "TICKET_PRICE": 20,
+ "CLAW_PRICE": 5,
+ "CLAW_PRIZES": [
+  {
+   "id": "bear",
+   "e": "🧸",
+   "name": "Gấu bông mèo"
+  },
+  {
+   "id": "bunny",
+   "e": "🐰",
+   "name": "Thỏ trắng"
+  },
+  {
+   "id": "panda",
+   "e": "🐼",
+   "name": "Gấu trúc mini"
+  },
+  {
+   "id": "fox",
+   "e": "🦊",
+   "name": "Cáo nhỏ"
+  }
+ ],
+ "WHEEL": {
+  "FREE_PER_DAY": 1,
+  "PRICE": 20,
+  "PRIZES": [
+   {
+    "w": 30,
+    "e": "💰",
+    "text": "10 xu",
+    "coins": 10
+   },
+   {
+    "w": 20,
+    "e": "💰",
+    "text": "25 xu",
+    "coins": 25
+   },
+   {
+    "w": 8,
+    "e": "💰",
+    "text": "80 xu",
+    "coins": 80
+   },
+   {
+    "w": 2,
+    "e": "💎",
+    "text": "200 xu",
+    "coins": 200
+   },
+   {
+    "w": 15,
+    "e": "⚡",
+    "text": "+30 năng lượng",
+    "energy": 30
+   },
+   {
+    "w": 15,
+    "e": "😊",
+    "text": "+30 vui vẻ",
+    "fun": 30
+   },
+   {
+    "w": 10,
+    "e": "🍀",
+    "text": "Chúc may mắn lần sau"
+   }
+  ]
+ },
+ "QUIZ_CFG": {
+  "PER_ROUND": 5,
+  "ENERGY": 10,
+  "COINS": 6,
+  "KNOW": 2,
+  "XP": 5
+ },
+ "QUIZ": [
+  {
+   "q": "Thủ đô của Việt Nam là?",
+   "a": [
+    "Hà Nội",
+    "Huế",
+    "Đà Nẵng",
+    "TP. Hồ Chí Minh"
+   ],
+   "c": 0
+  },
+  {
+   "q": "7 × 8 = ?",
+   "a": [
+    "54",
+    "56",
+    "64",
+    "48"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Nước sôi ở bao nhiêu độ C (áp suất thường)?",
+   "a": [
+    "90",
+    "100",
+    "80",
+    "120"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Hành tinh lớn nhất Hệ Mặt Trời?",
+   "a": [
+    "Trái Đất",
+    "Sao Thổ",
+    "Sao Mộc",
+    "Sao Hỏa"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Con vật nào là động vật có vú?",
+   "a": [
+    "Cá mập",
+    "Cá heo",
+    "Cá chép",
+    "Cá ngựa"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Một năm thường có bao nhiêu ngày?",
+   "a": [
+    "360",
+    "364",
+    "365",
+    "366"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Từ tiếng Anh của \"con mèo\"?",
+   "a": [
+    "Dog",
+    "Cat",
+    "Cow",
+    "Bird"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Sông dài nhất Việt Nam (chảy trên lãnh thổ VN)?",
+   "a": [
+    "Sông Hồng",
+    "Sông Đồng Nai",
+    "Sông Mê Kông",
+    "Sông Đà"
+   ],
+   "c": 1
+  },
+  {
+   "q": "144 : 12 = ?",
+   "a": [
+    "11",
+    "12",
+    "13",
+    "14"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Cây xanh hấp thụ khí gì để quang hợp?",
+   "a": [
+    "Oxy",
+    "Nitơ",
+    "CO₂",
+    "Heli"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Đỉnh núi cao nhất Việt Nam?",
+   "a": [
+    "Bà Đen",
+    "Fansipan",
+    "Langbiang",
+    "Tây Côn Lĩnh"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Tam giác có tổng các góc bằng?",
+   "a": [
+    "90°",
+    "180°",
+    "270°",
+    "360°"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Ánh sáng đi nhanh hơn âm thanh. Đúng không?",
+   "a": [
+    "Đúng",
+    "Sai",
+    "Bằng nhau",
+    "Tùy ngày"
+   ],
+   "c": 0
+  },
+  {
+   "q": "\"Thank you\" nghĩa là?",
+   "a": [
+    "Xin chào",
+    "Tạm biệt",
+    "Cảm ơn",
+    "Xin lỗi"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Đại dương lớn nhất thế giới?",
+   "a": [
+    "Đại Tây Dương",
+    "Ấn Độ Dương",
+    "Bắc Băng Dương",
+    "Thái Bình Dương"
+   ],
+   "c": 3
+  },
+  {
+   "q": "15% của 200 là?",
+   "a": [
+    "15",
+    "20",
+    "30",
+    "45"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Bộ phận nào bơm máu đi khắp cơ thể?",
+   "a": [
+    "Phổi",
+    "Tim",
+    "Gan",
+    "Dạ dày"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Một giờ có bao nhiêu giây?",
+   "a": [
+    "360",
+    "600",
+    "3600",
+    "6000"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Chữ cái đầu tiên của bảng chữ cái tiếng Việt?",
+   "a": [
+    "A",
+    "Ă",
+    "B",
+    "Â"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Băng tan thành nước là hiện tượng gì?",
+   "a": [
+    "Bay hơi",
+    "Nóng chảy",
+    "Đông đặc",
+    "Ngưng tụ"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Số nguyên tố nhỏ nhất?",
+   "a": [
+    "0",
+    "1",
+    "2",
+    "3"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Mặt Trời mọc ở hướng nào?",
+   "a": [
+    "Bắc",
+    "Nam",
+    "Đông",
+    "Tây"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Từ tiếng Anh của \"thư viện\"?",
+   "a": [
+    "Library",
+    "Bookstore",
+    "School",
+    "Museum"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Chu vi hình vuông cạnh 5 cm?",
+   "a": [
+    "10 cm",
+    "20 cm",
+    "25 cm",
+    "15 cm"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Loài chim nào không biết bay?",
+   "a": [
+    "Chim sẻ",
+    "Đại bàng",
+    "Chim cánh cụt",
+    "Bồ câu"
+   ],
+   "c": 2
+  }
+ ],
+ "CROPS": [
+  {
+   "id": "carrot",
+   "e": "🥕",
+   "name": "Cà rốt",
+   "seed": 5,
+   "time": 90,
+   "sell": 12,
+   "xp": 3,
+   "leaf": "#4caf50"
+  },
+  {
+   "id": "tomato",
+   "e": "🍅",
+   "name": "Cà chua",
+   "seed": 8,
+   "time": 150,
+   "sell": 20,
+   "xp": 4,
+   "leaf": "#3f8f47"
+  },
+  {
+   "id": "corn",
+   "e": "🌽",
+   "name": "Bắp",
+   "seed": 10,
+   "time": 240,
+   "sell": 30,
+   "xp": 5,
+   "leaf": "#7cb342"
+  },
+  {
+   "id": "sunflower",
+   "e": "🌻",
+   "name": "Hướng dương",
+   "seed": 12,
+   "time": 300,
+   "sell": 38,
+   "xp": 6,
+   "leaf": "#558b2f"
+  },
+  {
+   "id": "watermelon",
+   "e": "🍉",
+   "name": "Dưa hấu",
+   "seed": 20,
+   "time": 480,
+   "sell": 70,
+   "xp": 9,
+   "leaf": "#2e7d32"
+  }
+ ],
+ "FARM_PLOTS": 8,
+ "FISH": [
+  {
+   "id": "carp",
+   "e": "🐟",
+   "name": "Cá chép",
+   "w": 30,
+   "price": 8,
+   "color": "#e0a458"
+  },
+  {
+   "id": "perch",
+   "e": "🐟",
+   "name": "Cá rô",
+   "w": 25,
+   "price": 10,
+   "color": "#8d9440"
+  },
+  {
+   "id": "gold",
+   "e": "🐠",
+   "name": "Cá vàng",
+   "w": 14,
+   "price": 16,
+   "color": "#ffb703"
+  },
+  {
+   "id": "shrimp",
+   "e": "🦐",
+   "name": "Tôm càng",
+   "w": 12,
+   "price": 12,
+   "color": "#ff8fab"
+  },
+  {
+   "id": "crab",
+   "e": "🦀",
+   "name": "Cua đồng",
+   "w": 8,
+   "price": 15,
+   "color": "#e63946"
+  },
+  {
+   "id": "koi",
+   "e": "🎏",
+   "name": "Cá koi",
+   "w": 5,
+   "price": 40,
+   "color": "#ff6b6b",
+   "rare": true
+  },
+  {
+   "id": "puffer",
+   "e": "🐡",
+   "name": "Cá nóc",
+   "w": 3,
+   "price": 55,
+   "color": "#f4d35e",
+   "rare": true
+  },
+  {
+   "id": "turtle",
+   "e": "🐢",
+   "name": "Rùa vàng",
+   "w": 1,
+   "price": 120,
+   "color": "#90be6d",
+   "rare": true
+  },
+  {
+   "id": "boot",
+   "e": "👢",
+   "name": "Chiếc ủng cũ",
+   "w": 6,
+   "price": 1,
+   "color": "#6d4c41"
+  }
+ ],
+ "BAITS": [
+  {
+   "id": "worm",
+   "e": "🐛",
+   "name": "Mồi giun",
+   "pack": 5,
+   "price": 8,
+   "rare": 1
+  },
+  {
+   "id": "shrimpbait",
+   "e": "🍤",
+   "name": "Mồi tôm xịn",
+   "pack": 5,
+   "price": 20,
+   "rare": 3
+  }
+ ],
+ "START_BAIT": 5,
+ "CLOTHES": [
+  {
+   "id": "g_f",
+   "slot": "gender",
+   "e": "👧",
+   "name": "Nữ",
+   "price": 0
+  },
+  {
+   "id": "g_m",
+   "slot": "gender",
+   "e": "👦",
+   "name": "Nam",
+   "price": 0
+  },
+  {
+   "id": "hair_short",
+   "slot": "hair",
+   "e": "💇",
+   "name": "Tóc ngắn",
+   "price": 0
+  },
+  {
+   "id": "hair_long",
+   "slot": "hair",
+   "e": "💁",
+   "name": "Tóc dài",
+   "price": 40
+  },
+  {
+   "id": "hair_bun",
+   "slot": "hair",
+   "e": "🍡",
+   "name": "Tóc búi",
+   "price": 40
+  },
+  {
+   "id": "hair_spiky",
+   "slot": "hair",
+   "e": "⚡",
+   "name": "Tóc dựng",
+   "price": 40
+  },
+  {
+   "id": "hc_brown",
+   "slot": "hairColor",
+   "e": "🟫",
+   "name": "Nâu",
+   "price": 0,
+   "color": "#3b2a20"
+  },
+  {
+   "id": "hc_black",
+   "slot": "hairColor",
+   "e": "⬛",
+   "name": "Đen",
+   "price": 15,
+   "color": "#1c1c22"
+  },
+  {
+   "id": "hc_blonde",
+   "slot": "hairColor",
+   "e": "🟨",
+   "name": "Vàng",
+   "price": 25,
+   "color": "#e9c46a"
+  },
+  {
+   "id": "hc_pink",
+   "slot": "hairColor",
+   "e": "🌸",
+   "name": "Hồng",
+   "price": 30,
+   "color": "#ff8fab"
+  },
+  {
+   "id": "hc_blue",
+   "slot": "hairColor",
+   "e": "🟦",
+   "name": "Xanh",
+   "price": 30,
+   "color": "#4cc9f0"
+  },
+  {
+   "id": "hc_silver",
+   "slot": "hairColor",
+   "e": "⬜",
+   "name": "Bạch kim",
+   "price": 45,
+   "color": "#d9d9e3"
+  },
+  {
+   "id": "shirt_red",
+   "slot": "shirt",
+   "e": "👕",
+   "name": "Áo thun đỏ",
+   "price": 20,
+   "color": "#e63946"
+  },
+  {
+   "id": "shirt_mint",
+   "slot": "shirt",
+   "e": "👕",
+   "name": "Áo thun bạc hà",
+   "price": 20,
+   "color": "#80ed99"
+  },
+  {
+   "id": "shirt_navy",
+   "slot": "shirt",
+   "e": "👕",
+   "name": "Áo thủy thủ",
+   "price": 25,
+   "color": "#1d3557",
+   "stripe": "#f1faee"
+  },
+  {
+   "id": "shirt_hoodie",
+   "slot": "shirt",
+   "e": "🧥",
+   "name": "Hoodie tím",
+   "price": 35,
+   "color": "#7b2cbf"
+  },
+  {
+   "id": "shirt_yellow",
+   "slot": "shirt",
+   "e": "👚",
+   "name": "Áo len vàng",
+   "price": 30,
+   "color": "#ffd166",
+   "stripe": "#f4a261"
+  },
+  {
+   "id": "shirt_suit",
+   "slot": "shirt",
+   "e": "🤵",
+   "name": "Vest đen",
+   "price": 60,
+   "color": "#22223b",
+   "tie": "#e63946"
+  },
+  {
+   "id": "hat_nightcap",
+   "slot": "hat",
+   "e": "🌙",
+   "name": "Mũ ngủ",
+   "price": 0
+  },
+  {
+   "id": "hat_none",
+   "slot": "hat",
+   "e": "🚫",
+   "name": "Không đội",
+   "price": 0
+  },
+  {
+   "id": "hat_beanie",
+   "slot": "hat",
+   "e": "🧶",
+   "name": "Mũ len",
+   "price": 20,
+   "color": "#e76f51"
+  },
+  {
+   "id": "hat_cap",
+   "slot": "hat",
+   "e": "🧢",
+   "name": "Mũ lưỡi trai",
+   "price": 25,
+   "color": "#277da1"
+  },
+  {
+   "id": "hat_bow",
+   "slot": "hat",
+   "e": "🎀",
+   "name": "Nơ hồng",
+   "price": 20,
+   "color": "#ff5d8f"
+  },
+  {
+   "id": "hat_flower",
+   "slot": "hat",
+   "e": "🌺",
+   "name": "Hoa cài tóc",
+   "price": 15,
+   "color": "#ff6b6b"
+  },
+  {
+   "id": "hat_crown",
+   "slot": "hat",
+   "e": "👑",
+   "name": "Vương miện",
+   "price": 120,
+   "color": "#ffd23f"
+  },
+  {
+   "id": "hat_witch",
+   "slot": "hat",
+   "e": "🧙",
+   "name": "Mũ phù thủy",
+   "price": 50,
+   "color": "#5a189a"
+  },
+  {
+   "id": "hat_santa",
+   "slot": "hat",
+   "e": "🎅",
+   "name": "Mũ Noel",
+   "price": 40,
+   "color": "#d62828"
+  },
+  {
+   "id": "gl_none",
+   "slot": "glasses",
+   "e": "🚫",
+   "name": "Không đeo",
+   "price": 0
+  },
+  {
+   "id": "gl_round",
+   "slot": "glasses",
+   "e": "👓",
+   "name": "Kính tròn",
+   "price": 20
+  },
+  {
+   "id": "gl_sun",
+   "slot": "glasses",
+   "e": "🕶️",
+   "name": "Kính râm",
+   "price": 30
+  },
+  {
+   "id": "gl_heart",
+   "slot": "glasses",
+   "e": "💗",
+   "name": "Kính trái tim",
+   "price": 35
+  },
+  {
+   "id": "neck_none",
+   "slot": "neck",
+   "e": "🚫",
+   "name": "Không có",
+   "price": 0
+  },
+  {
+   "id": "neck_scarf",
+   "slot": "neck",
+   "e": "🧣",
+   "name": "Khăn quàng đỏ",
+   "price": 20,
+   "color": "#d62828"
+  },
+  {
+   "id": "neck_bowtie",
+   "slot": "neck",
+   "e": "🎀",
+   "name": "Nơ cổ",
+   "price": 15,
+   "color": "#3a86ff"
+  },
+  {
+   "id": "neck_pearl",
+   "slot": "neck",
+   "e": "📿",
+   "name": "Vòng ngọc trai",
+   "price": 45,
+   "color": "#f8f9fa"
+  },
+  {
+   "id": "back_none",
+   "slot": "back",
+   "e": "🚫",
+   "name": "Không có",
+   "price": 0
+  },
+  {
+   "id": "back_bag",
+   "slot": "back",
+   "e": "🎒",
+   "name": "Ba lô",
+   "price": 30,
+   "color": "#f4a261"
+  },
+  {
+   "id": "back_cape",
+   "slot": "back",
+   "e": "🦸",
+   "name": "Áo choàng",
+   "price": 60,
+   "color": "#c1121f"
+  },
+  {
+   "id": "back_angel",
+   "slot": "back",
+   "e": "👼",
+   "name": "Cánh thiên thần",
+   "price": 150,
+   "color": "#ffffff"
+  },
+  {
+   "id": "back_bat",
+   "slot": "back",
+   "e": "🦇",
+   "name": "Cánh dơi",
+   "price": 100,
+   "color": "#3c096c"
+  },
+  {
+   "id": "back_fairy",
+   "slot": "back",
+   "e": "🧚",
+   "name": "Cánh tiên",
+   "price": 130,
+   "color": "#a0e7e5"
+  }
+ ],
+ "RENT_FACTOR": 3,
+ "FURNITURE": [
+  {
+   "id": "f_bed",
+   "e": "🛏️",
+   "name": "Giường",
+   "price": 60,
+   "size": 46
+  },
+  {
+   "id": "f_sofa",
+   "e": "🛋️",
+   "name": "Sofa",
+   "price": 50,
+   "size": 44
+  },
+  {
+   "id": "f_tv",
+   "e": "📺",
+   "name": "TV",
+   "price": 70,
+   "size": 34
+  },
+  {
+   "id": "f_piano",
+   "e": "🎹",
+   "name": "Đàn piano",
+   "price": 90,
+   "size": 40
+  },
+  {
+   "id": "f_guitar",
+   "e": "🎸",
+   "name": "Đàn guitar",
+   "price": 35,
+   "size": 30
+  },
+  {
+   "id": "f_frame",
+   "e": "🖼️",
+   "name": "Tranh",
+   "price": 25,
+   "size": 30
+  },
+  {
+   "id": "f_clock",
+   "e": "🕰️",
+   "name": "Đồng hồ",
+   "price": 25,
+   "size": 28
+  },
+  {
+   "id": "f_lamp",
+   "e": "🕯️",
+   "name": "Đèn nến",
+   "price": 15,
+   "size": 24
+  },
+  {
+   "id": "f_cactus",
+   "e": "🌵",
+   "name": "Chậu xương rồng",
+   "price": 12,
+   "size": 28
+  },
+  {
+   "id": "f_sunfl",
+   "e": "🌻",
+   "name": "Bình hướng dương",
+   "price": 15,
+   "size": 28
+  },
+  {
+   "id": "f_books",
+   "e": "📚",
+   "name": "Chồng sách",
+   "price": 15,
+   "size": 26
+  },
+  {
+   "id": "f_teddy",
+   "e": "🧸",
+   "name": "Gấu bông to",
+   "price": 30,
+   "size": 32
+  },
+  {
+   "id": "f_tree",
+   "e": "🎄",
+   "name": "Cây thông",
+   "price": 45,
+   "size": 44
+  },
+  {
+   "id": "f_rug_r",
+   "e": "🟥",
+   "name": "Thảm cam",
+   "price": 20,
+   "size": 70,
+   "rug": "#e76f51"
+  },
+  {
+   "id": "f_rug_b",
+   "e": "🟦",
+   "name": "Thảm xanh",
+   "price": 20,
+   "size": 70,
+   "rug": "#4a6fa5"
+  },
+  {
+   "id": "f_plush_C",
+   "e": "🧸",
+   "name": "Gấu bông hạng C",
+   "price": 0,
+   "size": 24,
+   "noshop": true,
+   "rank": "C",
+   "deco": 1
+  },
+  {
+   "id": "f_plush_B",
+   "e": "🧸",
+   "name": "Gấu bông hạng B",
+   "price": 0,
+   "size": 30,
+   "noshop": true,
+   "rank": "B",
+   "deco": 3
+  },
+  {
+   "id": "f_plush_A",
+   "e": "🧸",
+   "name": "Gấu bông hạng A",
+   "price": 0,
+   "size": 36,
+   "noshop": true,
+   "rank": "A",
+   "deco": 8
+  },
+  {
+   "id": "f_plush_S",
+   "e": "🧸",
+   "name": "Gấu bông hạng S",
+   "price": 0,
+   "size": 44,
+   "noshop": true,
+   "rank": "S",
+   "deco": 20
+  },
+  {
+   "id": "f_plush_SP",
+   "e": "🧸",
+   "name": "Gấu bông hạng S+",
+   "price": 0,
+   "size": 54,
+   "noshop": true,
+   "rank": "S+",
+   "deco": 60
+  }
+ ],
+ "PET_SHOP": [
+  {
+   "id": "cat",
+   "e": "🐱",
+   "name": "Nhận nuôi mèo",
+   "price": 50
+  },
+  {
+   "id": "dog",
+   "e": "🐶",
+   "name": "Nhận nuôi chó",
+   "price": 50
+  },
+  {
+   "id": "bunny",
+   "e": "🐰",
+   "name": "Nhận nuôi thỏ",
+   "price": 50
+  }
+ ],
+ "PET_TREAT": {
+  "id": "treat",
+  "e": "🦴",
+  "name": "Bánh thưởng thú cưng",
+  "price": 5,
+  "fun": 8
+ },
+ "LOTTERY": {
+  "price": 10,
+  "PRIZES": [
+   {
+    "w": 55,
+    "text": "Không trúng, chúc may mắn lần sau 🍀"
+   },
+   {
+    "w": 30,
+    "coins": 15,
+    "text": "Giải khuyến khích: 15 xu"
+   },
+   {
+    "w": 12,
+    "coins": 50,
+    "text": "Giải ba: 50 xu!"
+   },
+   {
+    "w": 2.5,
+    "coins": 200,
+    "text": "Giải nhì: 200 xu!!"
+   },
+   {
+    "w": 0.5,
+    "coins": 1000,
+    "text": "🎉 ĐỘC ĐẮC 1000 XU!!!"
+   }
+  ]
+ },
+ "START_COINS": 100,
+ "DAILY_BONUS": 50,
+ "ARCADE": {
+  "BC_FACES": [
+   {
+    "id": "bau",
+    "name": "Bầu",
+    "e": "🎃"
+   },
+   {
+    "id": "cua",
+    "name": "Cua",
+    "e": "🦀"
+   },
+   {
+    "id": "tom",
+    "name": "Tôm",
+    "e": "🦐"
+   },
+   {
+    "id": "ca",
+    "name": "Cá",
+    "e": "🐟"
+   },
+   {
+    "id": "ga",
+    "name": "Gà",
+    "e": "🐓"
+   },
+   {
+    "id": "nai",
+    "name": "Nai",
+    "e": "🦌"
+   }
+  ],
+  "BC_BET_SEC": 20,
+  "BC_ROLL_SEC": 4,
+  "BC_RESULT_SEC": 6,
+  "BC_MIN": 5,
+  "BC_MAX": 200,
+  "DAILY_LOSS_LIMIT": 500,
+  "CLAW_RANKS": [
+   {
+    "rank": "C",
+    "appear": 50,
+    "grip": 0.6,
+    "sell": 20,
+    "deco": 1,
+    "size": 22,
+    "color": "#adb5bd"
+   },
+   {
+    "rank": "B",
+    "appear": 28,
+    "grip": 0.4,
+    "sell": 60,
+    "deco": 3,
+    "size": 28,
+    "color": "#52b788"
+   },
+   {
+    "rank": "A",
+    "appear": 15,
+    "grip": 0.25,
+    "sell": 200,
+    "deco": 8,
+    "size": 34,
+    "color": "#4895ef"
+   },
+   {
+    "rank": "S",
+    "appear": 5,
+    "grip": 0.12,
+    "sell": 800,
+    "deco": 20,
+    "size": 42,
+    "color": "#9b5de5"
+   },
+   {
+    "rank": "S+",
+    "appear": 2,
+    "grip": 0.05,
+    "sell": 4000,
+    "deco": 60,
+    "size": 52,
+    "color": "#ffd166"
+   }
+  ],
+  "CLAW_MACHINES": [
+   {
+    "id": "normal",
+    "name": "Máy thường",
+    "price": 10,
+    "grip": 1.0
+   },
+   {
+    "id": "vip",
+    "name": "Máy cao cấp",
+    "price": 30,
+    "grip": 1.6
+   }
+  ],
+  "CLAW_CAGE": 10,
+  "PITY_EVERY": 8,
+  "PITY_BONUS": 0.05,
+  "LOTTO": {
+   "price": 10,
+   "max_per_day": 5,
+   "draw_time": "18:30",
+   "claim_days": 7,
+   "prizes": [
+    {
+     "match": 3,
+     "name": "Giải đặc biệt (trúng cả 3 số)",
+     "coins": 1000
+    },
+    {
+     "match": 2,
+     "name": "Giải nhất (trúng 2 số cuối)",
+     "coins": 100
+    },
+    {
+     "match": 1,
+     "name": "Giải khuyến khích (trúng số cuối)",
+     "coins": 10
+    }
+   ]
+  }
+ },
+ "STOCK": {
+  "ALWAYS_OPEN": true,
+  "SESSIONS": [
+   [
+    "09:00",
+    "11:30"
+   ],
+   [
+    "13:00",
+    "14:45"
+   ]
+  ],
+  "TICK_SEC": 5,
+  "FEE": 0.0015,
+  "ORDERS_PER_MIN": 10,
+  "CAP_BASE": 500,
+  "CAP_PER_LV": 250,
+  "TICKERS": [
+   {
+    "sym": "NONG",
+    "name": "Nông Sản Xanh",
+    "sector": "Nông sản",
+    "p": 42
+   },
+   {
+    "sym": "LUAV",
+    "name": "Lúa Vàng",
+    "sector": "Nông sản",
+    "p": 18
+   },
+   {
+    "sym": "MAYT",
+    "name": "Thời Trang Mây",
+    "sector": "Thời trang",
+    "p": 65
+   },
+   {
+    "sym": "GAUB",
+    "name": "Gấu Bông Việt",
+    "sector": "Thời trang",
+    "p": 30
+   },
+   {
+    "sym": "RAPS",
+    "name": "Rạp Phim Sao",
+    "sector": "Rạp phim",
+    "p": 55
+   },
+   {
+    "sym": "BIEN",
+    "name": "Du Lịch Biển Xanh",
+    "sector": "Du lịch",
+    "p": 38
+   },
+   {
+    "sym": "MEOT",
+    "name": "Công Nghệ Mèo",
+    "sector": "Công nghệ",
+    "p": 120
+   },
+   {
+    "sym": "HDAU",
+    "name": "Chip Hạt Đậu",
+    "sector": "Công nghệ",
+    "p": 90
+   },
+   {
+    "sym": "BMIN",
+    "name": "Bánh Mì Ngon",
+    "sector": "Thực phẩm",
+    "p": 24
+   },
+   {
+    "sym": "TSUA",
+    "name": "Trà Sữa Tròn",
+    "sector": "Thực phẩm",
+    "p": 33
+   },
+   {
+    "sym": "NANG",
+    "name": "Năng Lượng Nắng",
+    "sector": "Năng lượng",
+    "p": 47
+   },
+   {
+    "sym": "NHAD",
+    "name": "Nhà Đẹp Land",
+    "sector": "Bất động sản",
+    "p": 75
+   }
+  ],
+  "NEWS": [
+   {
+    "sector": "Nông sản",
+    "up": "Nông trại trúng mùa lớn, rau củ bội thu!",
+    "down": "Mưa bão kéo dài, nông sản mất mùa"
+   },
+   {
+    "sector": "Thời trang",
+    "up": "Mốt mới gây sốt, khu mua sắm cháy hàng!",
+    "down": "Hàng tồn kho chất đống, cửa hàng giảm giá"
+   },
+   {
+    "sector": "Rạp phim",
+    "up": "Phim bom tấn mới ra rạp, vé bán hết sạch!",
+    "down": "Tuần này không có phim mới, rạp vắng khách"
+   },
+   {
+    "sector": "Du lịch",
+    "up": "Mùa hè tới, khách du lịch tăng vọt!",
+    "down": "Thời tiết xấu, nhiều chuyến đi bị hủy"
+   },
+   {
+    "sector": "Công nghệ",
+    "up": "Ra mắt điện thoại mèo thông minh, cả thành phố xếp hàng!",
+    "down": "Lỗi phần mềm, sản phẩm bị thu hồi"
+   },
+   {
+    "sector": "Thực phẩm",
+    "up": "Món ăn mới hot trend, quán nào cũng đông!",
+    "down": "Giá nguyên liệu tăng, lợi nhuận giảm"
+   },
+   {
+    "sector": "Năng lượng",
+    "up": "Trời nắng đẹp cả tuần, điện mặt trời lập kỷ lục!",
+    "down": "Trời âm u nhiều ngày, sản lượng điện giảm"
+   },
+   {
+    "sector": "Bất động sản",
+    "up": "Khu nhà mới khai trương, người mua đông nghịt!",
+    "down": "Thị trường nhà đất trầm lắng"
+   }
+  ]
+ },
+ "DATING": {
+  "MIN_AGE": 16,
+  "BIO_MAX": 80,
+  "FLOWER_PRICE": 15,
+  "LANTERN_PRICE": 5,
+  "GIFT_PER_DAY": 5,
+  "HOBBIES": [
+   "🎮 Chơi game",
+   "🎵 Âm nhạc",
+   "📚 Đọc sách",
+   "🎬 Xem phim",
+   "⚽ Thể thao",
+   "🍳 Nấu ăn",
+   "✈️ Du lịch",
+   "🎨 Vẽ tranh",
+   "🐱 Thú cưng",
+   "📸 Chụp ảnh"
+  ]
+ }
+}

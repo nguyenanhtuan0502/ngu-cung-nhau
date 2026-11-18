@@ -3,3 +3,8 @@ __pycache__/
 static/_test.html
 homes.json
 homes.json.tmp
+game.db
+game.db-journal
+game.db-wal
+game.db-shm
+*.db
