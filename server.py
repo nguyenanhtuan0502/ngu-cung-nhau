@@ -200,6 +200,41 @@ def new_room(key, info, legacy_code=None):
     }
 
 
+# ================== LỊCH CHIẾU RẠP PHIM ==================
+FILMS = [f for f in economy.CAT.get("CINEMA", {}).get("films", []) if YT_ID.match(f.get("id", "")) and f.get("len", 0) > 0]
+
+
+def cinema_sched(now):
+    """Phim đang chiếu theo lịch (lặp vòng theo giờ thật) -> media {"id","pos","at","paused","sched"}."""
+    total = sum(f["len"] for f in FILMS)
+    if not total:
+        return None
+    off = now % total
+    for i, f in enumerate(FILMS):
+        if off < f["len"]:
+            pos = off
+            if pos > f["len"] - 5:                   # sắp hết phim: chuyển luôn sang phim sau
+                f, pos = FILMS[(i + 1) % len(FILMS)], 0.0
+            return {"id": f["id"], "pos": round(pos, 1), "at": now, "paused": False, "sched": True}
+        off -= f["len"]
+    return None
+
+
+def cinema_fill(room, now):
+    """Rạp đang trống (không ai mở phim/kênh) hoặc đang theo lịch thì cập nhật phim theo lịch. Trả True nếu đổi."""
+    A = room["areas"].get("cinema")
+    if not A or not FILMS:
+        return False
+    m = A["media"]["tv"]
+    if (m is None and not A["tv"]["on"]) or (m and m.get("sched") and not m.get("paused")):
+        new = cinema_sched(now)
+        if m and new and m["id"] == new["id"]:
+            return False                           # vẫn đúng phim, không cần đổi
+        A["media"]["tv"], A["tv"] = new, {"on": True, "ch": -1}
+        return True
+    return False
+
+
 def public_area(a):
     return {"beds": a["beds"], "tv": a["tv"], "music": a["music"], "light": a["light"],
             "media": a["media"], "tvTimer": a["tv_timer"]}
@@ -431,6 +466,9 @@ async def enter(sess, key, info):
     p.update(area=area, x=round(clamp(sx, fl[0], fl[2]), 1), y=round(clamp(sy, fl[1], fl[3]), 1), bed=None,
              sat_at=None, studied=0.0)
     sid = p["id"]
+    if area == "cinema" and cinema_fill(room, time.time()):   # rạp trống / phim lịch đã hết: chiếu phim theo lịch
+        await broadcast(room, {"t": "media", "area": "cinema", "slot": "tv", "a": "sched",
+                               "media": room["areas"]["cinema"]["media"]["tv"], "now": time.time(), "by": "🎬 Lịch chiếu"})
     room["players"][sid] = p
     room["sockets"][sid] = sess["ws"]
     sess["room"] = room
@@ -800,6 +838,15 @@ async def ws_handler(request):
                     except (TypeError, ValueError):
                         continue
                     cur.update(pos=pos, at=now, paused=(act == "pause"))
+                    cur.pop("sched", None)              # ai đó tự dừng/chạy: không còn theo lịch nữa
+                elif act == "sched" and slot == "tv" and an == "cinema" and FILMS:
+                    # về lịch chiếu (bấm nút) hoặc phim lịch vừa hết (client tự gửi): chiếu phim theo giờ
+                    if cur and cur.get("sched") and not cur.get("paused"):
+                        new = cinema_sched(now)
+                        if new and new["id"] == cur["id"]:
+                            continue                    # nhiều máy cùng báo hết phim: chỉ đổi 1 lần
+                    A["media"]["tv"], A["tv"] = cinema_sched(now), {"on": True, "ch": -1}
+                    cancel_tv_timer(A)
                 elif act == "stop":
                     A["media"][slot] = None
                     if slot == "tv":

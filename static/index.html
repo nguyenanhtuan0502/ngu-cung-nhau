@@ -884,6 +884,8 @@ function applyMedia(slot) {
       events: {
         onReady: () => { p.ready = true; p.pl.setVolume(Math.round(Sound.vol * 100)); syncYT(slot); },
         onStateChange: e => {
+          // rạp phim: phim theo lịch vừa hết -> báo server chuyển sang phim kế tiếp
+          if (e.data === 0 && slot === "tv" && myArea === "cinema" && media.tv && media.tv.sched) send({t: "media", slot: "tv", a: "sched"});
           if (e.data === 1) {
             p.fails = 0; updateUnlock();
             if (slot === "music") $("#mTitle").textContent = (p.pl.getVideoData() || {}).title || "YouTube";
@@ -1329,7 +1331,7 @@ function handle(m) {
       const A = areas[m.area];
       A.media[m.slot] = m.media;
       if (m.slot === "tv") {
-        if (m.a === "load") A.tv = {on: true, ch: -1};
+        if (m.a === "load" || m.a === "sched") A.tv = {on: true, ch: -1};
         if (m.a === "stop") { A.tv.on = false; A.tvTimer = null; }
       } else if (m.a === "load") A.music.on = false;
       if (m.area !== myArea) break;
@@ -1337,7 +1339,7 @@ function handle(m) {
       else if (m.a === "load") { syncMusic(); $("#ytMusic").classList.remove("mini"); }
       const where = m.slot === "tv" ? "trên TV" : "trên radio";
       applyMedia(m.slot);
-      log(`<b>${esc(m.by)}</b> ${{load: "mở YouTube", pause: "tạm dừng YouTube", play: "tiếp tục YouTube", stop: "tắt YouTube"}[m.a]} ${where}`);
+      log(`<b>${esc(m.by)}</b> ${{load: "mở YouTube", pause: "tạm dừng YouTube", play: "tiếp tục YouTube", stop: "tắt YouTube", sched: "chiếu phim theo lịch 🎬"}[m.a]} ${where}`);
       updateUI(); break;
     }
     case "roompet": setRoomPet(m.pet); break;

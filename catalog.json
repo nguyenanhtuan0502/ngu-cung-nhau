@@ -1344,5 +1344,114 @@
    "🐱 Thú cưng",
    "📸 Chụp ảnh"
   ]
+ },
+ "CINEMA": {
+  "_note": "Lịch chiếu rạp phim: chiếu lần lượt rồi lặp lại theo giờ thật, ai vào rạp cũng xem cùng một chỗ. id = mã video YouTube (11 ký tự, phim cho phép nhúng), len = số giây, color = màu poster.",
+  "films": [
+   {
+    "id": "aqz-KE-bpKQ",
+    "title": "Big Buck Bunny",
+    "desc": "Chú thỏ bự hiền lành ra tay dạy dỗ ba con gặm nhấm quậy phá.",
+    "len": 635,
+    "genre": "Hài",
+    "color": "#8ecae6"
+   },
+   {
+    "id": "eRsGyueVLvQ",
+    "title": "Sintel",
+    "desc": "Cô gái đi khắp thế giới tìm lại chú rồng nhỏ của mình.",
+    "len": 888,
+    "genre": "Phiêu lưu",
+    "color": "#e76f51"
+   },
+   {
+    "id": "mN0zPOpADL4",
+    "title": "Agent 327",
+    "desc": "Điệp viên 327 đột nhập tiệm cắt tóc bí ẩn.",
+    "len": 232,
+    "genre": "Hành động",
+    "color": "#f4a261"
+   },
+   {
+    "id": "WhWc3b3KhnY",
+    "title": "Spring",
+    "desc": "Cô bé chăn cừu và chú chó vượt qua nỗi sợ để đón mùa xuân.",
+    "len": 464,
+    "genre": "Thần thoại",
+    "color": "#90be6d"
+   },
+   {
+    "id": "_cMxraX_5RE",
+    "title": "Sprite Fright",
+    "desc": "Nhóm teen đi cắm trại gặp những tinh linh nấm… không hề dễ thương.",
+    "len": 630,
+    "genre": "Kinh dị hài",
+    "color": "#7b2cbf"
+   },
+   {
+    "id": "PVGeM40dABA",
+    "title": "Coffee Run",
+    "desc": "Một cốc cà phê và cả một chuyến đi trong tâm trí.",
+    "len": 185,
+    "genre": "Ngắn",
+    "color": "#9c6644"
+   },
+   {
+    "id": "R6MlUcmOul8",
+    "title": "Tears of Steel",
+    "desc": "Nhóm khoa học gia ở Amsterdam cố cứu thế giới khỏi người máy.",
+    "len": 734,
+    "genre": "Khoa học viễn tưởng",
+    "color": "#457b9d"
+   },
+   {
+    "id": "u9lj-c29dxI",
+    "title": "Wing It!",
+    "desc": "Mèo và chó tự chế tên lửa trong nhà kho, chuyện gì sẽ xảy ra?",
+    "len": 238,
+    "genre": "Hài",
+    "color": "#ffb703"
+   },
+   {
+    "id": "Y-rmzh0PI3c",
+    "title": "Cosmos Laundromat",
+    "desc": "Chú cừu Franck chán đời gặp người bán hàng kỳ lạ.",
+    "len": 731,
+    "genre": "Kỳ ảo",
+    "color": "#2a9d8f"
+   },
+   {
+    "id": "UXqq0ZvbOnk",
+    "title": "Charge",
+    "desc": "Cuộc rượt đuổi giành giật năng lượng trong thế giới tương lai.",
+    "len": 263,
+    "genre": "Hành động",
+    "color": "#e63946"
+   },
+   {
+    "id": "Z4C82eyhwgU",
+    "title": "Caminandes 2",
+    "desc": "Chú lạc đà Koro cố vượt hàng rào để ăn cỏ ngon.",
+    "len": 146,
+    "genre": "Hài",
+    "color": "#e9c46a"
+   },
+   {
+    "id": "pKmSdY56VtY",
+    "title": "Hero",
+    "desc": "Cuộc phiêu lưu vẽ tay bằng bút chì 2D trong Blender.",
+    "len": 237,
+    "genre": "Hành động",
+    "color": "#f72585"
+   },
+   {
+    "id": "TLkA0RELQ1g",
+    "title": "Elephants Dream",
+    "desc": "Hai người lạc trong cỗ máy khổng lồ kỳ dị.",
+    "len": 654,
+    "genre": "Kỳ ảo",
+    "color": "#6d597a"
+   }
+  ]
  }
 }
