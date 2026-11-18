@@ -77,10 +77,149 @@ const Zones = (() => {
     return "#" + [n >> 16, (n >> 8) & 255, n & 255].map(v => f(v).toString(16).padStart(2, "0")).join("");
   }
 
-  function drawArcade(t) {                                    // 🎪 hội chợ ngoài trời 1120x600
+  // ---------- Các hàm hỗ trợ trang trí chibi dễ thương ----------
+  // Vẽ hình trái tim chibi
+  function drawHeart(x, y, size, col) {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    const r = size / 2;
+    ctx.moveTo(x, y + r * 0.9);
+    ctx.bezierCurveTo(x - r * 1.15, y + r * 0.2, x - r * 1.15, y - r * 0.85, x, y - r * 0.3);
+    ctx.bezierCurveTo(x + r * 1.15, y - r * 0.85, x + r * 1.15, y + r * 0.2, x, y + r * 0.9);
+    ctx.fill();
+  }
+
+  // Vẽ ngôi sao 4 cánh lấp lánh (sparkle ánh sáng vàng / neon)
+  function drawSparkle(x, y, r, col = "#ffd166", rot = 0) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rot);
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(0, -r);
+    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.quadraticCurveTo(0, 0, 0, r);
+    ctx.quadraticCurveTo(0, 0, -r, 0);
+    ctx.quadraticCurveTo(0, 0, 0, -r);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Vẽ chùm bóng bay trái tim đung đưa mềm mại theo gió
+  function drawHeartBalloon(x, y, col, t, seed = 0, size = 16) {
+    const sw = Math.sin(t * 1.6 + seed) * 4;
+    const bx = x + sw, by = y + Math.cos(t * 1.2 + seed) * 3;
+    // Dây bóng uốn cong
+    ctx.strokeStyle = "rgba(180,180,180,0.65)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, y + size + 22);
+    ctx.quadraticCurveTo(x + sw * 0.5, y + size + 10, bx, by + size * 0.55);
+    ctx.stroke();
+    // Nút thắt nơ nhỏ
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(bx, by + size * 0.52, 2, 0, 7);
+    ctx.fill();
+    // Thân bóng trái tim
+    drawHeart(bx, by, size, col);
+    // Vệt bóng sáng trắng tạo độ phồng 3D
+    ctx.fillStyle = "rgba(255,255,255,0.45)";
+    ctx.beginPath();
+    ctx.ellipse(bx - size * 0.22, by - size * 0.22, size * 0.16, size * 0.09, -0.6, 0, 7);
+    ctx.fill();
+  }
+
+  // Vẽ bình hoa thủy tinh cắm hoa hồng tươi trên bàn
+  function drawFlowerVase(x, y, t) {
+    // Bình thủy tinh nhỏ
+    ctx.fillStyle = "rgba(225,245,255,0.7)";
+    ctx.strokeStyle = "rgba(180,215,245,0.9)";
+    ctx.lineWidth = 1;
+    rr(ctx, x - 5, y - 9, 10, 11, 3);
+    ctx.fill();
+    ctx.stroke();
+    // Nước trong bình
+    ctx.fillStyle = "rgba(160,225,255,0.5)";
+    rr(ctx, x - 4, y - 4, 8, 5, 2);
+    ctx.fill();
+    // Cành và lá hoa
+    ctx.strokeStyle = "#40916c";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(x, y - 8); ctx.lineTo(x - 4, y - 16);
+    ctx.moveTo(x, y - 8); ctx.lineTo(x + 4, y - 17);
+    ctx.moveTo(x, y - 8); ctx.lineTo(x, y - 20);
+    ctx.stroke();
+    // Bông hoa hồng và baby trắng nở rộ
+    ctx.fillStyle = "#ff758f";
+    ctx.beginPath(); ctx.arc(x - 4, y - 16, 3.5, 0, 7); ctx.fill();
+    ctx.fillStyle = "#ffb3c1";
+    ctx.beginPath(); ctx.arc(x - 4, y - 16, 2, 0, 7); ctx.fill();
+    ctx.fillStyle = "#ff4d6d";
+    ctx.beginPath(); ctx.arc(x, y - 20, 4, 0, 7); ctx.fill();
+    ctx.fillStyle = "#ff8fa3";
+    ctx.beginPath(); ctx.arc(x, y - 20, 2.2, 0, 7); ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath(); ctx.arc(x + 4, y - 17, 3, 0, 7); ctx.fill();
+    ctx.fillStyle = "#ffd166";
+    ctx.beginPath(); ctx.arc(x + 4, y - 17, 1.3, 0, 7); ctx.fill();
+  }
+
+  // Vẽ cây cảnh văn phòng hiện đại (Bàng Singapore, Lưỡi Hổ, Trầu Bà)
+  function drawOfficePlant(x, y, type = "fig") {
+    // Chân đế kim loại + chậu gốm trắng
+    ctx.fillStyle = "#343a40";
+    ctx.fillRect(x - 8, y + 13, 16, 3);
+    ctx.fillStyle = "#f8f9fa";
+    ctx.strokeStyle = "#ced4da";
+    ctx.lineWidth = 1;
+    rr(ctx, x - 9, y - 2, 18, 15, 3);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#5c4033"; // Đất
+    ctx.beginPath(); ctx.ellipse(x, y - 1, 8, 3, 0, 0, 7); ctx.fill();
+    if (type === "fig") {
+      // Cây bàng Singapore tán lá tròn to
+      ctx.strokeStyle = "#6b4a35"; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(x, y - 1); ctx.lineTo(x, y - 22); ctx.stroke();
+      const leaves = [[-9, -9, 7, 11, -0.4], [9, -11, 7, 11, 0.4], [-8, -19, 8, 12, -0.3], [8, -21, 8, 12, 0.3], [0, -27, 8, 12, 0]];
+      leaves.forEach(([lx, ly, rx, ry, rot]) => {
+        ctx.save(); ctx.translate(x + lx, y + ly); ctx.rotate(rot);
+        ctx.fillStyle = "#2d6a4f"; ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 7); ctx.fill();
+        ctx.strokeStyle = "#52b788"; ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.moveTo(0, ry * 0.8); ctx.lineTo(0, -ry * 0.8); ctx.stroke();
+        ctx.restore();
+      });
+    } else if (type === "snake") {
+      // Cây Lưỡi Hổ lá vươn thẳng viền vàng phong thủy
+      const blades = [[-5, 0, 17, -0.15], [-2, 0, 23, -0.05], [3, 0, 21, 0.08], [6, 0, 15, 0.18]];
+      blades.forEach(([bx, by, h, rot]) => {
+        ctx.save(); ctx.translate(x + bx, y + by); ctx.rotate(rot);
+        ctx.fillStyle = "#ffd166"; // Viền vàng
+        ctx.beginPath(); ctx.moveTo(-3, 0); ctx.lineTo(0, -h); ctx.lineTo(3, 0); ctx.fill();
+        ctx.fillStyle = "#2d6a4f"; // Ruột xanh
+        ctx.beginPath(); ctx.moveTo(-2, 0); ctx.lineTo(0, -h + 2); ctx.lineTo(2, 0); ctx.fill();
+        ctx.restore();
+      });
+    } else {
+      // Cây Trầu bà xẻ lá Monstera
+      ctx.strokeStyle = "#40916c"; ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.moveTo(x, y - 1); ctx.quadraticCurveTo(x - 7, y - 11, x - 11, y - 18); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, y - 1); ctx.quadraticCurveTo(x + 7, y - 11, x + 11, y - 18); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, y - 1); ctx.lineTo(x, y - 20); ctx.stroke();
+      ctx.fillStyle = "#1b4332";
+      ctx.beginPath(); ctx.arc(x - 11, y - 18, 8, 0, 7); ctx.arc(x + 11, y - 18, 8, 0, 7); ctx.arc(x, y - 22, 9, 0, 7); ctx.fill();
+      ctx.fillStyle = "#52b788";
+      ctx.beginPath(); ctx.arc(x - 11, y - 18, 3.5, 0, 7); ctx.arc(x + 11, y - 18, 3.5, 0, 7); ctx.fill();
+    }
+  }
+
+  function drawArcade(t) {                                    // 🎪 hội chợ ngoài trời & arcade 1120x600
     const night = Life.darkness() > .5, {L, R, B} = bleed();
     sky(-400, 160, night);
-    // ---- nền sau: vòng quay lớn + đu quay ghế bay (parallax) ----
+
+    // ---- Nền sau: vòng quay lớn + đu quay ghế bay (parallax) ----
     ctx.save(); ctx.translate(cam.x * .35, 0);
     // Vòng quay khổng lồ (Ferris wheel) lớn hơn, chi tiết hơn
     const fx = 950, fy = 65, fR = 75;
@@ -91,14 +230,14 @@ const Zones = (() => {
     for (let k = 0; k < 12; k++) {
       const a = t * .18 + k / 12 * Math.PI * 2, cx = fx + Math.cos(a) * fR, cy = fy + Math.sin(a) * fR;
       ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(cx, cy); ctx.stroke();
-      // cabin vòng quay
+      // Cabin vòng quay
       ctx.fillStyle = ["#ff595e", "#ffca3a", "#8ac926", "#1982c4", "#6a4c93", "#ff924c"][k % 6];
       rr(ctx, cx - 7, cy - 4, 14, 11, 3); ctx.fill();
       ctx.fillStyle = "rgba(255,255,255,.7)"; ctx.fillRect(cx - 5, cy - 2, 10, 5);
-      // đèn nhỏ trên vành
+      // Đèn nhỏ trên vành
       bulb(cx, cy, (Math.floor(t * 3) + k) % 2 === 0, "#fff3b0");
     }
-    // chân trụ vòng quay
+    // Chân trụ vòng quay
     ctx.strokeStyle = "#495057"; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.moveTo(fx - 40, 160); ctx.lineTo(fx, fy); ctx.lineTo(fx + 40, 160); ctx.stroke();
     ctx.fillStyle = "#ffca3a"; ctx.beginPath(); ctx.arc(fx, fy, 6, 0, 7); ctx.fill();
@@ -106,10 +245,10 @@ const Zones = (() => {
     // Đu quay ghế bay xích (Wave swinger / Chairoplane) ở góc trái nền sau
     const swX = 180, swY = 85, swR = 48;
     ctx.fillStyle = "#6a4c93"; ctx.beginPath(); ctx.moveTo(swX - 16, 160); ctx.lineTo(swX - 10, swY); ctx.lineTo(swX + 10, swY); ctx.lineTo(swX + 16, 160); ctx.fill();
-    // chóp đu quay
+    // Chóp đu quay
     ctx.fillStyle = "#ff595e"; ctx.beginPath(); ctx.moveTo(swX - 40, swY); ctx.lineTo(swX, swY - 24); ctx.lineTo(swX + 40, swY); ctx.fill();
     ctx.fillStyle = "#ffd166"; for (let sk = 0; sk < 7; sk++) bulb(swX - 35 + sk * 11, swY, (Math.floor(t * 4) + sk) % 2 === 0);
-    // các ghế bay văng nghiêng
+    // Các ghế bay văng nghiêng
     for (let k = 0; k < 6; k++) {
       const a = t * .8 + k / 6 * Math.PI * 2, swingR = swR + Math.sin(a) * 12;
       const chX = swX + Math.cos(a) * swingR, chY = swY + 18 + Math.abs(Math.sin(a)) * 14;
@@ -118,22 +257,113 @@ const Zones = (() => {
       ctx.fillStyle = ["#1982c4", "#ffca3a", "#8ac926"][k % 3];
       rr(ctx, chX - 4, chY, 8, 6, 1.5); ctx.fill();
     }
+
+    // Đốm pháo hoa và ánh đèn lễ hội xa xa ban đêm
+    if (night) {
+      for (let fk = 0; fk < 3; fk++) {
+        const ph = (t * 0.4 + fk * 0.33) % 1;
+        const fx0 = 420 + fk * 220, fy0 = 40 + (fk % 2) * 25;
+        if (ph < 0.7) {
+          const fr = ph * 28;
+          ctx.strokeStyle = ["rgba(255,100,180,", "rgba(100,240,255,", "rgba(255,220,100,"][fk] + (1 - ph / 0.7) + ")";
+          ctx.lineWidth = 1.2;
+          for (let sp = 0; sp < 8; sp++) {
+            const sa = sp / 8 * 6.28;
+            ctx.beginPath(); ctx.moveTo(fx0 + Math.cos(sa) * (fr * 0.3), fy0 + Math.sin(sa) * (fr * 0.3));
+            ctx.lineTo(fx0 + Math.cos(sa) * fr, fy0 + Math.sin(sa) * fr); ctx.stroke();
+          }
+        }
+      }
+    }
     ctx.restore();
 
-    ctx.fillStyle = night ? "#2a2550" : "#95c97d"; ctx.fillRect(L, 120, R - L, 40);   // cỏ xa
-    for (let y = 150, r = 0; y < B; y += 30, r++) for (let x = Math.floor(L / 30) * 30, c = r & 1; x < R; x += 30, c ^= 1) {
-      ctx.fillStyle = c ? (night ? "#3b3360" : "#ffe9c7") : (night ? "#332c58" : "#ffd9a8"); ctx.fillRect(x, y, 30, 30);   // gạch nhiều màu
+    ctx.fillStyle = night ? "#2a2550" : "#95c97d"; ctx.fillRect(L, 120, R - L, 40);   // Cỏ xa
+
+    // ---- Giàn đèn trần công nghiệp & đèn rọi arcade (ceiling lights) ----
+    ctx.fillStyle = "#2b2d42"; ctx.fillRect(L, 22, R - L, 5); // Khung giàn xà trần kim loại
+    for (let lx = Math.floor(L / 140) * 140; lx < R; lx += 140) {
+      // Dây cáp treo & chao đèn chụp công nghiệp
+      ctx.strokeStyle = "#495057"; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(lx, 22); ctx.lineTo(lx, 42); ctx.stroke();
+      // Chao đèn vòm kim loại
+      ctx.fillStyle = "#1e1e2f"; ctx.beginPath(); ctx.arc(lx, 42, 9, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = "#ffd166"; ctx.beginPath(); ctx.arc(lx, 43, 3, 0, 7); ctx.fill();
+      // Vệt sáng rọi nhẹ xuống sàn (spotlight cone)
+      const grad = ctx.createLinearGradient(lx, 44, lx, 180);
+      grad.addColorStop(0, "rgba(255,235,160,0.12)"); grad.addColorStop(1, "rgba(255,235,160,0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.moveTo(lx - 8, 44); ctx.lineTo(lx + 8, 44); ctx.lineTo(lx + 45, 180); ctx.lineTo(lx - 45, 180); ctx.fill();
     }
-    // cổng vòm bóng đèn + biển KHU VUI CHƠI
+
+    // ---- Họa tiết thảm Arcade retro (carpet pattern thập niên 90 / vũ trụ rực rỡ) ----
+    const carpetBg = night ? "#181432" : "#231c42";
+    ctx.fillStyle = carpetBg; ctx.fillRect(L, 150, R - L, B - 150);
+    // Lưới hoa văn thảm arcade neon hình học
+    const cStep = 44;
+    const startX = Math.floor(L / cStep) * cStep;
+    for (let cy = 150, row = 0; cy < B; cy += cStep, row++) {
+      for (let cx = startX, col = 0; cx < R; cx += cStep, col++) {
+        const seed = (row * 7 + col * 13) % 4;
+        const ncx = cx + 22, ncy = cy + 22;
+        if (seed === 0) {
+          // Tam giác neon hồng & xanh
+          ctx.fillStyle = "rgba(255,42,133,0.35)";
+          ctx.beginPath(); ctx.moveTo(ncx - 10, ncy + 8); ctx.lineTo(ncx + 4, ncy - 10); ctx.lineTo(ncx + 10, ncy + 6); ctx.fill();
+          ctx.fillStyle = "rgba(0,245,212,0.3)";
+          ctx.beginPath(); ctx.moveTo(ncx - 6, ncy - 8); ctx.lineTo(ncx + 8, ncy - 4); ctx.lineTo(ncx, ncy + 9); ctx.fill();
+        } else if (seed === 1) {
+          // Ngôi sao vàng retro 4 cánh
+          drawSparkle(ncx, ncy, 6, "rgba(255,209,102,0.4)", 0.2);
+          ctx.fillStyle = "rgba(160,100,255,0.35)";
+          ctx.fillRect(ncx - 8, ncy - 8, 4, 4); ctx.fillRect(ncx + 4, ncy + 4, 4, 4);
+        } else if (seed === 2) {
+          // Vệt sóng neon zigzag
+          ctx.strokeStyle = "rgba(0,187,249,0.35)"; ctx.lineWidth = 1.8;
+          ctx.beginPath(); ctx.moveTo(ncx - 10, ncy - 4); ctx.lineTo(ncx - 3, ncy + 5); ctx.lineTo(ncx + 4, ncy - 5); ctx.lineTo(ncx + 10, ncy + 4); ctx.stroke();
+          ctx.fillStyle = "rgba(254,228,64,0.35)";
+          ctx.beginPath(); ctx.arc(ncx + 6, ncy - 7, 2, 0, 7); ctx.fill();
+        } else {
+          // Hạt kim cương neon tím
+          ctx.fillStyle = "rgba(155,93,229,0.35)";
+          ctx.beginPath(); ctx.moveTo(ncx, ncy - 9); ctx.lineTo(ncx + 8, ncy); ctx.lineTo(ncx, ncy + 9); ctx.lineTo(ncx - 8, ncy); ctx.fill();
+          drawSparkle(ncx, ncy, 3.5, "rgba(255,100,200,0.45)");
+        }
+      }
+    }
+    // Viền thảm sang trọng tiếp giáp bãi cỏ
+    ctx.fillStyle = "#ff007f"; ctx.fillRect(L, 149, R - L, 2);
+    ctx.fillStyle = "#00f5d4"; ctx.fillRect(L, 151, R - L, 1);
+
+    // ---- Cổng vòm bóng đèn + biển hiệu Neon KHU VUI CHƠI ----
     const on = k => (Math.floor(t * 3) + k) % 3 !== 0;
     ctx.strokeStyle = "#c1121f"; ctx.lineWidth = 9; ctx.beginPath(); ctx.arc(560, 150, 130, Math.PI, 0); ctx.stroke();
     ctx.strokeStyle = "#ffd166"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(560, 150, 130, Math.PI, 0); ctx.stroke();
     for (let k = 0; k <= 20; k++) { const a = Math.PI + k / 20 * Math.PI; bulb(560 + Math.cos(a) * 130, 150 + Math.sin(a) * 130, on(k)); }
-    ctx.fillStyle = "#3a0ca3"; rr(ctx, 450, 30, 220, 40, 10); ctx.fill();
-    ctx.fillStyle = (Math.floor(t * 2) % 2) ? "#ff4fd8" : "#4cc9f0"; ctx.font = "900 20px Nunito, system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText("🎪 KHU VUI CHƠI", 560, 51);
 
-    // dây bóng đèn nhấp nháy giăng ngang nhiều tầng
+    // Biển neon vòm trung tâm với viền ống phát sáng
+    ctx.fillStyle = "#1e0842"; rr(ctx, 445, 28, 230, 44, 12); ctx.fill();
+    ctx.strokeStyle = (Math.floor(t * 2) % 2) ? "#ff4fd8" : "#4cc9f0"; ctx.lineWidth = 2.5; ctx.stroke();
+    // Chữ neon sáng rực
+    ctx.fillStyle = (Math.floor(t * 2) % 2) ? "#ff4fd8" : "#4cc9f0";
+    ctx.font = "900 20px Nunito, system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("🎪 KHU VUI CHƠI 🎪", 560, 50);
+
+    // ---- Biển Neon hai bên: "🕹️ ARCADE ZONE" và "✨ LUCKY PRIZES ✨" ----
+    // Biển Neon trái (trên máy gắp gấu)
+    ctx.fillStyle = "#120d2b"; rr(ctx, 110, 68, 160, 28, 6); ctx.fill();
+    ctx.strokeStyle = "#00f5d4"; ctx.lineWidth = 1.8; ctx.stroke();
+    ctx.fillStyle = (Math.floor(t * 2.5) % 2) ? "#00f5d4" : "#ff70a6";
+    ctx.font = "900 11px monospace"; ctx.textAlign = "center";
+    ctx.fillText("🕹️ ARCADE ZONE 🕹️", 190, 83);
+
+    // Biển Neon phải (trên quầy quay thưởng)
+    ctx.fillStyle = "#120d2b"; rr(ctx, 840, 68, 160, 28, 6); ctx.fill();
+    ctx.strokeStyle = "#ffd166"; ctx.lineWidth = 1.8; ctx.stroke();
+    ctx.fillStyle = (Math.floor(t * 2.5) % 2) ? "#ffd166" : "#f72585";
+    ctx.font = "900 11px monospace"; ctx.textAlign = "center";
+    ctx.fillText("✨ LUCKY PRIZES ✨", 920, 83);
+
+    // Dây bóng đèn nhấp nháy giăng ngang nhiều tầng
     const lightStrings = [
       {x1: 0, y1: 155, x2: 440, y2: 155, sag: 18},
       {x1: 680, y1: 155, x2: 1120, y2: 155, sag: 18},
@@ -151,13 +381,121 @@ const Zones = (() => {
       }
     });
 
-    // dây cờ phướn
+    // Dây cờ phướn lễ hội
     for (const [x0, x1] of [[0, 430], [690, 1120]]) {
       ctx.strokeStyle = "rgba(80,60,60,.6)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x0, 162); ctx.quadraticCurveTo((x0 + x1) / 2, 182, x1, 162); ctx.stroke();
-      for (let x = x0 + 15, k = 0; x < x1; x += 26, k++) { const yy = 162 + Math.sin((x - x0) / (x1 - x0) * Math.PI) * 10; ctx.fillStyle = ["#e63946", "#ffd166", "#2a9d8f", "#4cc9f0", "#f72585"][k % 5]; ctx.beginPath(); ctx.moveTo(x - 7, yy); ctx.lineTo(x + 7, yy); ctx.lineTo(x, yy + 12); ctx.fill(); }
+      for (let x = x0 + 15, k = 0; x < x1; x += 26, k++) {
+        const yy = 162 + Math.sin((x - x0) / (x1 - x0) * Math.PI) * 10;
+        ctx.fillStyle = ["#e63946", "#ffd166", "#2a9d8f", "#4cc9f0", "#f72585"][k % 5];
+        ctx.beginPath(); ctx.moveTo(x - 7, yy); ctx.lineTo(x + 7, yy); ctx.lineTo(x, yy + 12); ctx.fill();
+      }
     }
-    // dãy máy gắp gấu (trái): 2 máy thường + 2 máy cao cấp
-    ctx.fillStyle = "#1b1b2f"; rr(ctx, 40, 170, 300, 22, 6); ctx.fill();                 // bảng "gấu hiếm vừa gắp" chạy chữ
+
+    // ---- Kệ trưng bày quà tặng gấu bông (prize shelf with plush toys) ----
+    // Nằm ngay phía trên dãy máy gắp gấu (x: 42 đến 338, y: 104 đến 165)
+    ctx.fillStyle = "#4a2810"; rr(ctx, 42, 108, 296, 56, 5); ctx.fill(); // Tủ gỗ trưng bày
+    ctx.strokeStyle = "#c99a5e"; ctx.lineWidth = 1.5; ctx.stroke();
+    // 2 tầng kệ gỗ bóng có đèn LED rọi
+    [132, 160].forEach((sy, tier) => {
+      ctx.fillStyle = "#8d5b32"; ctx.fillRect(44, sy, 292, 4); // Mặt kệ gỗ
+      // Đèn LED dải hắt sáng màu vàng ấm
+      ctx.fillStyle = "rgba(255,235,160,0.35)"; ctx.fillRect(44, sy - 18, 292, 18);
+    });
+    // Gấu bông & quà tặng trên kệ tầng 1 (trên cùng)
+    plush(80, 122, 22, "S+", t, true);          // Gấu S+ vàng kim
+    plush(140, 122, 19, "S", t, true);           // Gấu S tím pastel
+    plush(195, 122, 18, "B", t, false);          // Thỏ hồng
+    plush(250, 122, 18, "A", t, false);          // Gấu xanh dương
+    // Cúp vô địch vàng nhỏ ở góc kệ
+    ctx.fillStyle = "#ffd166";
+    ctx.beginPath(); ctx.moveTo(295, 114); ctx.lineTo(311, 114); ctx.lineTo(306, 126); ctx.lineTo(300, 126); ctx.closePath(); ctx.fill();
+    ctx.fillRect(301, 126, 4, 5); ctx.fillRect(297, 131, 12, 2);
+    ctx.fillStyle = "#ff4d6d"; ctx.font = "800 6px system-ui"; ctx.fillText("1ST", 303, 121);
+
+    // Quà tặng trên kệ tầng 2
+    plush(70, 150, 16, "C", t, false);           // Gấu nâu cổ điển
+    plush(120, 150, 17, "B", t, false);          // Mèo hồng
+    plush(175, 150, 17, "A", t, false);          // Cánh cụt xanh
+    plush(230, 150, 17, "S", t, true);           // Gấu bông tím
+    // Hộp quà thắt nơ lụa
+    ctx.fillStyle = "#ff595e"; rr(ctx, 275, 142, 15, 14, 2); ctx.fill();
+    ctx.fillStyle = "#ffd166"; ctx.fillRect(281, 142, 3, 14); ctx.fillRect(275, 148, 15, 3);
+    ctx.fillStyle = "#4cc9f0"; rr(ctx, 298, 140, 17, 16, 2); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.fillRect(305, 140, 3, 16); ctx.fillRect(298, 147, 17, 3);
+
+    // ---- Dãy máy game Arcade cổ điển ở hậu cảnh với màn hình nhấp nháy ----
+    // Nhóm 1 (x: 350 - 425): Máy song đấu đối kháng + Máy bắn phi thuyền vũ trụ
+    const drawCabinet = (x, y, w, h, title, themeCol, scrCol, gameType) => {
+      // Bóng sàn máy arcade
+      ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(x + w / 2, y + h + 2, w * 0.55, 5, 0, 0, 7); ctx.fill();
+      // Thùng máy
+      ctx.fillStyle = "#161622"; rr(ctx, x, y, w, h, 4); ctx.fill();
+      ctx.strokeStyle = themeCol; ctx.lineWidth = 1.5; ctx.stroke();
+      // Bảng tên Marquee phát sáng
+      ctx.fillStyle = themeCol; rr(ctx, x + 3, y + 3, w - 6, 11, 2); ctx.fill();
+      ctx.fillStyle = "#ffffff"; ctx.font = "900 6.5px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(title, x + w / 2, y + 8.5);
+      // Màn hình CRT viền vát
+      ctx.fillStyle = "#0a0a14"; rr(ctx, x + 3, y + 16, w - 6, 24, 2); ctx.fill();
+      ctx.fillStyle = scrCol; ctx.fillRect(x + 5, y + 18, w - 10, 20); // Màn hình hiển thị
+      // Nội dung màn hình nhấp nháy động
+      if (gameType === "fight") {
+        // Trò đối kháng: thanh máu + 2 đấu sĩ pixel
+        ctx.fillStyle = "#ff4d6d"; ctx.fillRect(x + 6, y + 19, 8, 2);
+        ctx.fillStyle = "#39ff88"; ctx.fillRect(x + w - 14, y + 19, 8, 2);
+        const hit = (Math.floor(t * 4) % 2);
+        ctx.fillStyle = "#ffd166"; ctx.fillRect(x + 8 + (hit ? 2 : 0), y + 27, 4, 8); // Đấu sĩ 1
+        ctx.fillStyle = "#4cc9f0"; ctx.fillRect(x + w - 12 - (hit ? 2 : 0), y + 27, 4, 8); // Đấu sĩ 2
+        if (Math.floor(t * 3) % 2) { ctx.fillStyle = "#ff0055"; ctx.font = "800 5px monospace"; ctx.fillText("K.O!", x + w / 2, y + 26); }
+      } else if (gameType === "space") {
+        // Bắn ruồi vũ trụ: phi thuyền pixel + đạn laze + quái vật
+        ctx.fillStyle = "#39ff88"; ctx.fillRect(x + w / 2 - 2, y + 32, 4, 4); // Phi thuyền
+        ctx.fillStyle = "#ffff00"; ctx.fillRect(x + w / 2 - 1, y + 26 - ((t * 40) % 12), 2, 4); // Đạn
+        ctx.fillStyle = "#ff007f";
+        for (let ei = 0; ei < 3; ei++) ctx.fillRect(x + 7 + ei * 7 + Math.sin(t * 4 + ei) * 2, y + 20, 3, 3); // Alien
+      } else if (gameType === "race") {
+        // Đua xe 3D: đường đua uốn lượn + xe đua pixel
+        ctx.fillStyle = "#3a86ff"; ctx.fillRect(x + 5, y + 18, w - 10, 8); // Bầu trời
+        ctx.fillStyle = "#333333"; ctx.fillRect(x + 5, y + 26, w - 10, 12); // Mặt đường
+        ctx.fillStyle = "#ffffff"; ctx.fillRect(x + w / 2 - 1 + Math.sin(t * 3) * 4, y + 26, 2, 12); // Vạch kẻ đường
+        ctx.fillStyle = "#ff0054"; ctx.fillRect(x + w / 2 - 3 + Math.sin(t * 3) * 3, y + 31, 6, 5); // Xe đua
+      } else {
+        // Game nhảy audition / âm nhạc: mũi tên nhảy lên
+        const arrs = ["▲", "▼", "◀", "▶"];
+        ctx.fillStyle = ["#ff595e", "#ffca3a", "#8ac926", "#1982c4"][Math.floor(t * 3) % 4];
+        ctx.font = "8px system-ui"; ctx.fillText(arrs[Math.floor(t * 4) % 4], x + w / 2, y + 27);
+        if (Math.floor(t * 3) % 2) { ctx.fillStyle = "#ffbe0b"; ctx.font = "800 5px monospace"; ctx.fillText("PERFECT", x + w / 2, y + 34); }
+      }
+      // Bàn điều khiển (control deck) nghiêng
+      ctx.fillStyle = "#252538"; rr(ctx, x + 2, y + 42, w - 4, 10, 2); ctx.fill();
+      // Cần gạt joystick đỏ + nút bấm
+      ctx.fillStyle = "#ff0054"; ctx.beginPath(); ctx.arc(x + 8, y + 46, 2, 0, 7); ctx.fill();
+      ctx.fillStyle = "#ffd166"; ctx.beginPath(); ctx.arc(x + w - 10, y + 45, 1.4, 0, 7); ctx.fill();
+      ctx.fillStyle = "#00f5d4"; ctx.beginPath(); ctx.arc(x + w - 6, y + 47, 1.4, 0, 7); ctx.fill();
+      // Cửa nhét xu (coin door) với 2 khe sáng đỏ
+      ctx.fillStyle = "#11111a"; rr(ctx, x + 5, y + 54, w - 10, 14, 1); ctx.fill();
+      ctx.fillStyle = "#ff3333"; ctx.fillRect(x + 8, y + 57, 4, 2); ctx.fillRect(x + w - 12, y + 57, 4, 2);
+    };
+
+    // 2 máy arcade bên trái cổng vòm (x: 350, 390)
+    drawCabinet(350, 172, 34, 72, "BRAWL", "#7209b7", "#10002b", "fight");
+    drawCabinet(390, 172, 34, 72, "GALAXY", "#00b4d8", "#03045e", "space");
+
+    // 2 máy arcade bên phải cổng vòm (x: 700, 740)
+    drawCabinet(700, 172, 34, 72, "TURBO", "#e63946", "#1d3557", "race");
+    drawCabinet(740, 172, 34, 72, "DANCE", "#f72585", "#240046", "dance");
+
+    // Máy đổi xu tự động (Token dispenser) đặt cạnh dãy gắp gấu
+    ctx.fillStyle = "#2b2d42"; rr(ctx, 24, 200, 18, 44, 3); ctx.fill();
+    ctx.strokeStyle = "#ffd166"; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = "#ffd166"; ctx.font = "800 6px monospace"; ctx.textAlign = "center"; ctx.fillText("XU", 33, 208);
+    // Cửa kính nhìn thấy xu vàng bên trong
+    ctx.fillStyle = "rgba(255,220,100,0.5)"; rr(ctx, 27, 212, 12, 14, 2); ctx.fill();
+    ctx.fillStyle = "#d4a373"; ctx.fillRect(27, 230, 12, 8); // Khay trả xu
+    drawSparkle(33, 234, 3, "#ffd166", t * 2);
+
+    // ---- Dãy máy gắp gấu (trái) ----
+    ctx.fillStyle = "#1b1b2f"; rr(ctx, 40, 170, 300, 22, 6); ctx.fill();                 // Bảng "gấu hiếm vừa gắp" chạy chữ
     ctx.save(); ctx.beginPath(); ctx.rect(44, 172, 292, 18); ctx.clip();
     ctx.fillStyle = "#39ff88"; ctx.font = "700 10px monospace"; ctx.textAlign = "left";
     const mw = ctx.measureText(st.marquee).width + 60, mx = 336 - ((t * 40) % (mw + 292));
@@ -175,45 +513,76 @@ const Zones = (() => {
       for (let b = 0; b < 5; b++) bulb(x + 8 + b * (w - 16) / 4, y + 3, on(b + k));
     });
 
-    // bàn bầu cua (ĐÃ KÉO XUỐNG GIỮA SÂN y: 340)
-    ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.beginPath(); ctx.ellipse(560, 434, 145, 20, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = "#8d5e3c"; rr(ctx, 430, 340, 260, 94, 10); ctx.fill();
-    ctx.fillStyle = "#c1121f"; rr(ctx, 440, 348, 240, 78, 8); ctx.fill();                    // chiếu hoa đỏ
+    // ---- Bàn bầu cua (ở giữa sân y: 340) ----
+    ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.beginPath(); ctx.ellipse(560, 436, 148, 22, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#704124"; rr(ctx, 428, 338, 264, 98, 12); ctx.fill(); // Viền gỗ sơn mài
+    ctx.strokeStyle = "#e9c46a"; ctx.lineWidth = 2; ctx.stroke(); // Viền chỉ vàng
+    ctx.fillStyle = "#b21e27"; rr(ctx, 440, 348, 240, 78, 8); ctx.fill();                    // Chiếu hoa đỏ
     A.BC_FACES.forEach((f, k) => {
       const cx = 480 + (k % 3) * 80, cy = 369 + Math.floor(k / 3) * 38;
       ctx.fillStyle = "#fff8e7"; rr(ctx, cx - 34, cy - 15, 68, 33, 5); ctx.fill();
+      ctx.strokeStyle = "#e9d8a6"; ctx.lineWidth = 1; ctx.stroke();
       ctx.font = "20px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(f.e, cx - 12, cy);
       ctx.fillStyle = "#7a1d1d"; ctx.font = "800 9px Nunito, system-ui"; ctx.fillText(f.name.toUpperCase(), cx + 16, cy);
       const tot = st.bc && st.bc.totals ? st.bc.totals[f.id] : 0;
-      if (tot) { ctx.fillStyle = "#ffd166"; ctx.beginPath(); ctx.arc(cx + 26, cy - 12, 7, 0, 7); ctx.fill(); ctx.fillStyle = "#5a3b00"; ctx.font = "800 6px system-ui"; ctx.fillText(tot > 999 ? "999+" : tot, cx + 26, cy - 12); }
+      if (tot) {
+        ctx.fillStyle = "#ffd166"; ctx.beginPath(); ctx.arc(cx + 26, cy - 12, 7, 0, 7); ctx.fill();
+        ctx.fillStyle = "#5a3b00"; ctx.font = "800 6px system-ui"; ctx.fillText(tot > 999 ? "999+" : tot, cx + 26, cy - 12);
+      }
     });
-    const bc = st.bc, rolling = bc && bc.phase === "roll";                                     // bát + xúc xắc
+    // Chồng xu cược trang trí ở góc bàn
+    [[438, 346, "#ffd166"], [680, 346, "#ff595e"], [438, 418, "#4cc9f0"], [680, 418, "#06d6a0"]].forEach(([cx, cy, col]) => {
+      for (let ci = 0; ci < 3; ci++) {
+        ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(cx, cy - ci * 3, 5, 2.5, 0, 0, 7); ctx.fill();
+        ctx.strokeStyle = "rgba(0,0,0,0.2)"; ctx.lineWidth = 0.5; ctx.stroke();
+      }
+    });
+
+    const bc = st.bc, rolling = bc && bc.phase === "roll";                                     // Bát + xúc xắc
     ctx.save(); ctx.translate(700, 360 + (rolling ? Math.sin(t * 30) * 2 : 0));
     ctx.fillStyle = "#f8f1e5"; ctx.beginPath(); ctx.ellipse(0, 12, 22, 7, 0, 0, 7); ctx.fill();
-    if (!bc || bc.phase !== "result") { ctx.fillStyle = "#c08552"; ctx.beginPath(); ctx.arc(0, 10, 18, Math.PI, 0); ctx.fill(); ctx.fillStyle = "#e9c46a"; ctx.fillRect(-3, -10, 6, 4); }
-    else bc.dice.forEach((d, k) => { ctx.fillStyle = "#fff"; rr(ctx, -19 + k * 13, 2, 11, 11, 2); ctx.fill(); ctx.font = "9px system-ui"; ctx.textAlign = "center"; ctx.fillText(FACE[d].e, -13.5 + k * 13, 8); });
+    if (!bc || bc.phase !== "result") {
+      ctx.fillStyle = "#a26a42"; ctx.beginPath(); ctx.arc(0, 10, 18, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = "#ffd166"; ctx.fillRect(-4, -10, 8, 4);
+    } else {
+      bc.dice.forEach((d, k) => {
+        ctx.fillStyle = "#fff"; rr(ctx, -19 + k * 13, 2, 11, 11, 2); ctx.fill();
+        ctx.font = "9px system-ui"; ctx.textAlign = "center"; ctx.fillText(FACE[d].e, -13.5 + k * 13, 8);
+      });
+    }
     ctx.restore();
-    if (bc) { ctx.fillStyle = "rgba(20,17,45,.85)"; rr(ctx, 500, 316, 120, 20, 8); ctx.fill(); ctx.fillStyle = "#ffd27a"; ctx.font = "800 10px Nunito, system-ui"; ctx.textAlign = "center";
-      ctx.fillText(bc.phase === "bet" ? `⏳ Đặt cược ${Math.max(0, Math.ceil(bc.end - serverNow()))}s` : bc.phase === "roll" ? "🥣 Đang lắc bát…" : "🎉 Mở bát!", 560, 326); }
+    if (bc) {
+      ctx.fillStyle = "rgba(20,17,45,.88)"; rr(ctx, 500, 316, 120, 20, 8); ctx.fill();
+      ctx.strokeStyle = "#ffd166"; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = "#ffd27a"; ctx.font = "800 10px Nunito, system-ui"; ctx.textAlign = "center";
+      ctx.fillText(bc.phase === "bet" ? `⏳ Đặt cược ${Math.max(0, Math.ceil(bc.end - serverNow()))}s` : bc.phase === "roll" ? "🥣 Đang lắc bát…" : "🎉 Mở bát!", 560, 326);
+    }
 
-    // quầy quay thưởng + lồng cầu xổ số (phải)
+    // ---- Quầy quay thưởng + lồng cầu xổ số (phải) ----
     ctx.fillStyle = "#6b4a35"; ctx.fillRect(896, 230, 8, 70);
     ctx.save(); ctx.translate(900, 222); ctx.rotate(t * .6);
-    for (let k = 0; k < 8; k++) { ctx.fillStyle = ["#ff8fab", "#ffd166", "#a0c4ff", "#90be6d", "#cdb4db", "#f4a261", "#4cc9f0", "#e63946"][k]; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 42, k * Math.PI / 4, (k + 1) * Math.PI / 4); ctx.fill(); }
+    for (let k = 0; k < 8; k++) {
+      ctx.fillStyle = ["#ff8fab", "#ffd166", "#a0c4ff", "#90be6d", "#cdb4db", "#f4a261", "#4cc9f0", "#e63946"][k];
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 42, k * Math.PI / 4, (k + 1) * Math.PI / 4); ctx.fill();
+    }
     ctx.restore(); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(900, 222, 7, 0, 7); ctx.fill();
     ctx.fillStyle = "#e63946"; ctx.beginPath(); ctx.moveTo(894, 175); ctx.lineTo(906, 175); ctx.lineTo(900, 186); ctx.fill();
     for (let k = 0; k < 16; k++) bulb(900 + Math.cos(k / 16 * 6.28) * 47, 222 + Math.sin(k / 16 * 6.28) * 47, on(k), "#fff3b0");
-    ctx.strokeStyle = "#adb5bd"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(1010, 300, 24, 0, 7); ctx.stroke();      // lồng cầu
-    for (let k = 0; k < 8; k++) { const a = t * 3 + k * .8; ctx.fillStyle = ["#ff6b6b", "#ffd166", "#4cc9f0", "#90be6d"][k % 4]; ctx.beginPath(); ctx.arc(1010 + Math.cos(a) * 14 * ((k % 3) / 3 + .4), 300 + Math.sin(a * 1.3) * 12, 3.4, 0, 7); ctx.fill(); }
+    ctx.strokeStyle = "#adb5bd"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(1010, 300, 24, 0, 7); ctx.stroke();      // Lồng cầu
+    for (let k = 0; k < 8; k++) {
+      const a = t * 3 + k * .8;
+      ctx.fillStyle = ["#ff6b6b", "#ffd166", "#4cc9f0", "#90be6d"][k % 4];
+      ctx.beginPath(); ctx.arc(1010 + Math.cos(a) * 14 * ((k % 3) / 3 + .4), 300 + Math.sin(a * 1.3) * 12, 3.4, 0, 7); ctx.fill();
+    }
     ctx.fillStyle = "#6b4a35"; ctx.fillRect(1006, 324, 8, 22);
-    ctx.fillStyle = "#fff"; rr(ctx, 790, 330, 260, 34, 6); ctx.fill();                      // quầy, mái sọc
+    ctx.fillStyle = "#fff"; rr(ctx, 790, 330, 260, 34, 6); ctx.fill();                      // Quầy, mái sọc
     for (let k = 0; k < 10; k++) { ctx.fillStyle = k % 2 ? "#e63946" : "#fff"; ctx.fillRect(790 + k * 26, 318, 26, 14); }
     ctx.fillStyle = "#3a0ca3"; ctx.font = "800 10px Nunito, system-ui"; ctx.textAlign = "center"; ctx.fillText("🎡 QUAY THƯỞNG · 🎫 XỔ SỐ 18:30", 920, 348);
 
-    // đu quay ngựa gỗ (dưới trái)
+    // ---- Đu quay ngựa gỗ (dưới trái) ----
     const carX = 150, carY = 470;
     ctx.fillStyle = "#f4a6c4"; ctx.beginPath(); ctx.moveTo(carX - 90, carY - 50); ctx.lineTo(carX, carY - 95); ctx.lineTo(carX + 90, carY - 50); ctx.fill();
-    for (let k = 0; k < 9; k++) bulb(carX - 90 + k * 22.5, carY - 50 - Math.sin(k / 8 * Math.PI) * 0, on(k));
+    for (let k = 0; k < 9; k++) bulb(carX - 90 + k * 22.5, carY - 50, on(k));
     ctx.fillStyle = "#fff0f6"; ctx.fillRect(carX - 86, carY - 50, 172, 8);
     for (let k = 0; k < 4; k++) {
       const a = t * .8 + k * Math.PI / 2, hx = carX + Math.cos(a) * 70, hy = carY - 10 + Math.sin(a * 2) * 3;
@@ -223,35 +592,28 @@ const Zones = (() => {
     }
     ctx.fillStyle = "#c9a36b"; ctx.beginPath(); ctx.ellipse(carX, carY + 14, 95, 14, 0, 0, 7); ctx.fill();
 
-    // XE BÁN KẸO BÔNG GÒN CHI TIẾT (dưới phải)
+    // ---- Xe bán kẹo bông gòn chi tiết (dưới phải) ----
     const cartX = 960, cartY = 480;
-    // bóng râm
     ctx.fillStyle = "rgba(0,0,0,.2)"; ctx.beginPath(); ctx.ellipse(cartX + 30, cartY + 44, 45, 10, 0, 0, 7); ctx.fill();
-    // thùng xe pastel
     ctx.fillStyle = "#ffafcc"; rr(ctx, cartX, cartY, 70, 38, 8); ctx.fill();
     ctx.fillStyle = "#fff"; ctx.fillRect(cartX + 6, cartY + 6, 58, 6);
-    // bánh xe cổ điển có nan hoa
     ctx.strokeStyle = "#8a5a3c"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cartX + 16, cartY + 38, 14, 0, 7); ctx.stroke();
     ctx.fillStyle = "#ffd166"; ctx.beginPath(); ctx.arc(cartX + 16, cartY + 38, 4, 0, 7); ctx.fill();
     for (let sp = 0; sp < 6; sp++) {
-      const sa = sp / 6 * Math.PI * 2; ctx.beginPath(); ctx.moveTo(cartX + 16, cartY + 38); ctx.lineTo(cartX + 16 + Math.cos(sa) * 14, cartY + 38 + Math.sin(sa) * 14); ctx.stroke();
+      const sa = sp / 6 * Math.PI * 2;
+      ctx.beginPath(); ctx.moveTo(cartX + 16, cartY + 38); ctx.lineTo(cartX + 16 + Math.cos(sa) * 14, cartY + 38 + Math.sin(sa) * 14); ctx.stroke();
     }
-    // chân chống bên phải
     ctx.fillStyle = "#555"; ctx.fillRect(cartX + 54, cartY + 36, 4, 8);
-    // vòm kính trong suốt đựng kẹo bông
     ctx.fillStyle = "rgba(220,245,255,.6)"; rr(ctx, cartX + 8, cartY - 24, 54, 24, 6); ctx.fill();
-    // các cục kẹo bông bồng bềnh
     [["#ffb4d6", 18, -12], ["#a0c4ff", 35, -14], ["#fdffb6", 52, -11]].forEach(([c, cx, cy]) => {
       ctx.fillStyle = c; ctx.beginPath(); ctx.arc(cartX + cx, cartY + cy, 9, 0, 7); ctx.arc(cartX + cx - 4, cartY + cy + 3, 7, 0, 7); ctx.arc(cartX + cx + 4, cartY + cy + 3, 7, 0, 7); ctx.fill();
-      ctx.fillStyle = "#fff"; ctx.fillRect(cartX + cx - 1, cartY + cy + 6, 2, 10); // que kẹo
+      ctx.fillStyle = "#fff"; ctx.fillRect(cartX + cx - 1, cartY + cy + 6, 2, 10);
     });
-    // mái che sọc hồng trắng
     ctx.beginPath(); ctx.moveTo(cartX - 4, cartY - 26); ctx.lineTo(cartX + 35, cartY - 42); ctx.lineTo(cartX + 74, cartY - 26); ctx.fill();
     for (let st = 0; st < 6; st++) {
       ctx.fillStyle = st % 2 ? "#ff70a6" : "#ffffff";
       ctx.fillRect(cartX - 4 + st * 13, cartY - 28, 13, 6);
     }
-    // biển tên xe
     ctx.fillStyle = "#c1121f"; ctx.font = "800 7px system-ui"; ctx.textAlign = "center"; ctx.fillText("🍭 KẸO BÔNG", cartX + 35, cartY + 22);
 
     // Chùm bóng bay bay bay
@@ -260,64 +622,224 @@ const Zones = (() => {
       ctx.strokeStyle = "rgba(0,0,0,.25)"; ctx.lineWidth = .6; ctx.beginPath(); ctx.moveTo(bx, by + 8); ctx.lineTo(1060, 450); ctx.stroke();
       ctx.fillStyle = ["#ff6b6b", "#ffd166", "#4cc9f0", "#f72585", "#90be6d"][k]; ctx.beginPath(); ctx.ellipse(bx, by, 6, 8, 0, 0, 7); ctx.fill();
     }
+
+    // Tia sáng đồng xu lấp lánh (coin sparkles) bay lơ lửng quanh khu vực trò chơi
+    for (let sk = 0; sk < 7; sk++) {
+      const sx = (260 + sk * 110 + Math.sin(t * 2 + sk) * 15);
+      const sy = 280 + (sk % 3) * 60 + Math.cos(t * 1.8 + sk) * 10;
+      const spR = 2.5 + Math.sin(t * 3 + sk) * 1.5;
+      drawSparkle(sx, sy, spR, "#ffd166", t * 2 + sk);
+      // Đồng xu vàng chibi nhỏ xoay tròn
+      if (sk % 2 === 0) {
+        ctx.fillStyle = "#ffd166"; ctx.beginPath(); ctx.ellipse(sx + 10, sy - 8, 3.5, 3.5 * Math.abs(Math.sin(t * 3 + sk)), 0, 0, 7); ctx.fill();
+      }
+    }
   }
   const CLAW_R = [{x: 46, y: 196, w: 66, h: 96, m: "normal"}, {x: 118, y: 196, w: 66, h: 96, m: "normal"},
                   {x: 196, y: 196, w: 66, h: 96, m: "vip"}, {x: 268, y: 196, w: 66, h: 96, m: "vip"}];
   const BC_R = {x: 430, y: 340, w: 290, h: 94}, WHEEL_R = {x: 780, y: 170, w: 280, h: 200};
 
-  function drawStock(t) {                                     // 📈 sàn giao dịch 1000x600
+  function drawStock(t) {                                     // 📈 sàn giao dịch chứng khoán 1000x600
     const {L, R, T, B} = bleed(), wv = R - L;
-    const g = ctx.createLinearGradient(0, T, 0, 165); g.addColorStop(0, "#0b1d3a"); g.addColorStop(1, "#173a63");
+    const dk = Life.darkness(); // Mức độ tối trời từ 0 (ngày) đến 1 (đêm)
+
+    // Sơn tường phía sau sàn giao dịch
+    const g = ctx.createLinearGradient(0, T, 0, 165); g.addColorStop(0, "#081326"); g.addColorStop(1, "#122847");
     ctx.fillStyle = g; ctx.fillRect(L, T, wv, 165 - T);
-    ctx.save(); ctx.beginPath(); ctx.rect(20, 18, 130, 140); ctx.clip();                     // cửa kính nhìn ra thành phố
-    ctx.fillStyle = day() ? "#9fd3f5" : "#0e1640"; ctx.fillRect(20, 18, 130, 140);
-    for (let k = 0; k < 7; k++) { const h = 40 + (k * 37) % 70; ctx.fillStyle = day() ? "#6d8db3" : "#24305e"; ctx.fillRect(20 + k * 20 + cam.x * .05 % 20, 158 - h, 17, h);
-      if (!day()) { ctx.fillStyle = "rgba(255,220,120,.8)"; for (let w = 0; w < 4; w++) if ((k + w) % 2) ctx.fillRect(24 + k * 20, 162 - h + w * 12, 3, 4); } }
-    ctx.restore(); ctx.strokeStyle = "#c9d6e3"; ctx.lineWidth = 3; ctx.strokeRect(20, 18, 130, 140); ctx.fillStyle = "#c9d6e3"; ctx.fillRect(84, 18, 2, 140);
-    // bảng điện tử khổng lồ trên tường: giá các mã (xanh tăng, đỏ giảm, vàng tham chiếu)
-    ctx.fillStyle = "#05070d"; rr(ctx, 180, 14, 640, 128, 6); ctx.fill(); ctx.strokeStyle = "#2b3a55"; ctx.lineWidth = 3; ctx.stroke();
+
+    // ---- Cửa sổ kính panorama nhìn ra đường chân trời thành phố (City Skyline) theo ngày / đêm ----
+    const winX = 18, winY = 14, winW = 148, winH = 144;
+    ctx.save(); ctx.beginPath(); ctx.rect(winX, winY, winW, winH); ctx.clip();
+    // Bầu trời thay đổi mượt mà theo Life.darkness()
+    const skyG = ctx.createLinearGradient(winX, winY, winX, winY + winH);
+    if (dk < 0.4) {
+      // Ban ngày: trời xanh mát mẻ, mây trắng bồng bềnh
+      skyG.addColorStop(0, "#4a90e2"); skyG.addColorStop(1, "#bfe3f7");
+    } else if (dk < 0.7) {
+      // Hoàng hôn: ráng hồng cam tím rực rỡ
+      skyG.addColorStop(0, "#2c1654"); skyG.addColorStop(0.5, "#802265"); skyG.addColorStop(1, "#f39c6b");
+    } else {
+      // Ban đêm: trời đêm huyền bí, trăng sao lấp lánh
+      skyG.addColorStop(0, "#050a18"); skyG.addColorStop(1, "#142143");
+    }
+    ctx.fillStyle = skyG; ctx.fillRect(winX, winY, winW, winH);
+
+    // Mây trôi ban ngày / Sao lấp lánh ban đêm
+    if (dk < 0.5) {
+      // Mây trôi
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      const c1x = winX + ((t * 4 + 20) % (winW + 40)) - 30;
+      ctx.beginPath(); ctx.arc(c1x, winY + 28, 12, 0, 7); ctx.arc(c1x + 10, winY + 24, 15, 0, 7); ctx.arc(c1x + 22, winY + 28, 11, 0, 7); ctx.fill();
+    } else {
+      // Ngôi sao đêm lấp lánh
+      for (const s of winStars) {
+        ctx.fillStyle = `rgba(255,255,255,${.3 + .5 * Math.sin(t * 3 + s.p)})`;
+        ctx.fillRect(winX + s.x * winW, winY + s.y * 60, 1.5, 1.5);
+      }
+    }
+
+    // Các tòa cao ốc tài chính (Skyscrapers) nhiều tầng lớp
+    const buildings = [
+      {w: 18, h: 65, spire: false}, {w: 22, h: 98, spire: true}, {w: 20, h: 80, spire: false},
+      {w: 25, h: 120, spire: true}, {w: 19, h: 74, spire: false}, {w: 24, h: 104, spire: false},
+      {w: 20, h: 58, spire: false}
+    ];
+    let bxCursor = winX + 2;
+    buildings.forEach((bld, bi) => {
+      const bh = bld.h, by = (winY + winH) - bh;
+      // Thân cao ốc
+      ctx.fillStyle = dk < 0.5 ? (bi % 2 ? "#577590" : "#43aa8b") : (bi % 2 ? "#1a2542" : "#131b33");
+      ctx.fillRect(bxCursor, by, bld.w, bh);
+      // Cột ăng-ten tháp tài chính có đèn đỏ nhấp nháy trên nóc
+      if (bld.spire) {
+        ctx.strokeStyle = "#8d99ae"; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(bxCursor + bld.w / 2, by); ctx.lineTo(bxCursor + bld.w / 2, by - 14); ctx.stroke();
+        // Đèn đỏ hàng không chớp tắt
+        ctx.fillStyle = (Math.floor(t * 2) % 2 === 0) ? "#ff3333" : "rgba(255,50,50,0.3)";
+        ctx.beginPath(); ctx.arc(bxCursor + bld.w / 2, by - 14, 2, 0, 7); ctx.fill();
+      }
+      // Các ô cửa sổ văn phòng phát sáng
+      const winRows = Math.floor(bh / 10) - 1;
+      const winCols = Math.floor(bld.w / 6);
+      for (let r = 0; r < winRows; r++) {
+        for (let c = 0; c < winCols; c++) {
+          const isLit = ((bi * 11 + r * 7 + c * 3) % 5 !== 0);
+          if (dk < 0.5) {
+            // Ban ngày: kính phản quang ánh trời
+            ctx.fillStyle = "rgba(220,240,255,0.45)";
+            ctx.fillRect(bxCursor + 2 + c * 5, by + 4 + r * 9, 3, 5);
+          } else if (isLit) {
+            // Ban đêm: ánh đèn văn phòng vàng ấm / xanh cyan
+            ctx.fillStyle = (r + c + bi) % 3 === 0 ? "rgba(100,240,255,0.85)" : "rgba(255,225,120,0.9)";
+            ctx.fillRect(bxCursor + 2 + c * 5, by + 4 + r * 9, 3, 5);
+          }
+        }
+      }
+      bxCursor += bld.w + 1;
+    });
+
+    // Vệt phản chiếu ánh sáng chéo trên mặt kính cửa sổ
+    ctx.fillStyle = "rgba(255,255,255,0.08)";
+    ctx.beginPath(); ctx.moveTo(winX, winY); ctx.lineTo(winX + 45, winY); ctx.lineTo(winX + 15, winY + winH); ctx.lineTo(winX, winY + winH); ctx.fill();
+    ctx.restore();
+
+    // Khung cửa sổ kim loại kiên cố
+    ctx.strokeStyle = "#c9d6e3"; ctx.lineWidth = 3; ctx.strokeRect(winX, winY, winW, winH);
+    ctx.fillStyle = "#c9d6e3";
+    ctx.fillRect(winX + winW / 2 - 1, winY, 2, winH); // Nan đứng
+    ctx.fillRect(winX, winY + winH * 0.6, winW, 2);   // Nan ngang
+
+    // ---- Bảng điện tử khổng lồ trên tường (Big Ticker Board with scrolling numbers) ----
+    ctx.fillStyle = "#040711"; rr(ctx, 180, 14, 640, 128, 6); ctx.fill();
+    ctx.strokeStyle = "#1d3557"; ctx.lineWidth = 3; ctx.stroke();
+    // Viền LED xanh công nghệ cao
+    ctx.strokeStyle = "rgba(56,189,248,0.4)"; ctx.lineWidth = 1;
+    rr(ctx, 182, 16, 636, 124, 5); ctx.stroke();
+
+    // Dải Ticker chạy chữ số chứng khoán scrolling numbers ở trên đỉnh bảng điện
     const tk = st.stk ? st.stk.tk : null;
+    ctx.save(); ctx.beginPath(); ctx.rect(184, 17, 632, 14); ctx.clip();
+    ctx.fillStyle = "#0a1124"; ctx.fillRect(184, 17, 632, 14);
+    const tickTape = tk ? Object.entries(tk).map(([sym, o]) => {
+      const chg = (o.p - o.prev) / o.prev * 100;
+      return `${sym}: ${o.p.toFixed(2)} ${chg >= 0 ? "▲+" : "▼"}${chg.toFixed(1)}%`;
+    }).join("    •    ") : "NONG: 15.20 ▲+3.4%    •    CAFE: 32.00 ▲+1.8%    •    THUY: 24.50 ▼-2.1%    •    DUOC: 45.00 ▲+0.5%    •    THEP: 28.60 ▲+4.2%";
+    ctx.fillStyle = "#38bdf8"; ctx.font = "800 8.5px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    const ttw = ctx.measureText(tickTape).width + 80;
+    const ttx = 816 - ((t * 40) % (ttw + 632));
+    ctx.fillText(tickTape, ttx, 24);
+    ctx.restore();
+
+    // Lưới các mã chứng khoán chính (xanh tăng, đỏ giảm, vàng tham chiếu)
     if (tk) Object.entries(tk).forEach(([sym, s], k) => {
-      const x = 192 + (k % 6) * 104, y = 26 + Math.floor(k / 6) * 52, ch = (s.p - s.prev) / s.prev * 100;
+      const x = 192 + (k % 6) * 104, y = 34 + Math.floor(k / 6) * 50, ch = (s.p - s.prev) / s.prev * 100;
       const col = ch > .05 ? "#39ff88" : ch < -.05 ? "#ff4d5e" : "#ffd166";
-      ctx.fillStyle = "#0c1220"; rr(ctx, x, y, 96, 44, 4); ctx.fill();
-      ctx.fillStyle = "#e6edf3"; ctx.font = "800 11px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillText(sym, x + 6, y + 11);
-      ctx.fillStyle = col; ctx.font = "800 13px monospace"; ctx.fillText(s.p.toFixed(2), x + 6, y + 28);
-      ctx.font = "700 9px monospace"; ctx.textAlign = "right"; ctx.fillText(`${ch >= 0 ? "▲" : "▼"}${Math.abs(ch).toFixed(1)}%`, x + 92, y + 11);
-      const h = st.hist[sym] || []; if (h.length > 2) {                                      // biểu đồ đường nhỏ
-        const mn = Math.min(...h), mx = Math.max(...h) || 1; ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.beginPath();
-        h.slice(-30).forEach((v, i, a) => { const px = x + 50 + i / (a.length - 1) * 42, py = y + 38 - (mx > mn ? (v - mn) / (mx - mn) : .5) * 14; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }); ctx.stroke();
+      ctx.fillStyle = "#0c1220"; rr(ctx, x, y, 96, 43, 4); ctx.fill();
+      ctx.fillStyle = "#e6edf3"; ctx.font = "800 11px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillText(sym, x + 6, y + 10);
+      ctx.fillStyle = col; ctx.font = "800 13px monospace"; ctx.fillText(s.p.toFixed(2), x + 6, y + 26);
+      ctx.font = "700 9px monospace"; ctx.textAlign = "right"; ctx.fillText(`${ch >= 0 ? "▲" : "▼"}${Math.abs(ch).toFixed(1)}%`, x + 92, y + 10);
+      const h = st.hist[sym] || [];
+      if (h.length > 2) {                                      // Biểu đồ đường nhỏ với vùng gradient
+        const mn = Math.min(...h), mx = Math.max(...h) || 1;
+        ctx.strokeStyle = col; ctx.lineWidth = 1.2; ctx.beginPath();
+        h.slice(-30).forEach((v, i, a) => {
+          const px = x + 50 + i / (a.length - 1) * 42, py = y + 36 - (mx > mn ? (v - mn) / (mx - mn) : .5) * 14;
+          i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+        });
+        ctx.stroke();
       }
     });
-    else { ctx.fillStyle = "#39ff88"; ctx.font = "800 14px monospace"; ctx.textAlign = "center"; ctx.fillText("ĐANG KẾT NỐI BẢNG GIÁ…", 500, 78); }
-    ctx.fillStyle = "#111827"; ctx.fillRect(180, 144, 640, 16);                                // dòng tin chạy ngang trên tường
+    else {
+      ctx.fillStyle = "#39ff88"; ctx.font = "800 14px monospace"; ctx.textAlign = "center"; ctx.fillText("ĐANG KẾT NỐI BẢNG GIÁ…", 500, 78);
+    }
+
+    // Dòng tin tức chạy ngang trên tường (tin nóng tài chính)
+    ctx.fillStyle = "#0a0f1d"; ctx.fillRect(180, 144, 640, 16);
     ctx.save(); ctx.beginPath(); ctx.rect(180, 144, 640, 16); ctx.clip();
     const news = (st.stk && st.stk.news || []).map(n => `${n.up ? "📈" : "📉"} ${n.sector}: ${n.text}`).join("    •    ") || "📰 Chào mừng tới sàn giao dịch ảo — mô phỏng để học, không phải lời khuyên đầu tư thật";
     ctx.fillStyle = "#ffd27a"; ctx.font = "700 10px Nunito, system-ui"; ctx.textAlign = "left";
     const nw = ctx.measureText(news).width + 80; ctx.fillText(news, 820 - ((t * 45) % (nw + 640)), 152); ctx.restore();
-    // đồng hồ giờ VN + bảng xếp hạng
-    ctx.fillStyle = "#0c1220"; rr(ctx, 850, 22, 130, 40, 6); ctx.fill();
-    ctx.fillStyle = "#e6edf3"; ctx.font = "800 18px monospace"; ctx.textAlign = "center"; ctx.fillText(Life.clockFull().slice(0, 5), 915, 38);
-    ctx.fillStyle = st.stk && st.stk.open ? "#39ff88" : "#ff4d5e"; ctx.font = "800 9px Nunito, system-ui"; ctx.fillText(st.stk && st.stk.open ? "● ĐANG GIAO DỊCH" : "● NGOÀI GIỜ", 915, 54);
-    ctx.fillStyle = "#13233f"; rr(ctx, 850, 70, 130, 84, 6); ctx.fill();
-    ctx.fillStyle = "#ffd27a"; ctx.font = "800 9px Nunito, system-ui"; ctx.fillText("🏆 LÃI CAO NHẤT", 915, 82);
-    ((st.stk && st.stk.leader) || []).slice(0, 4).forEach((r, k) => { ctx.fillStyle = "#e6edf3"; ctx.font = "700 9px Nunito, system-ui"; ctx.textAlign = "left"; ctx.fillText(`${k + 1}. ${r.name}`.slice(0, 14), 858, 98 + k * 14); ctx.textAlign = "right"; ctx.fillStyle = r.pct >= 0 ? "#39ff88" : "#ff4d5e"; ctx.fillText(`${r.pct >= 0 ? "+" : ""}${r.pct}%`, 974, 98 + k * 14); });
-    drawSwitch();
-    // sàn đá bóng phản chiếu
-    for (let y = 160, r = 0; y < B; y += 40, r++) for (let x = Math.floor(L / 80) * 80 + (r % 2 ? 40 : 0); x < R; x += 80) { ctx.fillStyle = (x / 80 + r) % 2 ? "#e9edf2" : "#dfe4ea"; ctx.fillRect(x, y, 80, 40); }
-    ctx.fillStyle = "rgba(255,255,255,.35)"; for (let k = 0; k < 6; k++) ctx.fillRect(60 + k * 180, 170, 30, 400);
-    ctx.fillStyle = "#16303a"; ctx.fillRect(L, 158, wv, 6);
 
-    // BẢNG ĐIỆN TỬ TREO ĐẦU TRỤ TRUNG TÂM (nhìn thấy ngay khi bước vào sàn)
+    // ---- Đồng hồ các trung tâm tài chính thế giới (World Financial Clocks) ----
+    // Việt Nam (HOSE), New York (NYSE), London (LSE), Tokyo (TSE)
+    const clkFull = Life.clockFull() || "12:00:00";
+    const vnH = parseInt(clkFull.slice(0, 2)) || 12;
+    const vnM = clkFull.slice(3, 5);
+    const nyH = (vnH - 11 + 24) % 24;
+    const lonH = (vnH - 7 + 24) % 24;
+    const tokH = (vnH + 2) % 24;
+    const worldClocks = [
+      {city: "VN", flag: "🇻🇳", time: `${String(vnH).padStart(2, "0")}:${vnM}`, open: Boolean(st.stk && st.stk.open)},
+      {city: "NY", flag: "🇺🇸", time: `${String(nyH).padStart(2, "0")}:${vnM}`, open: (nyH >= 9 && nyH < 16)},
+      {city: "LD", flag: "🇬🇧", time: `${String(lonH).padStart(2, "0")}:${vnM}`, open: (lonH >= 8 && lonH < 16)},
+      {city: "TK", flag: "🇯🇵", time: `${String(tokH).padStart(2, "0")}:${vnM}`, open: (tokH >= 9 && tokH < 15)}
+    ];
+    // Khung bảng đồng hồ thế giới ở góc phải
+    ctx.fillStyle = "#0c1220"; rr(ctx, 846, 14, 116, 54, 6); ctx.fill();
+    ctx.strokeStyle = "#2b3a55"; ctx.lineWidth = 1.5; ctx.stroke();
+    worldClocks.forEach((c, idx) => {
+      const cx = 852 + (idx % 2) * 56, cy = 25 + Math.floor(idx / 2) * 23;
+      ctx.fillStyle = "#94a3b8"; ctx.font = "700 7.5px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.fillText(`${c.flag} ${c.city}`, cx, cy - 5);
+      ctx.fillStyle = "#f8fafc"; ctx.font = "800 9.5px monospace";
+      ctx.fillText(c.time, cx, cy + 6);
+      // Đèn xanh nếu đang giờ giao dịch, cam nếu ngoài giờ
+      ctx.fillStyle = c.open ? "#39ff88" : "#f59e0b";
+      ctx.beginPath(); ctx.arc(cx + 46, cy, 2, 0, 7); ctx.fill();
+    });
+
+    // Bảng xếp hạng lãi cao nhất
+    ctx.fillStyle = "#13233f"; rr(ctx, 846, 72, 116, 82, 6); ctx.fill();
+    ctx.fillStyle = "#ffd27a"; ctx.font = "800 9px Nunito, system-ui"; ctx.textAlign = "center"; ctx.fillText("🏆 LÃI CAO NHẤT", 904, 84);
+    ((st.stk && st.stk.leader) || []).slice(0, 4).forEach((r, k) => {
+      ctx.fillStyle = "#e6edf3"; ctx.font = "700 8.5px Nunito, system-ui"; ctx.textAlign = "left";
+      ctx.fillText(`${k + 1}. ${r.name}`.slice(0, 11), 852, 98 + k * 13);
+      ctx.textAlign = "right"; ctx.fillStyle = r.pct >= 0 ? "#39ff88" : "#ff4d5e";
+      ctx.fillText(`${r.pct >= 0 ? "+" : ""}${r.pct}%`, 956, 98 + k * 13);
+    });
+    drawSwitch(); // Công tắc đèn sàn
+
+    // ---- Sàn đá hoa cương bóng phản chiếu ánh đèn (Reflective Granite Floor) ----
+    for (let y = 160, r = 0; y < B; y += 40, r++) {
+      for (let x = Math.floor(L / 80) * 80 + (r % 2 ? 40 : 0); x < R; x += 80) {
+        ctx.fillStyle = (x / 80 + r) % 2 ? "#e9edf2" : "#dfe4ea"; ctx.fillRect(x, y, 80, 40);
+      }
+    }
+    // Vệt bóng ánh sáng phản chiếu trần và bảng điện xuống sàn
+    ctx.fillStyle = "rgba(255,255,255,.3)"; for (let k = 0; k < 6; k++) ctx.fillRect(60 + k * 180, 170, 30, 400);
+    ctx.fillStyle = "rgba(56,189,248,0.06)"; ctx.fillRect(200, 170, 600, 260); // Ánh sáng xanh bảng điện hắt xuống sàn
+    ctx.fillStyle = "#16303a"; ctx.fillRect(L, 158, wv, 6); // Len chân tường đá đen
+
+    // ---- Bảng điện tử treo đầu trụ trung tâm (Central Trading Board) ----
     const midX = 370, midY = 210, midW = 260, midH = 58;
     ctx.fillStyle = "#05070d"; rr(ctx, midX, midY, midW, midH, 8); ctx.fill();
     ctx.strokeStyle = "#38bdf8"; ctx.lineWidth = 2.5; ctx.stroke();
-    // viền đèn LED nhấp nháy
+    // Viền đèn LED nhấp nháy
     ctx.fillStyle = "#38bdf8"; ctx.font = "800 9px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
     ctx.fillText("📊 VN-INDEX 1,280.5 ▲+12.4 (1.0%)", midX + 10, midY + 16);
     ctx.fillStyle = "#e6edf3"; ctx.font = "700 8.5px monospace";
     ctx.fillText("📈 HNX: 235.8 ▲+2.1  •  UPCOM: 91.2", midX + 10, midY + 30);
-    // dòng chữ chạy giá các mã chính bên dưới bảng trung tâm
+    // Dòng chữ chạy giá các mã chính bên dưới bảng trung tâm
     ctx.save(); ctx.beginPath(); ctx.rect(midX + 6, midY + 40, midW - 12, 14); ctx.clip();
     const tickLine = tk ? Object.entries(tk).map(([m, o]) => `${m}: ${o.p.toFixed(1)}${(o.p >= o.prev) ? "▲" : "▼"}`).join("   ") : "NONG: 15.2▲   CAFE: 32.0▲   THUY: 24.5▼   DUOC: 45.0▲";
     ctx.fillStyle = "#39ff88"; ctx.font = "800 8.5px monospace"; ctx.textAlign = "left";
@@ -325,21 +847,48 @@ const Zones = (() => {
     const tlx = (midX + midW - 6) - ((t * 40) % (tlw + midW - 12));
     ctx.fillText(tickLine, tlx, midY + 47);
     ctx.restore();
-    // đèn trạng thái live
+    // Đèn trạng thái live
     ctx.fillStyle = "#39ff88"; ctx.beginPath(); ctx.arc(midX + midW - 14, midY + 16, 4, 0, 7); ctx.fill();
 
-    // quầy tư vấn (giữa) + cây xanh + góc cà phê
-    ctx.fillStyle = "#1d3557"; rr(ctx, 430, 280, 140, 36, 8); ctx.fill(); ctx.fillStyle = "#ffd27a"; ctx.font = "800 9px Nunito, system-ui"; ctx.textAlign = "center"; ctx.fillText("💬 QUẦY TƯ VẤN", 500, 292);
-    ctx.fillStyle = "#a8dadc"; ctx.fillRect(440, 302, 120, 10);
-    for (const px of [40, 960, 420, 580]) { ctx.fillStyle = "#e5e5e5"; rr(ctx, px - 10, 540, 20, 18, 3); ctx.fill(); ctx.fillStyle = "#2d6a4f"; ctx.beginPath(); ctx.arc(px, 528, 13, 0, 7); ctx.arc(px - 8, 520, 8, 0, 7); ctx.arc(px + 8, 520, 8, 0, 7); ctx.fill(); }
-    ctx.fillStyle = "#6b4a35"; rr(ctx, 800, 520, 150, 34, 10); ctx.fill(); ctx.fillStyle = "#a47148"; rr(ctx, 806, 512, 138, 12, 6); ctx.fill();   // sofa
+    // ---- Quầy tư vấn (giữa) + cây cảnh văn phòng + góc cà phê lounge ----
+    ctx.fillStyle = "#1d3557"; rr(ctx, 430, 280, 140, 36, 8); ctx.fill();
+    ctx.strokeStyle = "#457b9d"; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = "#ffd27a"; ctx.font = "800 9px Nunito, system-ui"; ctx.textAlign = "center"; ctx.fillText("💬 QUẦY TƯ VẤN ĐẦU TƯ", 500, 292);
+    ctx.fillStyle = "rgba(168,218,220,0.5)"; ctx.fillRect(440, 302, 120, 10); // Vách ngăn kính mờ
+    // Cây kim tiền mini trên bàn tư vấn
+    ctx.fillStyle = "#e76f51"; rr(ctx, 444, 300, 8, 8, 2); ctx.fill();
+    ctx.fillStyle = "#2d6a4f"; ctx.beginPath(); ctx.arc(448, 298, 4, 0, 7); ctx.arc(446, 295, 3, 0, 7); ctx.arc(450, 295, 3, 0, 7); ctx.fill();
+
+    // Cây cảnh văn phòng hiện đại: Bàng Singapore, Lưỡi Hổ phong thủy
+    drawOfficePlant(40, 532, "fig");         // Cây bàng Singapore góc trái
+    drawOfficePlant(960, 532, "fig");        // Cây bàng Singapore góc phải
+    drawOfficePlant(418, 280, "snake");      // Cây lưỡi hổ cạnh quầy tư vấn trái
+    drawOfficePlant(582, 280, "snake");      // Cây lưỡi hổ cạnh quầy tư vấn phải
+    drawOfficePlant(775, 528, "monstera");   // Cây trầu bà monstera cạnh sofa
+
+    // Khu vực Sofa tiếp khách & đài Radio
+    ctx.fillStyle = "#6b4a35"; rr(ctx, 800, 520, 150, 34, 10); ctx.fill();
+    ctx.fillStyle = "#a47148"; rr(ctx, 806, 512, 138, 12, 6); ctx.fill();   // Tựa lưng sofa da
     ctx.fillStyle = "#3a3a46"; rr(ctx, RADIO.x - 4, RADIO.y + 24, RADIO.w + 8, 6, 2); ctx.fill();
     drawRadio(t);
-    ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = 1;                                // cà phê bốc khói
-    for (let k = 0; k < 2; k++) { const ph = (t * .5 + k * .5) % 1; ctx.globalAlpha = Math.sin(ph * Math.PI); ctx.beginPath(); ctx.moveTo(918 + k * 4, 510 - ph * 10); ctx.quadraticCurveTo(921 + k * 4, 506 - ph * 10, 918 + k * 4, 502 - ph * 10); ctx.stroke(); }
-    ctx.globalAlpha = 1; ctx.fillStyle = "#fff"; ctx.fillRect(914, 512, 10, 8);
 
-    // BĂNG TIN TỨC CHẠY CHỮ DƯỚI CHÂN MÀN HÌNH (tránh lối cửa thoát 476..524)
+    // Cà phê nóng bốc khói trên bàn kính
+    ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = 1;
+    for (let k = 0; k < 2; k++) {
+      const ph = (t * .5 + k * .5) % 1;
+      ctx.globalAlpha = Math.sin(ph * Math.PI);
+      ctx.beginPath(); ctx.moveTo(918 + k * 4, 510 - ph * 10);
+      ctx.quadraticCurveTo(921 + k * 4, 506 - ph * 10, 918 + k * 4, 502 - ph * 10); ctx.stroke();
+    }
+    ctx.globalAlpha = 1; ctx.fillStyle = "#fff"; ctx.fillRect(914, 512, 10, 8); // Tách cà phê
+
+    // Cột nước uống nóng lạnh văn phòng cạnh sofa
+    ctx.fillStyle = "#e9ecef"; rr(ctx, 955, 492, 18, 48, 4); ctx.fill();
+    ctx.fillStyle = "#00b4d8"; ctx.beginPath(); ctx.arc(964, 496, 6, 0, 7); ctx.fill(); // Bình nước khoáng xanh
+    ctx.fillStyle = "#ff4d6d"; ctx.fillRect(960, 516, 2, 4); // Vòi nóng
+    ctx.fillStyle = "#0077b6"; ctx.fillRect(966, 516, 2, 4); // Vòi lạnh
+
+    // Băng tin tức chạy chữ dưới chân màn hình (tránh lối cửa thoát 476..524)
     ctx.fillStyle = "#0c1220"; ctx.fillRect(L, 570, wv, 15);
     ctx.fillStyle = "#ffd166"; ctx.fillRect(L, 569, wv, 1);
     ctx.save(); ctx.beginPath(); ctx.rect(L, 570, wv, 15); ctx.clip();
@@ -352,89 +901,367 @@ const Zones = (() => {
   }
   const BOARD_R = {x: 180, y: 14, w: 640, h: 146}, MID_BOARD_R = {x: 370, y: 210, w: 260, h: 58};
 
-  function drawDating(t) {                                    // 💞 phố lãng mạn 1120x600: hồ đèn hoa đăng phía trên
+  function drawDating(t) {                                    // 💞 phố lãng mạn & hẹn hò 1120x600: hồ đèn hoa đăng
     const dk = Life.darkness(), {L, R, B} = bleed();
+    // Bầu trời chuyển sắc hồng tím hoàng hôn đến đêm lãng mạn
     const g = ctx.createLinearGradient(0, -100, 0, 110);
     g.addColorStop(0, dk > .5 ? "#120a35" : "#5b3a8c"); g.addColorStop(1, dk > .5 ? "#4a2a6b" : "#ffb3c6");
     ctx.fillStyle = g; ctx.fillRect(L, -500, R - L, 610);
-    for (const s of winStars) for (let k = 0; k < 4; k++) { ctx.fillStyle = `rgba(255,255,255,${(.3 + .4 * Math.sin(t * 2 + s.p + k)) * (dk > .5 ? 1 : .4)})`; ctx.fillRect(-200 + k * 380 + s.x * 380, -60 + s.y * 140, 1.5, 1.5); }
+    for (const s of winStars) for (let k = 0; k < 4; k++) {
+      ctx.fillStyle = `rgba(255,255,255,${(.3 + .4 * Math.sin(t * 2 + s.p + k)) * (dk > .5 ? 1 : .4)})`;
+      ctx.fillRect(-200 + k * 380 + s.x * 380, -60 + s.y * 140, 1.5, 1.5);
+    }
+    // Trăng tròn vàng dịu tỏa sáng
     ctx.fillStyle = "#fff6c8"; ctx.beginPath(); ctx.arc(LAYOUT.moon.x, LAYOUT.moon.y, 16, 0, 7); ctx.fill();
-    ctx.save(); ctx.translate(cam.x * .3, 0);                                                    // đu quay nhỏ phát sáng ở xa
-    for (let k = 0; k < 12; k++) { const a = t * .2 + k / 12 * 6.28; ctx.fillStyle = `hsl(${(k * 30 + t * 40) % 360},90%,70%)`; ctx.beginPath(); ctx.arc(1000 + Math.cos(a) * 34, 66 + Math.sin(a) * 34, 2.6, 0, 7); ctx.fill(); }
+    ctx.fillStyle = "rgba(255,246,200,0.18)"; ctx.beginPath(); ctx.arc(LAYOUT.moon.x, LAYOUT.moon.y, 24, 0, 7); ctx.fill();
+
+    ctx.save(); ctx.translate(cam.x * .3, 0);                                                    // Đu quay nhỏ phát sáng ở xa
+    for (let k = 0; k < 12; k++) {
+      const a = t * .2 + k / 12 * 6.28; ctx.fillStyle = `hsl(${(k * 30 + t * 40) % 360},90%,70%)`;
+      ctx.beginPath(); ctx.arc(1000 + Math.cos(a) * 34, 66 + Math.sin(a) * 34, 2.6, 0, 7); ctx.fill();
+    }
     ctx.strokeStyle = "rgba(255,255,255,.35)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(1000, 66, 34, 0, 7); ctx.stroke();
-    ctx.fillStyle = dk > .5 ? "#2a1d4a" : "#8e6fb3"; for (let k = 0; k < 14; k++) { const h = 20 + (k * 29) % 40; ctx.fillRect(-150 + k * 100, 110 - h, 60, h); }
+    ctx.fillStyle = dk > .5 ? "#2a1d4a" : "#8e6fb3";
+    for (let k = 0; k < 14; k++) { const h = 20 + (k * 29) % 40; ctx.fillRect(-150 + k * 100, 110 - h, 60, h); }
     ctx.restore();
-    // hồ: phản chiếu hồng tím, gợn sóng, đèn hoa đăng trôi
-    const wg = ctx.createLinearGradient(0, 105, 0, 255); wg.addColorStop(0, dk > .5 ? "#2b1e5a" : "#d291bc"); wg.addColorStop(1, dk > .5 ? "#140d33" : "#6a4c93");
+
+    // ---- Hồ nước: phản chiếu hồng tím, gợn sóng, đèn hoa đăng trôi ----
+    const wg = ctx.createLinearGradient(0, 105, 0, 255);
+    wg.addColorStop(0, dk > .5 ? "#2b1e5a" : "#d291bc"); wg.addColorStop(1, dk > .5 ? "#140d33" : "#6a4c93");
     ctx.fillStyle = wg; ctx.fillRect(L, 105, R - L, 150);
-    ctx.strokeStyle = "rgba(255,255,255,.18)"; for (let k = 0; k < 30; k++) { const x = (k * 71 + t * 8) % (W + 40) - 20, y = 120 + (k * 37) % 120; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 16, y); ctx.stroke(); }
+    // Gợn sóng lăn tăn
+    ctx.strokeStyle = "rgba(255,255,255,.22)";
+    for (let k = 0; k < 30; k++) {
+      const x = (k * 71 + t * 8) % (W + 40) - 20, y = 120 + (k * 37) % 120;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 16, y); ctx.stroke();
+    }
+    // Cánh hoa anh đào trôi trên mặt nước
+    for (let pk = 0; pk < 12; pk++) {
+      const px = ((pk * 93 + t * 14) % (W + 60)) - 30, py = 125 + (pk * 31) % 110;
+      ctx.fillStyle = "rgba(255,182,193,0.75)";
+      ctx.beginPath(); ctx.ellipse(px, py, 3.5, 2, Math.sin(t + pk), 0, 7); ctx.fill();
+    }
     st.lanterns = st.lanterns.filter(l => l.base || t - l.t0 < 60);
     for (const l of st.lanterns) {
       const age = t - l.t0, x = ((l.x + age * 12) % (W + 80) + W + 80) % (W + 80) - 40, y = 230 - Math.min(1, age / 4) * 40 - (l.base ? 30 + (l.x % 50) : 0) + Math.sin(t + l.x) * 2;
       ctx.fillStyle = "rgba(255,190,90,.25)"; ctx.beginPath(); ctx.arc(x, y, 12, 0, 7); ctx.fill();
       ctx.fillStyle = "#ff8fab"; ctx.beginPath(); ctx.moveTo(x - 7, y + 3); ctx.lineTo(x, y - 7); ctx.lineTo(x + 7, y + 3); ctx.closePath(); ctx.fill();
       ctx.fillStyle = "#ffd166"; ctx.beginPath(); ctx.arc(x, y + 1, 2.2, 0, 7); ctx.fill();
-      ctx.fillStyle = "rgba(255,200,120,.25)"; ctx.fillRect(x - 1, y + 6, 2, 10);              // bóng phản chiếu
+      ctx.fillStyle = "rgba(255,200,120,.25)"; ctx.fillRect(x - 1, y + 6, 2, 10);              // Bóng phản chiếu
     }
-    // cầu đôi cong
+
+    // Cầu đôi cong qua hồ
     for (const bx of [470, 560]) {
       ctx.strokeStyle = "#f8d7e8"; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(bx + 45, 255, 50, Math.PI, 0); ctx.stroke();
-      ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = 1.5; for (let k = 0; k <= 8; k++) { const a = Math.PI + k / 8 * Math.PI; ctx.beginPath(); ctx.moveTo(bx + 45 + Math.cos(a) * 50, 255 + Math.sin(a) * 50); ctx.lineTo(bx + 45 + Math.cos(a) * 50, 240 + Math.sin(a) * 50); ctx.stroke(); bulb(bx + 45 + Math.cos(a) * 50, 238 + Math.sin(a) * 50, (Math.floor(t * 2) + k) % 2 === 0, "#ffb3c6"); }
+      ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = 1.5;
+      for (let k = 0; k <= 8; k++) {
+        const a = Math.PI + k / 8 * Math.PI;
+        ctx.beginPath(); ctx.moveTo(bx + 45 + Math.cos(a) * 50, 255 + Math.sin(a) * 50); ctx.lineTo(bx + 45 + Math.cos(a) * 50, 240 + Math.sin(a) * 50); ctx.stroke();
+        bulb(bx + 45 + Math.cos(a) * 50, 238 + Math.sin(a) * 50, (Math.floor(t * 2) + k) % 2 === 0, "#ffb3c6");
+      }
     }
-    // bờ + lối đi lát hồng
+
+    // Bờ hồ + lối đi lát đá hồng phấn
     ctx.fillStyle = "#e8c4d8"; ctx.fillRect(L, 252, R - L, 12);
-    for (let y = 264, r = 0; y < B; y += 26, r++) for (let x = Math.floor(L / 52) * 52 + (r % 2 ? 26 : 0); x < R; x += 52) { ctx.fillStyle = (r + x / 52) % 2 ? (dk > .5 ? "#4b3a66" : "#f7dce8") : (dk > .5 ? "#43345e" : "#f1cfe0"); ctx.fillRect(x, y, 52, 26); }
-    // cây anh đào có dây đèn
+    for (let y = 264, r = 0; y < B; y += 26, r++) {
+      for (let x = Math.floor(L / 52) * 52 + (r % 2 ? 26 : 0); x < R; x += 52) {
+        ctx.fillStyle = (r + x / 52) % 2 ? (dk > .5 ? "#4b3a66" : "#f7dce8") : (dk > .5 ? "#43345e" : "#f1cfe0");
+        ctx.fillRect(x, y, 52, 26);
+      }
+    }
+
+    // ---- Dây đèn Fairy lights lung linh giăng ngang qua các ngọn cây và phố ----
+    const fairyLines = [
+      {x1: 60, y1: 280, x2: 380, y2: 275, sag: 22},
+      {x1: 380, y1: 275, x2: 800, y2: 280, sag: 30},
+      {x1: 800, y1: 280, x2: 1070, y2: 275, sag: 24}
+    ];
+    fairyLines.forEach((fl, idx) => {
+      ctx.strokeStyle = "rgba(180,140,160,0.5)"; ctx.lineWidth = 0.9;
+      ctx.beginPath(); ctx.moveTo(fl.x1, fl.y1);
+      ctx.quadraticCurveTo((fl.x1 + fl.x2) / 2, fl.y1 + fl.sag, fl.x2, fl.y2); ctx.stroke();
+      const nDots = 16;
+      for (let di = 1; di < nDots; di++) {
+        const pr = di / nDots;
+        const fx = fl.x1 + (fl.x2 - fl.x1) * pr;
+        const fy = fl.y1 + (fl.y2 - fl.y1) * pr + Math.sin(pr * Math.PI) * fl.sag;
+        const fcol = ["#ffd166", "#ff8fab", "#cdb4db", "#ffd6e0", "#a0c4ff"][(di + idx) % 5];
+        bulb(fx, fy, (Math.floor(t * 3) + di + idx) % 3 !== 0, fcol);
+      }
+    });
+
+    // Cây anh đào sakura nở rộ có dây đèn
     for (const [x, y] of [[60, 300], [380, 296], [800, 300], [1070, 296]]) {
       ctx.fillStyle = "#6b4a35"; ctx.fillRect(x - 4, y, 8, 40);
       ctx.fillStyle = "#f4a6c4"; ctx.beginPath(); ctx.arc(x, y - 6, 30, 0, 7); ctx.arc(x - 20, y + 6, 18, 0, 7); ctx.arc(x + 20, y + 6, 18, 0, 7); ctx.fill();
       for (let k = 0; k < 9; k++) bulb(x - 28 + k * 7, y - 6 + Math.sin(k) * 8, (Math.floor(t * 2) + k) % 3 > 0, "#fff3b0");
-      for (let k = 0; k < 4; k++) { const ph = (t * .2 + k / 4 + x) % 1; ctx.fillStyle = `rgba(255,192,214,${1 - ph})`; ctx.fillRect(x - 20 + Math.sin(t + k) * 18, y + ph * 70, 2.4, 2.4); }
+      for (let k = 0; k < 4; k++) {
+        const ph = (t * .2 + k / 4 + x) % 1;
+        ctx.fillStyle = `rgba(255,192,214,${1 - ph})`; ctx.fillRect(x - 20 + Math.sin(t + k) * 18, y + ph * 70, 2.4, 2.4);
+      }
     }
-    // quán cà phê nến (trái), photobooth (giữa phải), tiệm hoa (phải)
-    ctx.fillStyle = "#5e3d27"; rr(ctx, 20, 300, 230, 70, 8); ctx.fill();
-    for (let k = 0; k < 9; k++) { ctx.fillStyle = k % 2 ? "#ffc8dd" : "#fff"; ctx.fillRect(20 + k * 25.5, 290, 25.5, 14); }
-    ctx.fillStyle = "#ffd27a"; ctx.font = "800 10px Nunito, system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("☕ CÀ PHÊ ĐÔI", 135, 316);
-    for (const tx of [70, 200]) { ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(tx, 350, 18, 7, 0, 0, 7); ctx.fill(); ctx.fillStyle = `rgba(255,200,90,${.8 + Math.sin(t * 8 + tx) * .2})`; ctx.beginPath(); ctx.arc(tx, 343, 2.2, 0, 7); ctx.fill(); }
+
+    // Bụi hoa cẩm tú cầu (Hydrangea) nở dọc lối đi bờ hồ
+    [260, 430, 730, 890].forEach((hx, hi) => {
+      ctx.fillStyle = ["#b8c0ff", "#ffc6ff", "#ffd6e0", "#c8b6ff"][hi % 4];
+      ctx.beginPath(); ctx.arc(hx, 260, 10, 0, 7); ctx.arc(hx - 6, 262, 7, 0, 7); ctx.arc(hx + 6, 262, 7, 0, 7); ctx.fill();
+      ctx.fillStyle = "#52b788"; ctx.beginPath(); ctx.ellipse(hx, 266, 12, 3, 0, 0, 7); ctx.fill();
+    });
+
+    // ---- Quán Cà phê Hẹn hò lãng mạn (Romantic Café Look) & Tường Pastel ----
+    // Tường pastel ấm áp với chỉ phào trang nhã
+    ctx.fillStyle = "#ffcad4"; rr(ctx, 20, 294, 230, 76, 8); ctx.fill(); // Tường pastel hồng
+    ctx.strokeStyle = "#f4a6b8"; ctx.lineWidth = 1.5; ctx.stroke();
+    // Khung cửa sổ cà phê vòm kiểu Pháp lấp lánh nến
+    ctx.fillStyle = "#ffe5ec"; rr(ctx, 32, 312, 60, 48, 6); ctx.fill();
+    ctx.fillStyle = "rgba(255,230,160,0.4)"; rr(ctx, 36, 316, 52, 40, 4); ctx.fill(); // Ánh đèn vàng bên trong quán
+    // Rèm ren mềm mại buộc nơ hồng
+    ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(44, 322, 7, 0, 3.14); ctx.arc(80, 322, 7, 0, 3.14); ctx.stroke();
+    // Bánh kem & tách trà trên bệ cửa sổ
+    ctx.fillStyle = "#ff758f"; ctx.fillRect(58, 344, 8, 6); // Bánh dâu
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(62, 343, 2, 0, 7); ctx.fill();
+
+    // Mái hiên sọc hồng pastel - trắng có rèm lượn sóng
+    for (let k = 0; k < 9; k++) {
+      ctx.fillStyle = k % 2 ? "#ff8fab" : "#fff0f5";
+      ctx.fillRect(20 + k * 25.5, 290, 25.5, 15);
+      // Rèm viền sóng uốn cong
+      ctx.beginPath(); ctx.arc(20 + k * 25.5 + 12.75, 305, 5, 0, Math.PI); ctx.fill();
+    }
+    // Biển hiệu quán cà phê chữ vàng ánh kim
+    ctx.fillStyle = "#592d1d"; rr(ctx, 104, 306, 90, 20, 6); ctx.fill();
+    ctx.strokeStyle = "#ffd166"; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = "#ffd27a"; ctx.font = "800 9.5px Nunito, system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("☕ CÀ PHÊ ĐÔI 💕", 149, 316);
+
+    // Bảng đen menu quán cà phê xinh xắn đặt trên giá vẽ
+    ctx.fillStyle = "#2d3142"; rr(ctx, 106, 334, 46, 32, 3); ctx.fill();
+    ctx.strokeStyle = "#8d5b4c"; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = "#fff"; ctx.font = "700 6px Nunito, system-ui"; ctx.textAlign = "center";
+    ctx.fillText("MENU TÌNH YÊU", 129, 342);
+    ctx.fillStyle = "#ffd166"; ctx.fillText("Trà Đào 💕 Trà Sữa", 129, 350);
+    ctx.fillText("Bánh Dâu 🍰", 129, 358);
+
+    // Bàn cà phê ngoài trời (x: 70, 200) với khăn bàn ren, nến thơm và bình hoa
+    for (const tx of [70, 200]) {
+      // Mặt bàn tròn phủ khăn ren
+      ctx.fillStyle = "rgba(0,0,0,0.15)"; ctx.beginPath(); ctx.ellipse(tx, 356, 20, 8, 0, 0, 7); ctx.fill(); // Bóng bàn
+      ctx.fillStyle = "#fff8f0"; ctx.beginPath(); ctx.ellipse(tx, 350, 19, 7.5, 0, 0, 7); ctx.fill();
+      ctx.strokeStyle = "#ffccd5"; ctx.lineWidth = 1; ctx.stroke();
+      // Chân bàn sắt uốn nghệ thuật
+      ctx.strokeStyle = "#4a4e69"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(tx, 357); ctx.lineTo(tx, 370); ctx.lineTo(tx - 8, 374);
+      ctx.moveTo(tx, 370); ctx.lineTo(tx + 8, 374); ctx.stroke();
+      // Bình hoa tươi lãng mạn trên bàn
+      drawFlowerVase(tx + 8, 348, t);
+      // Nến cốc lung linh phát sáng
+      ctx.fillStyle = "rgba(255,200,90,0.35)"; ctx.beginPath(); ctx.arc(tx - 7, 343, 6, 0, 7); ctx.fill();
+      ctx.fillStyle = `rgba(255,200,90,${.8 + Math.sin(t * 8 + tx) * .2})`; ctx.beginPath(); ctx.arc(tx - 7, 343, 2.4, 0, 7); ctx.fill();
+    }
+
+    // ---- Photobooth & Bức tường ảnh kỷ niệm tình yêu (Photo Wall) ----
     ctx.fillStyle = "#c1121f"; rr(ctx, 650, 290, 70, 100, 6); ctx.fill(); ctx.fillStyle = "#ffafcc"; ctx.fillRect(656, 300, 58, 80);
-    ctx.fillStyle = "#fff"; ctx.font = "800 9px Nunito, system-ui"; ctx.fillText("📸 PHOTO", 685, 296);
+    ctx.fillStyle = "#fff"; ctx.font = "800 9px Nunito, system-ui"; ctx.textAlign = "center"; ctx.fillText("📸 PHOTO", 685, 296);
     ctx.font = "18px system-ui"; ctx.fillText("💕", 685, 340);
+
+    // BỨC TƯỜNG ẢNH KỶ NIỆM (Photo Wall đặt cạnh photobooth từ x: 730 đến 845)
+    ctx.fillStyle = "#fdf0ed"; rr(ctx, 730, 292, 116, 78, 6); ctx.fill(); // Tấm bảng gỗ treo ảnh pastel
+    ctx.strokeStyle = "#f3c68f"; ctx.lineWidth = 1.8; ctx.stroke();
+    // Dây đèn fairy lights đan chéo trên tường ảnh
+    ctx.strokeStyle = "rgba(220,160,140,0.6)"; ctx.lineWidth = 0.9;
+    ctx.beginPath(); ctx.moveTo(734, 304); ctx.quadraticCurveTo(788, 316, 842, 304); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(734, 338); ctx.quadraticCurveTo(788, 348, 842, 338); ctx.stroke();
+    for (let pi = 0; pi < 6; pi++) {
+      bulb(742 + pi * 18, 308 + Math.sin(pi) * 3, (Math.floor(t * 3) + pi) % 2 === 0, "#ffd166");
+      bulb(746 + pi * 17, 342 + Math.sin(pi + 1) * 3, (Math.floor(t * 3) + pi) % 2 !== 0, "#ff8fab");
+    }
+    // Biển chữ neon nhỏ trên tường ảnh
+    ctx.fillStyle = "#ff758f"; ctx.font = "800 7px Nunito, system-ui"; ctx.textAlign = "center";
+    ctx.fillText("KỶ NIỆM 💕 MEMORIES", 788, 300);
+
+    // Các tấm ảnh Polaroid chụp đôi chibi ghim kẹp gỗ
+    const polaroids = [
+      {x: 742, y: 312, rot: -0.06, heart: "❤️"},
+      {x: 775, y: 310, rot: 0.05, heart: "✨"},
+      {x: 808, y: 312, rot: -0.04, heart: "🌹"},
+      {x: 755, y: 342, rot: 0.04, heart: "☕"},
+      {x: 792, y: 343, rot: -0.05, heart: "💖"}
+    ];
+    polaroids.forEach(p => {
+      ctx.save(); ctx.translate(p.x + 11, p.y + 13); ctx.rotate(p.rot);
+      // Khung giấy polaroid trắng
+      ctx.fillStyle = "#ffffff"; rr(ctx, -11, -13, 22, 26, 2); ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.15)"; ctx.lineWidth = 0.5; ctx.stroke();
+      // Lòng ảnh màu sắc phong cảnh
+      ctx.fillStyle = "#ffd6e0"; ctx.fillRect(-9, -11, 18, 16);
+      ctx.font = "9px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(p.heart, 0, -3);
+      // Kẹp gỗ kẹp ảnh ở trên
+      ctx.fillStyle = "#d4a373"; ctx.fillRect(-2, -15, 4, 4);
+      ctx.restore();
+    });
+
+    // ---- Tiệm hoa tươi rực rỡ (phải) ----
     ctx.fillStyle = "#2d6a4f"; rr(ctx, 860, 312, 210, 60, 8); ctx.fill();
     for (let k = 0; k < 8; k++) { ctx.fillStyle = k % 2 ? "#90be6d" : "#fff"; ctx.fillRect(860 + k * 26.25, 302, 26.25, 14); }
-    ctx.font = "14px system-ui"; ctx.fillText("🌹🌷🌻💐🌸", 965, 342); ctx.fillStyle = "#fff"; ctx.font = "800 9px Nunito, system-ui"; ctx.fillText("TIỆM HOA", 965, 362);
-    // giá vẽ của chú họa sĩ + loa nhạc
-    ctx.fillStyle = "#6b4a35"; ctx.fillRect(330, 470, 3, 50); ctx.fillRect(350, 470, 3, 50); ctx.fillStyle = "#fff"; rr(ctx, 322, 456, 40, 32, 2); ctx.fill();
-    ctx.fillStyle = "#ff8fab"; ctx.beginPath(); ctx.arc(336, 472, 6, 0, 7); ctx.fill(); ctx.fillStyle = "#a0c4ff"; ctx.beginPath(); ctx.arc(348, 474, 6, 0, 7); ctx.fill();
-    drawRadio(t);
-    for (let k = 0; k < 8; k++) {                                                             // tim bay lơ lửng
-      const ph = (t * .08 + k / 8) % 1; ctx.globalAlpha = Math.sin(ph * Math.PI) * .7; ctx.font = "10px system-ui";
-      ctx.fillText("💗", (k * 149 + Math.sin(t + k) * 20) % W, 560 - ph * 300); ctx.globalAlpha = 1;
+    ctx.font = "14px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🌹🌷🌻💐🌸", 965, 342);
+    ctx.fillStyle = "#fff"; ctx.font = "800 9px Nunito, system-ui"; ctx.fillText("TIỆM HOA TÌNH YÊU", 965, 362);
+
+    // Chậu hoa & giỏ hoa treo trang trí tiệm hoa
+    for (let fx = 875; fx <= 1055; fx += 36) {
+      ctx.fillStyle = "#c97a5e"; rr(ctx, fx - 7, 360, 14, 11, 2); ctx.fill();
+      ctx.fillStyle = ["#ff70a6", "#ffbe0b", "#9b5de5", "#00bbf9", "#ff4d6d"][(fx / 36) % 5];
+      ctx.beginPath(); ctx.arc(fx, 356, 5, 0, 7); ctx.arc(fx - 4, 358, 4, 0, 7); ctx.arc(fx + 4, 358, 4, 0, 7); ctx.fill();
     }
+
+    // Giá vẽ của chú họa sĩ + loa nhạc
+    ctx.fillStyle = "#6b4a35"; ctx.fillRect(330, 470, 3, 50); ctx.fillRect(350, 470, 3, 50);
+    ctx.fillStyle = "#fff"; rr(ctx, 322, 456, 40, 32, 2); ctx.fill();
+    ctx.fillStyle = "#ff8fab"; ctx.beginPath(); ctx.arc(336, 472, 6, 0, 7); ctx.fill();
+    ctx.fillStyle = "#a0c4ff"; ctx.beginPath(); ctx.arc(348, 474, 6, 0, 7); ctx.fill();
+    drawRadio(t);
+
+    // ---- Chùm bóng bay trái tim (Heart Balloons) ----
+    // Chùm 1 ở quán cà phê bên trái
+    drawHeartBalloon(232, 318, "#ff758f", t, 0, 15);
+    drawHeartBalloon(244, 312, "#ffb3c1", t, 1.2, 13);
+    drawHeartBalloon(222, 314, "#c77dff", t, 2.5, 14);
+    // Chùm 2 cạnh cầu đôi
+    drawHeartBalloon(448, 260, "#ff4d6d", t, 0.8, 14);
+    drawHeartBalloon(458, 254, "#ffd166", t, 1.9, 12);
+    // Chùm 3 cạnh tường ảnh kỷ niệm
+    drawHeartBalloon(736, 310, "#f72585", t, 1.5, 14);
+    drawHeartBalloon(840, 308, "#4cc9f0", t, 2.8, 13);
+
+    // ---- Nốt nhạc du dương bay lơ lửng (Soft music notes floating) ----
+    const musicNotes = ["♪", "♫", "♬", "♩", "𝄞"];
+    for (let k = 0; k < 6; k++) {
+      const ph = (t * 0.08 + k / 6) % 1;
+      const nx = (660 + Math.sin(t * 1.6 + k * 2) * 35 + (k % 2 === 0 ? -140 : 10) + (k * 65)) % 1120;
+      const ny = 530 - ph * 260;
+      ctx.globalAlpha = Math.sin(ph * Math.PI) * 0.75;
+      ctx.fillStyle = ["#ff9ebb", "#c8b6ff", "#b8f2e6", "#ffd166", "#ffc6ff"][k % 5];
+      ctx.font = "bold 13px system-ui";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(musicNotes[k % musicNotes.length], nx, ny);
+    }
+    ctx.globalAlpha = 1;
+
+    // Trái tim tình yêu bay lơ lửng nhẹ nhàng
+    for (let k = 0; k < 8; k++) {
+      const ph = (t * .08 + k / 8) % 1; ctx.globalAlpha = Math.sin(ph * Math.PI) * .7;
+      ctx.font = "10px system-ui"; ctx.textAlign = "center";
+      ctx.fillText("💗", (k * 149 + Math.sin(t + k) * 20) % W, 560 - ph * 300);
+    }
+    ctx.globalAlpha = 1;
   }
   const DUYEN_SPOTS = {booth: {x: 650, y: 290, w: 70, h: 100}, flower: {x: 860, y: 302, w: 210, h: 70}, lake: {x: 0, y: 105, w: 1120, h: 150}, cafe: {x: 20, y: 290, w: 230, h: 80}};
 
-  function seat(i, t) {                                       // ghế từng khu
+  function seat(i, t) {                                       // Ghế ngồi từng khu
     const b = BEDS[i], o = bedOwner(i), sit = o && o.lying;
-    if (myArea === "stock") {                                 // bàn giao dịch 2 màn hình
+    if (myArea === "stock") {                                 // Bàn giao dịch tài chính 2 màn hình hiện đại
       const x = b.x, y = b.y;
-      ctx.fillStyle = "rgba(0,0,0,.2)"; rr(ctx, x + 6, y + 12, 100, 44, 6); ctx.fill();
-      ctx.fillStyle = "#e9ecef"; rr(ctx, x + 3, y + 6, 104, 44, 6); ctx.fill();
+      // Bóng đổ của bàn giao dịch
+      ctx.fillStyle = "rgba(0,0,0,.22)"; rr(ctx, x + 4, y + 14, 102, 44, 6); ctx.fill();
+      // Mặt bàn làm việc bóng bẩy màu đá xám đen cao cấp
+      ctx.fillStyle = "#1e293b"; rr(ctx, x + 2, y + 6, 106, 44, 6); ctx.fill();
+      ctx.strokeStyle = "#334155"; ctx.lineWidth = 1.2; ctx.stroke();
+      // Bàn di chuột dài (desk mat)
+      ctx.fillStyle = "#0f172a"; rr(ctx, x + 10, y + 10, 90, 36, 4); ctx.fill();
+
+      // 2 màn hình đồ họa chuyên nghiệp (màn hình 1: nến candlestick, màn hình 2: độ sâu lệnh/bảng giá)
       for (let k = 0; k < 2; k++) {
-        ctx.fillStyle = "#1b1b2f"; rr(ctx, x + 14 + k * 44, y + 8, 38, 26, 3); ctx.fill();
-        ctx.strokeStyle = (k + i) % 2 ? "#39ff88" : "#ff4d5e"; ctx.lineWidth = 1.2; ctx.beginPath();
-        for (let j = 0; j < 8; j++) { const px = x + 17 + k * 44 + j * 4.5, py = y + 22 + Math.sin(j * 1.3 + i + t * (sit ? 1 : 0)) * 5; j ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.stroke();
+        const mx = x + 14 + k * 44, my = y + 8;
+        ctx.fillStyle = "#020617"; rr(ctx, mx, my, 38, 26, 3); ctx.fill(); // Viền màn hình
+        ctx.strokeStyle = "rgba(56,189,248,0.5)"; ctx.lineWidth = 0.8; ctx.stroke();
+        if (k === 0) {
+          // Màn hình 1: Biểu đồ nến Nhật xanh/đỏ + đường MA vàng
+          ctx.fillStyle = "#090d16"; ctx.fillRect(mx + 2, my + 2, 34, 22);
+          for (let ci = 0; ci < 5; ci++) {
+            const cx = mx + 5 + ci * 6.5;
+            const isUp = (ci + i) % 2 === 0;
+            const cCol = isUp ? "#39ff88" : "#ff4d5e";
+            // Râu nến
+            ctx.strokeStyle = cCol; ctx.lineWidth = 0.8;
+            ctx.beginPath(); ctx.moveTo(cx + 1.5, my + 5); ctx.lineTo(cx + 1.5, my + 19); ctx.stroke();
+            // Thân nến
+            ctx.fillStyle = cCol;
+            ctx.fillRect(cx, my + (isUp ? 9 : 7), 3, 7);
+          }
+          // Đường xu hướng MA vàng
+          ctx.strokeStyle = "#ffd166"; ctx.lineWidth = 1; ctx.beginPath();
+          for (let j = 0; j < 6; j++) {
+            const px = mx + 4 + j * 6, py = my + 14 + Math.sin(j * 1.3 + i + t * (sit ? 1 : 0)) * 4;
+            j ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+          }
+          ctx.stroke();
+        } else {
+          // Màn hình 2: Sổ lệnh & cột khối lượng mua bán
+          ctx.fillStyle = "#0b1329"; ctx.fillRect(mx + 2, my + 2, 34, 22);
+          for (let bi = 0; bi < 4; bi++) {
+            ctx.fillStyle = "rgba(57,255,136,0.6)"; ctx.fillRect(mx + 4, my + 5 + bi * 4, 10 + (bi * 3) % 12, 2.5);
+            ctx.fillStyle = "rgba(255,77,94,0.6)"; ctx.fillRect(mx + 20, my + 5 + bi * 4, 12 - (bi * 2) % 8, 2.5);
+          }
+        }
+        // Đèn nguồn màn hình phát sáng
+        ctx.fillStyle = "#38bdf8"; ctx.beginPath(); ctx.arc(mx + 19, my + 24.5, 0.8, 0, 7); ctx.fill();
+        // Chân đế màn hình kim loại
+        ctx.fillStyle = "#64748b"; ctx.fillRect(mx + 16, my + 26, 6, 2);
       }
+
+      // Bàn phím cơ có đèn nền LED + chuột
+      ctx.fillStyle = "#334155"; rr(ctx, x + 34, y + 36, 28, 9, 2); ctx.fill();
+      ctx.fillStyle = "#38bdf8"; ctx.fillRect(x + 36, y + 38, 24, 1.5); // Đèn nền LED bàn phím
+      ctx.fillStyle = "#64748b"; rr(ctx, x + 66, y + 37, 6, 8, 2); ctx.fill(); // Chuột máy tính
+
+      // Ly cà phê gốm sứ văn phòng
+      ctx.fillStyle = "#ffffff"; rr(ctx, x + 80, y + 36, 7, 8, 2); ctx.fill();
+      ctx.fillStyle = "#78350f"; ctx.fillRect(x + 81, y + 37, 5, 2); // Nước cà phê
+
+      // Ghế xoay công thái học (Ergonomic Office Chair)
       ctx.fillStyle = "#1d3557"; rr(ctx, x + 40, y + 58, 30, 24, 7); ctx.fill();
+      ctx.strokeStyle = "#457b9d"; ctx.lineWidth = 1; ctx.stroke();
       if (sit) drawPlayer({...o, x: x + 55, y: y + 80 + Math.sin(t * 2 + i) * .4, walking: false, up: true, sit: true}, t);
+      // Đệm ngồi phía trước
       ctx.fillStyle = "#274472"; rr(ctx, x + 37, y + 78, 36, 9, 4); ctx.fill();
       return;
     }
+
     const dating = myArea === "dating";
-    ctx.fillStyle = dating ? "#ffafcc" : "#4cc9f0"; rr(ctx, b.x + 4, b.y + 6, BED_W - 8, 12, 5); ctx.fill();
-    if (dating && i % 2 === 0) { ctx.font = "11px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("💗", b.x + BED_W, b.y + 10); }
-    if (sit) drawPlayer({...o, x: b.x + BED_W / 2, y: b.y + 30, walking: false, up: false, sit: true}, t);
-    ctx.fillStyle = dating ? "#ff8fab" : "#f72585"; rr(ctx, b.x, b.y + 22, BED_W, 12, 5); ctx.fill();
-    ctx.fillStyle = "#adb5bd"; ctx.fillRect(b.x + 8, b.y + 34, 4, 8); ctx.fillRect(b.x + BED_W - 12, b.y + 34, 4, 8);
+    if (dating) {
+      // Ghế băng công viên tình nhân: đệm nhung hồng bọc nút, tay vịn gỗ
+      ctx.fillStyle = "#ffafcc"; rr(ctx, b.x + 3, b.y + 5, BED_W - 6, 14, 6); ctx.fill();
+      ctx.strokeStyle = "#ff758f"; ctx.lineWidth = 1; ctx.stroke();
+      // Gối tựa lưng trái tim nhỏ xinh xắn
+      drawHeart(b.x + BED_W / 2, b.y + 11, 8, "#ff4d6d");
+
+      // Bàn trà nhỏ giữa mỗi cặp ghế đôi (i chẵn: 0, 2, 4) có bình hoa hồng và nến
+      if (i % 2 === 0) {
+        const tx = b.x + BED_W + 5, ty = b.y + 16;
+        // Bàn tròn nhỏ
+        ctx.fillStyle = "rgba(0,0,0,0.15)"; ctx.beginPath(); ctx.ellipse(tx, ty + 12, 10, 4, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = "#fff8f0"; ctx.beginPath(); ctx.ellipse(tx, ty + 8, 9, 4, 0, 0, 7); ctx.fill();
+        ctx.strokeStyle = "#ffccd5"; ctx.lineWidth = 0.8; ctx.stroke();
+        // Bình hoa tươi nhỏ trên bàn đôi
+        drawFlowerVase(tx, ty + 7, t);
+        // Trái tim tình nhân kết nối giữa 2 bạn
+        ctx.font = "11px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("💗", tx, ty - 12);
+      }
+
+      if (sit) drawPlayer({...o, x: b.x + BED_W / 2, y: b.y + 30, walking: false, up: false, sit: true}, t);
+      // Đệm ngồi êm ái
+      ctx.fillStyle = "#ff8fab"; rr(ctx, b.x, b.y + 22, BED_W, 12, 5); ctx.fill();
+      ctx.fillStyle = "#704124"; ctx.fillRect(b.x + 8, b.y + 34, 4, 8); ctx.fillRect(b.x + BED_W - 12, b.y + 34, 4, 8);
+    } else {
+      // Ghế arcade retro: ghế đẩu quầy bar chân kim loại xoay
+      ctx.fillStyle = "#4cc9f0"; rr(ctx, b.x + 4, b.y + 6, BED_W - 8, 12, 5); ctx.fill();
+      ctx.strokeStyle = "#0077b6"; ctx.lineWidth = 1; ctx.stroke();
+      if (sit) drawPlayer({...o, x: b.x + BED_W / 2, y: b.y + 30, walking: false, up: false, sit: true}, t);
+      ctx.fillStyle = "#f72585"; rr(ctx, b.x, b.y + 22, BED_W, 12, 5); ctx.fill();
+      ctx.fillStyle = "#adb5bd"; ctx.fillRect(b.x + 8, b.y + 34, 4, 8); ctx.fillRect(b.x + BED_W - 12, b.y + 34, 4, 8);
+    }
   }
 
   function draw(t) {
@@ -452,8 +1279,44 @@ const Zones = (() => {
     for (let k = 0; k < 60; k++) st.confetti.push({x, y, t0: t, vx: (Math.random() - .5) * 160, vy: -60 - Math.random() * 110, c: ["#ff4d6d", "#ffd166", "#4cc9f0", "#90be6d", "#c77dff"][k % 5]});
   }
   function holes(hole, t) {
-    if (myArea === "arcade") { hole(560, 360, 640, .55); hole(560, 330, 200, .6); hole(560, 120, 170, .8); hole(150, 440, 110, .7); hole(900, 222, 90, .8); hole(190, 240, 120, .6); }
-    if (myArea === "dating") { hole(560, 420, 620, .35); hole(600, 200, 220, .55); for (const [x, y] of [[60, 300], [380, 296], [800, 300], [1070, 296]]) hole(x, y, 70, .75); hole(135, 340, 90, .6); }
+    if (myArea === "arcade") {
+      // Giữ nguyên các lỗ sáng ban đêm hiện có
+      hole(560, 360, 640, .55); hole(560, 330, 200, .6); hole(560, 120, 170, .8);
+      hole(150, 440, 110, .7); hole(900, 222, 90, .8); hole(190, 240, 120, .6);
+      // Lỗ sáng mới cho khu trò chơi: máy arcade, kệ gấu bông, biển neon, xe kẹo bông
+      hole(370, 215, 90, .7);   // Máy arcade cổ điển 1 & 2
+      hole(720, 215, 90, .7);   // Máy arcade cổ điển 3 & 4
+      hole(190, 135, 130, .65); // Kệ gấu bông và biển Arcade Zone
+      hole(920, 135, 110, .65); // Biển Lucky Prizes
+      hole(980, 480, 90, .6);   // Xe kẹo bông phát sáng
+      hole(560, 50, 120, .75);  // Biển neon vòm trung tâm
+    }
+    if (myArea === "stock") {
+      // Lỗ sáng sàn chứng khoán ban đêm: bảng điện tử, cửa sổ thành phố, đồng hồ thế giới, bàn giao dịch
+      hole(500, 80, 420, .85);  // Bảng điện tử lớn HOSE
+      hole(500, 235, 190, .75); // Bảng điện tử trung tâm
+      hole(95, 90, 110, .6);    // Cửa sổ ngắm thành phố đêm
+      hole(915, 80, 130, .7);   // Đồng hồ các thủ phủ tài chính & BXH
+      hole(210, 330, 120, .6);  // Cụm bàn giao dịch trái trên
+      hole(670, 330, 120, .6);  // Cụm bàn giao dịch phải trên
+      hole(210, 450, 120, .6);  // Cụm bàn giao dịch trái dưới
+      hole(670, 450, 120, .6);  // Cụm bàn giao dịch phải dưới
+      hole(500, 298, 100, .55); // Quầy tư vấn
+    }
+    if (myArea === "dating") {
+      // Giữ nguyên các lỗ sáng ban đêm hiện có
+      hole(560, 420, 620, .35); hole(600, 200, 220, .55);
+      for (const [x, y] of [[60, 300], [380, 296], [800, 300], [1070, 296]]) hole(x, y, 70, .75);
+      hole(135, 340, 90, .6);
+      // Lỗ sáng mới cho khu hẹn hò: tường ảnh kỷ niệm, tiệm hoa, cầu đôi, nến bàn đôi
+      hole(788, 335, 100, .7);  // Tường ảnh kỷ niệm & đèn fairy lights
+      hole(965, 340, 110, .65); // Tiệm hoa đêm
+      hole(515, 240, 110, .7);  // Đèn cầu đôi
+      hole(200, 350, 80, .65);  // Bàn nến cà phê
+      hole(245, 435, 60, .6);   // Nến bàn đôi 1
+      hole(605, 435, 60, .6);   // Nến bàn đôi 2
+      hole(955, 435, 60, .6);   // Nến bàn đôi 3
+    }
   }
 
   // ---------- 4. Chạm vào cảnh ----------
