@@ -2544,7 +2544,9 @@ function updateView(snap, dt = 0) {
   const fx = m ? m.x : W / 2, fy = m ? m.y : H / 2;
   const tx = W > visW ? Math.max(0, Math.min(W - visW, fx - visW / 2)) : (W - visW) / 2;
   // nhân vật đứng ở khoảng 60% chiều cao màn hình để thấy được tường/cửa sổ/lò sưởi phía trên
-  const ty = H + padB + padT > visH ? Math.max(-padT, Math.min(H - visH + padB, fy - visH * .6)) : (H - visH) / 2;
+  let ty = H + padB + padT > visH ? Math.max(-padT, Math.min(H - visH + padB, fy - visH * .6)) : (H - visH) / 2;
+  // ngồi ghế rạp phim: camera kéo lên để thấy trọn màn chiếu (camera gần thì màn chiếu bị cắt mất)
+  if (myArea === "cinema" && m && m.lying && TVR) ty = Math.min(ty, TVR.y - padT - 6);
   if (snap || cam.snap) { cam.x = tx; cam.y = ty; cam.snap = false; }
   else { const k = Math.min(1, dt * 6); cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k; }
   ox = -cam.x * scale; oy = -cam.y * scale;
