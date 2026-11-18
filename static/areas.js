@@ -199,12 +199,15 @@ const Areas = (() => {
   }
   // p: {x, y (chân), color, outfit, walking, up (quay lưng), sit (ngồi), id/name}
   function drawAvatar(p, t) {
-    const o = outfitOf(p), up = !!p.up, sit = !!p.sit, walk = !!p.walking && !sit;
+    const isMe = p.id === (typeof myId !== "undefined" ? myId : null);
+    const hasActiveFarmAction = isMe && (typeof activeFarmActions !== "undefined" && Object.keys(activeFarmActions).length > 0);
+    const o = outfitOf(p), up = hasActiveFarmAction || !!p.up, sit = !!p.sit, walk = !!p.walking && !sit;
     const seed = ((p.id || p.name || "a").charCodeAt(0) % 17) * .7;
     const ph = t * 10 + seed, sw = walk ? Math.sin(ph) : 0;
     const bob = walk ? Math.abs(Math.sin(ph)) * 1.3 : Math.sin(t * 2 + seed) * .35;  // nhún nhảy khi đi / thở khi đứng
     const x = p.x, y = p.y;
-    const hipY = y - (sit ? 3.5 : 8.5) - bob, shY = hipY - 11.5, hy = shY - 9.2;
+    const crouch = (isMe && farmCrouchOffset) || p.crouch || 0;
+    const hipY = y - (sit ? 3.5 : 8.5) - bob + crouch, shY = hipY - 11.5, hy = shY - 9.2;
     const shirt = CL[o.shirt], pj = !shirt, top = shirt ? shirt.color : p.color;
     const pants = pj ? tone(p.color, .15) : shirt.id === "shirt_suit" ? "#2b2d42" : "#4a6fa5";
     const shoe = pj ? tone(p.color, .5) : shirt.id === "shirt_suit" ? "#2a2a2a" : "#ffffff";
@@ -351,6 +354,10 @@ const Areas = (() => {
   // Vị trí kho lương thực (kho gỗ đặt bên phải cánh đồng, nằm giữa luống hoa hướng dương)
   const BARN = { x: 875, y: 220, w: 124, h: 120 };
   const S = () => Life.S();
+  // Quản lý hoạt ảnh và hành động nông trại
+  const activeFarmActions = {}; // i -> { type, t0, dur, crop, harvestN, isMe, flyTriggered }
+  let pendingFarmWalk = null;   // ô đất đang trên đường đi tới
+  let farmCrouchOffset = 0;     // độ khom người khi cuốc đất
   function farmLandCfg() {
     return (typeof CATALOG !== "undefined" && CATALOG.FARM_LAND)
       ? CATALOG.FARM_LAND
@@ -1744,35 +1751,49 @@ const Areas = (() => {
 
       // 2. Ô đất đã sở hữu: vẽ đất trồng cây
       const inf = plotInfo(farm[i]);
+      const busyAct = activeFarmActions[i];
       ctx.fillStyle = inf.st === "grow" || inf.st === "ripe" ? "#5c3d2a" : "#7a5236"; rr(ctx, r.x, r.y, r.w, r.h, 6); ctx.fill();   // đất ướt sẫm màu
       ctx.strokeStyle = "rgba(0,0,0,.18)"; ctx.lineWidth = 1.5;
       for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(r.x + 6, r.y + k * r.h / 4); ctx.lineTo(r.x + r.w - 6, r.y + k * r.h / 4); ctx.stroke(); }
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      if (inf.st === "empty") { ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.font = "700 18px system-ui"; ctx.fillText("+", cx, cy); }
-      else if (inf.st === "dry") {
-        ctx.fillStyle = "#e9c46a";
-        const stepX = (r.w - 24) / 2;
-        for (let k = 0; k < 6; k++) {
-          ctx.beginPath();
-          ctx.arc(r.x + 12 + (k % 3) * stepX, r.y + 20 + (k / 3 | 0) * 20, 2, 0, 7);
-          ctx.fill();
+      if (inf.st === "empty") {
+        if (!busyAct) {
+          ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.font = "700 18px system-ui"; ctx.fillText("+", cx, cy);
         }
-        ctx.font = "14px system-ui"; ctx.fillText("💧", cx, r.y + 10 + Math.sin(t * 4) * 2);
+      }
+      else if (inf.st === "dry") {
+        if (!busyAct || busyAct.type !== "plant") {
+          ctx.fillStyle = "#e9c46a";
+          const stepX = (r.w - 24) / 2;
+          for (let k = 0; k < 6; k++) {
+            ctx.beginPath();
+            ctx.arc(r.x + 12 + (k % 3) * stepX, r.y + 20 + (k / 3 | 0) * 20, 2, 0, 7);
+            ctx.fill();
+          }
+        }
+        if (!busyAct || busyAct.type !== "water") {
+          ctx.font = "14px system-ui"; ctx.fillText("💧", cx, r.y + 10 + Math.sin(t * 4) * 2);
+        }
       } else {
         const k = inf.k, sway = Math.sin(t * 2 + i) * 1.5;
         const stepX = (r.w - 24) / 2;
-        for (let j = 0; j < 3; j++) {
-          const px = r.x + 12 + j * stepX, py = r.y + r.h - 12;
-          if (k < .25) { ctx.font = "13px system-ui"; ctx.fillText("🌱", px, py - 4); continue; }
-          const hgt = 10 + Math.min(1, k) * 24;
-          ctx.strokeStyle = inf.c.leaf; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + sway, py - hgt); ctx.stroke();
-          ctx.fillStyle = inf.c.leaf; ctx.beginPath(); ctx.ellipse(px - 4 + sway, py - hgt * .55, 4.5, 2.3, -.6, 0, 7); ctx.ellipse(px + 4 + sway, py - hgt * .75, 4.5, 2.3, .6, 0, 7); ctx.fill();
-          if (k >= .6) { ctx.font = `${inf.st === "ripe" ? 17 : 10}px system-ui`; ctx.fillText(inf.c.e, px + sway, py - hgt - 4); }
+        const hideHarvestCrop = busyAct && busyAct.type === "harvest" && (performance.now() / 1000 - busyAct.t0) < busyAct.dur * 0.45;
+        if (!hideHarvestCrop) {
+          for (let j = 0; j < 3; j++) {
+            const px = r.x + 12 + j * stepX, py = r.y + r.h - 12;
+            if (k < .25) { ctx.font = "13px system-ui"; ctx.fillText("🌱", px, py - 4); continue; }
+            const hgt = 10 + Math.min(1, k) * 24;
+            ctx.strokeStyle = inf.c.leaf; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + sway, py - hgt); ctx.stroke();
+            ctx.fillStyle = inf.c.leaf; ctx.beginPath(); ctx.ellipse(px - 4 + sway, py - hgt * .55, 4.5, 2.3, -.6, 0, 7); ctx.ellipse(px + 4 + sway, py - hgt * .75, 4.5, 2.3, .6, 0, 7); ctx.fill();
+            if (k >= .6) { ctx.font = `${inf.st === "ripe" ? 17 : 10}px system-ui`; ctx.fillText(inf.c.e, px + sway, py - hgt - 4); }
+          }
+          if (inf.st === "ripe") { ctx.font = "10px system-ui"; ctx.fillStyle = `rgba(255,255,200,${.5 + Math.sin(t * 5 + i) * .5})`; ctx.fillText("✨", r.x + r.w - 8, r.y + 8); }
+          else { ctx.fillStyle = "rgba(0,0,0,.35)"; rr(ctx, r.x + 6, r.y + r.h - 6, r.w - 12, 4, 2); ctx.fill(); ctx.fillStyle = "#80ed99"; rr(ctx, r.x + 6, r.y + r.h - 6, (r.w - 12) * k, 4, 2); ctx.fill(); }
         }
-        if (inf.st === "ripe") { ctx.font = "10px system-ui"; ctx.fillStyle = `rgba(255,255,200,${.5 + Math.sin(t * 5 + i) * .5})`; ctx.fillText("✨", r.x + r.w - 8, r.y + 8); }
-        else { ctx.fillStyle = "rgba(0,0,0,.35)"; rr(ctx, r.x + 6, r.y + r.h - 6, r.w - 12, 4, 2); ctx.fill(); ctx.fillStyle = "#80ed99"; rr(ctx, r.x + 6, r.y + r.h - 6, (r.w - 12) * k, 4, 2); ctx.fill(); }
       }
     });
+    // Hoạt ảnh hành động làm ruộng (trồng / tưới / thu hoạch) và thanh tiến trình
+    drawFarmActionAnimations(t);
     // ruộng hướng dương trang trí bên phải (rạp theo gió, chừa chỗ cho kho lương thực)
     for (let r = 0; r < 4; r++) for (let k = 0; k < 7; k++) {
       const x = 770 + k * 44 + (r % 2) * 18, y = 214 + r * 40;
@@ -1967,6 +1988,516 @@ const Areas = (() => {
     ctx.strokeStyle = "#c9a227"; ctx.lineWidth = 1; for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(b.x + 4, b.y + 18 + k * 5); ctx.lineTo(b.x + BED_W - 4, b.y + 18 + k * 5); ctx.stroke(); }
     ctx.fillStyle = "#9c6644"; ctx.fillRect(b.x + 14, b.y + 14, 3, 22); ctx.fillRect(b.x + BED_W - 17, b.y + 14, 3, 22);
   }
+  // Vẽ các hoạt ảnh hành động nông trại (trồng, tưới, thu hoạch) và thanh tiến trình
+  function drawFarmActionAnimations(t) {
+    const curT = performance.now() / 1000;
+    let isAnyPlanting = false;
+    const m = typeof me === "function" ? me() : null;
+
+    for (const [iStr, a] of Object.entries(activeFarmActions)) {
+      const i = +iStr;
+      const r = PLOTS[i];
+      if (!r) continue;
+
+      const dt = curT - a.t0;
+      if (dt < 0) continue;
+      const p = Math.min(1, Math.max(0, dt / a.dur));
+
+      const cx = r.x + r.w / 2;
+      const cy = r.y + r.h / 2;
+      const px = m ? m.x : cx;
+      const py = m ? m.y : (r.y + r.h + 8);
+
+      // 1. Trồng cây (plant)
+      if (a.type === "plant") {
+        const dx = cx;
+        const dy = r.y + r.h - 18;
+
+        if (a.isMe && p < 0.6) {
+          farmCrouchOffset = Math.sin(p / 0.6 * Math.PI) * 2.8;
+          isAnyPlanting = true;
+        }
+
+        // Giai đoạn 1: Xẻng đào đất & bụi đất bắn lên (0 <= p < 0.45)
+        if (p < 0.45) {
+          const digPhase = (p / 0.45) * Math.PI * 4;
+          const trowelAngle = -0.4 + Math.sin(digPhase) * 0.45;
+          const tx = dx + 6 + Math.cos(digPhase) * 2;
+          const ty = dy - 6 + Math.sin(digPhase) * 3;
+
+          // Hố đất đang đào
+          const holeScale = Math.min(1, p / 0.2);
+          ctx.fillStyle = "#3a2012";
+          ctx.beginPath();
+          ctx.ellipse(dx, dy, 8 * holeScale, 4 * holeScale, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "#25140b";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          // Hạt đất bắn lên
+          for (let k = 0; k < 8; k++) {
+            const ptP = (p / 0.45 * 2.5 + k * 0.35) % 1;
+            const ang = (k / 8) * Math.PI * 1.6 + 0.2;
+            const dist = 14 * ptP;
+            const dirtX = dx + Math.cos(ang) * dist;
+            const dirtY = dy - Math.sin(ang) * dist * 1.3 + ptP * ptP * 8;
+            ctx.fillStyle = k % 2 === 0 ? "#5c3d2a" : "#3d2314";
+            ctx.beginPath();
+            ctx.arc(dirtX, dirtY, 1.2 + (k % 3) * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Cây xẻng nhỏ (hand trowel)
+          ctx.save();
+          ctx.translate(tx, ty);
+          ctx.rotate(trowelAngle);
+          // Cán gỗ
+          ctx.fillStyle = "#8d5b34";
+          ctx.fillRect(-2, -10, 4, 8);
+          ctx.fillStyle = "#5c3d2a";
+          ctx.fillRect(-2.5, -3, 5, 2);
+          // Lưỡi xẻng kim loại
+          ctx.fillStyle = "#adb5bd";
+          ctx.beginPath();
+          ctx.moveTo(-3, -1);
+          ctx.lineTo(3, -1);
+          ctx.lineTo(4, 7);
+          ctx.lineTo(0, 11);
+          ctx.lineTo(-4, 7);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = "#495057";
+          ctx.lineWidth = 0.8;
+          ctx.stroke();
+          // Vệt sáng trên lưỡi xẻng
+          ctx.fillStyle = "#e9ecef";
+          ctx.beginPath();
+          ctx.moveTo(-1, 0);
+          ctx.lineTo(1, 0);
+          ctx.lineTo(1, 7);
+          ctx.lineTo(0, 9);
+          ctx.lineTo(-1, 7);
+          ctx.fill();
+          ctx.restore();
+        } else {
+          // Hố đất đã đào
+          ctx.fillStyle = "#3a2012";
+          ctx.beginPath();
+          ctx.ellipse(dx, dy, 8, 4, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Giai đoạn 2: Hạt giống rơi vào lòng đất (0.35 <= p < 0.7)
+        if (p >= 0.35 && p < 0.7) {
+          const sp = (p - 0.35) / 0.35;
+          const seedY = (dy - 18) + sp * sp * 18;
+          const seedX = dx + Math.sin(sp * 6) * 1.5;
+
+          ctx.save();
+          ctx.translate(seedX, seedY);
+          ctx.rotate(sp * 1.2);
+          ctx.fillStyle = "#d4a373";
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 2, 3.2, 0.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "#7f4f24";
+          ctx.lineWidth = 0.7;
+          ctx.stroke();
+          ctx.restore();
+
+          if (sp > 0.8) {
+            const puffP = (sp - 0.8) / 0.2;
+            ctx.fillStyle = `rgba(141, 91, 52, ${(1 - puffP) * 0.45})`;
+            ctx.beginPath();
+            ctx.ellipse(dx, dy + 1, 6 + puffP * 5, 3 + puffP * 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // Giai đoạn 3: Mầm cây nhỏ nhú lên và lấp lánh (0.65 <= p <= 1.0)
+        if (p >= 0.65) {
+          const sprP = (p - 0.65) / 0.35;
+          const bounce = Math.sin(sprP * Math.PI * 0.75) * 1.25;
+          const scale = Math.min(1.2, Math.max(0, bounce));
+
+          ctx.save();
+          ctx.translate(dx, dy);
+          ctx.scale(scale, scale);
+          // Thân mầm xanh
+          ctx.strokeStyle = "#2d6a4f";
+          ctx.lineWidth = 2;
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(0, 2);
+          ctx.lineTo(0, -7);
+          ctx.stroke();
+          // Hai lá mầm tròn nhỏ
+          ctx.fillStyle = "#52b788";
+          ctx.beginPath();
+          ctx.ellipse(-3.5, -8, 3.5, 2, -0.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#74c69d";
+          ctx.beginPath();
+          ctx.ellipse(3.5, -8, 3.5, 2, 0.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+
+          // Ngôi sao lấp lánh quanh mầm cây
+          if (sprP > 0.35) {
+            const starCoords = [[-8, -14, 0], [8, -12, 1], [-3, -19, 2], [7, -20, 3]];
+            for (const [ox, oy, idx] of starCoords) {
+              const tw = Math.sin(p * 20 + idx * 2);
+              if (tw > 0) drawSparkleStar(ctx, dx + ox, dy + oy, 2.5 * tw);
+            }
+          }
+        }
+      }
+
+      // 2. Tưới nước (water)
+      else if (a.type === "water") {
+        const wx = cx;
+        const wy = cy + 4;
+        const canX = px - 8;
+        const canY = py - 20;
+
+        // Đất ướt sẫm màu dần
+        if (p >= 0.2) {
+          const wetAlpha = p < 0.5 ? ((p - 0.2) / 0.3) * 0.45 : 0.45 * (1 - (p - 0.5) / 0.5 * 0.2);
+          ctx.fillStyle = `rgba(30, 15, 8, ${wetAlpha})`;
+          rr(ctx, r.x + 3, r.y + 3, r.w - 6, r.h - 6, 5);
+          ctx.fill();
+        }
+
+        // Bình tưới nghiêng và tia nước
+        let tilt = 0;
+        if (p < 0.15) tilt = (p / 0.15) * -0.55;
+        else if (p < 0.85) tilt = -0.55 + Math.sin(p * 25) * 0.04;
+        else tilt = -0.55 * (1 - (p - 0.85) / 0.15);
+
+        // Vị trí đầu vòi tưới
+        const spoutX = canX + Math.cos(tilt) * 18 - Math.sin(tilt) * -10;
+        const spoutY = canY + Math.sin(tilt) * 18 + Math.cos(tilt) * -10;
+
+        // Dòng nước vòng cung uốn lượn xuống ô đất (0.12 <= p <= 0.88)
+        if (p >= 0.12 && p <= 0.88) {
+          const ctrlX = (spoutX + wx) / 2 + 6;
+          const ctrlY = Math.min(spoutY, wy) - 14;
+
+          for (let k = 0; k < 12; k++) {
+            const u = ((p * 4.5 + k / 12) % 1);
+            const dropX = (1 - u) * (1 - u) * spoutX + 2 * (1 - u) * u * ctrlX + u * u * wx + Math.sin(k * 4) * 2;
+            const dropY = (1 - u) * (1 - u) * spoutY + 2 * (1 - u) * u * ctrlY + u * u * wy;
+            ctx.fillStyle = k % 3 === 0 ? "#caf0f8" : (k % 3 === 1 ? "#90e0ef" : "#00b4d8");
+            ctx.beginPath();
+            ctx.ellipse(dropX, dropY, 1.8, 2.6, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Giọt nước bắn tung tóe trên mặt đất
+          for (let k = 0; k < 6; k++) {
+            const spP = (p * 8 + k * 0.4) % 1;
+            const spAng = -Math.PI * 0.15 - (k / 6) * Math.PI * 0.7;
+            const spDist = 12 * spP;
+            const spX = wx + Math.cos(spAng) * spDist;
+            const spY = wy + Math.sin(spAng) * spDist * 0.75;
+            ctx.fillStyle = `rgba(202, 240, 248, ${1 - spP})`;
+            ctx.beginPath();
+            ctx.arc(spX, spY, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Vòng sóng nước lăn tăn trên mặt đất
+          for (let k = 0; k < 2; k++) {
+            const ripP = ((p * 3 + k * 0.5) % 1);
+            ctx.strokeStyle = `rgba(144, 224, 239, ${(1 - ripP) * 0.75})`;
+            ctx.lineWidth = 1.3;
+            ctx.beginPath();
+            ctx.ellipse(wx, wy + 2, 4 + ripP * 18, 2 + ripP * 8, 0, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+
+        // Vẽ bình tưới nước xinh xắn
+        ctx.save();
+        ctx.translate(canX, canY);
+        ctx.rotate(tilt);
+        // Thân bình xanh ngọc
+        ctx.fillStyle = "#48cae4";
+        rr(ctx, -8, -7, 16, 14, 3);
+        ctx.fill();
+        ctx.strokeStyle = "#0077b6";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        // Vạch trang trí
+        ctx.fillStyle = "#90e0ef";
+        ctx.fillRect(-7, -2, 14, 3);
+        // Quai cầm trên
+        ctx.strokeStyle = "#0077b6";
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(0, -7, 6, Math.PI * 0.9, Math.PI * 0.1, false);
+        ctx.stroke();
+        // Vòi tưới vươn dài
+        ctx.fillStyle = "#0096c7";
+        ctx.beginPath();
+        ctx.moveTo(6, -2);
+        ctx.lineTo(16, -11);
+        ctx.lineTo(17, -8);
+        ctx.lineTo(7, 2);
+        ctx.closePath();
+        ctx.fill();
+        // Đầu hoa sen vòi tưới
+        ctx.fillStyle = "#48cae4";
+        ctx.beginPath();
+        ctx.ellipse(17.5, -9.5, 3.5, 5, 0.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#0077b6";
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 3. Thu hoạch (harvest)
+      else if (a.type === "harvest") {
+        const cropEmoji = (a.crop && a.crop.e) || "🥕";
+        const count = a.harvestN || 2;
+
+        // Cây nảy lên tung ra khỏi đất (0 <= p < 0.45)
+        if (p < 0.45) {
+          const bp = p / 0.45;
+          const bounceH = Math.sin(bp * Math.PI) * 22;
+          const popScale = 1 + Math.sin(bp * Math.PI) * 0.35;
+
+          ctx.save();
+          ctx.translate(cx, cy - bounceH);
+          ctx.scale(popScale, popScale);
+          ctx.font = '22px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",system-ui';
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(cropEmoji, 0, 0);
+          ctx.restore();
+
+          if (bp < 0.5) {
+            ctx.fillStyle = `rgba(100, 60, 30, ${(1 - bp * 2) * 0.5})`;
+            ctx.beginPath();
+            ctx.ellipse(cx, cy + 8, 12, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // Kích hoạt nông sản bay về kho lương thực tại đỉnh nảy
+        if (p >= 0.35 && !a.flyTriggered) {
+          a.flyTriggered = true;
+          addCropFlyAnim(i, cropEmoji, count);
+        }
+
+        // Dòng chữ +N bay lên (0.15 <= p <= 1.0)
+        if (p >= 0.15) {
+          const tp = (p - 0.15) / 0.85;
+          const textY = cy - 8 - tp * 34;
+          const alpha = tp < 0.65 ? 1 : Math.max(0, 1 - (tp - 0.65) / 0.35);
+
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.font = 'bold 14px system-ui';
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
+          ctx.lineWidth = 3;
+          ctx.strokeText(`+${count} ${cropEmoji}`, cx, textY);
+          ctx.fillStyle = "#80ed99";
+          ctx.fillText(`+${count} ${cropEmoji}`, cx, textY);
+          ctx.font = '10px system-ui';
+          ctx.fillText("✨", cx + 22, textY - 4);
+          ctx.restore();
+        }
+      }
+
+      // 4. Thanh tiến trình nhỏ trên đầu ô đất (Requirement 3)
+      const barW = 34, barH = 5;
+      const barX = cx - barW / 2, barY = r.y - 8;
+      ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+      rr(ctx, barX, barY, barW, barH, 2.5);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
+      const barCol = a.type === "plant" ? "#80ed99" : (a.type === "water" ? "#48cae4" : "#ffd166");
+      ctx.fillStyle = barCol;
+      rr(ctx, barX + 1, barY + 1, Math.max(1, (barW - 2) * p), barH - 2, 1.5);
+      ctx.fill();
+    }
+
+    if (!isAnyPlanting) farmCrouchOffset = 0;
+  }
+
+  // Lấy vị trí đứng ngay dưới mép dưới ô đất, căn giữa, kẹp trong sàn nông trại
+  function getPlotStandSpot(i) {
+    const r = PLOTS[i];
+    if (!r) return null;
+    const fl = (typeof LAYOUT !== "undefined" && LAYOUT.farm && LAYOUT.farm.floor) ||
+               (typeof FLOOR !== "undefined" ? FLOOR : { x1: 20, y1: 175, x2: 1100, y2: 585 });
+    const cx = r.x + r.w / 2;
+    const by = r.y + r.h;
+    const sx = Math.max(fl.x1, Math.min(fl.x2, Math.round(cx)));
+    const sy = Math.max(fl.y1, Math.min(fl.y2, Math.round(by + 8)));
+    return { x: sx, y: sy };
+  }
+
+  // Kiểm tra ô đất có đang bận thực hiện hành động hay không
+  function isPlotBusy(i) {
+    return pendingFarmWalk === i || !!activeFarmActions[i];
+  }
+
+  // Cho nhân vật đi bộ tới điểm đứng cạnh ô đất
+  function walkToPlot(i) {
+    return new Promise(resolve => {
+      const spot = getPlotStandSpot(i);
+      if (!spot) return resolve(false);
+      const m = typeof me === "function" ? me() : null;
+      if (!m) return resolve(false);
+
+      // Nếu đã ở rất gần (~8px) thì hành động ngay lập tức
+      if (Math.hypot(m.x - spot.x, m.y - spot.y) <= 8) {
+        return resolve(true);
+      }
+
+      // Đặt mục tiêu đi tới giống như chạm sàn trong index.html
+      m.tx = spot.x;
+      m.ty = spot.y;
+      if (typeof taps !== "undefined" && Array.isArray(taps)) {
+        taps.push({ x: spot.x, y: spot.y, t: performance.now() / 1000 });
+      }
+      if (typeof send === "function") {
+        send({ t: "move", x: spot.x, y: spot.y });
+      }
+
+      const t0 = performance.now();
+      let animId = null;
+
+      function checkArrival() {
+        // Hết thời gian chờ ~6s -> hủy nhẹ nhàng
+        if (performance.now() - t0 > 6000) {
+          if (animId) cancelAnimationFrame(animId);
+          return resolve(false);
+        }
+        // Rời khỏi khu nông trại -> hủy
+        if (typeof myArea !== "undefined" && myArea !== "farm") {
+          if (animId) cancelAnimationFrame(animId);
+          return resolve(false);
+        }
+        const curM = typeof me === "function" ? me() : null;
+        if (!curM) {
+          if (animId) cancelAnimationFrame(animId);
+          return resolve(false);
+        }
+
+        // Nếu người chơi chạm đi nơi khác hoặc chuyển hướng -> hủy nhẹ nhàng
+        if (Math.hypot(curM.tx - spot.x, curM.ty - spot.y) > 6) {
+          if (animId) cancelAnimationFrame(animId);
+          return resolve(false);
+        }
+
+        // Đã đến trong phạm vi ~8px của điểm đứng
+        if (Math.hypot(curM.x - spot.x, curM.y - spot.y) <= 8) {
+          if (animId) cancelAnimationFrame(animId);
+          return resolve(true);
+        }
+
+        animId = requestAnimationFrame(checkArrival);
+      }
+
+      animId = requestAnimationFrame(checkArrival);
+    });
+  }
+
+  // Điều phối toàn bộ quy trình hành động: đi bộ -> quay mặt -> hoạt ảnh 0.9-1.2s + gọi eco
+  async function runFarmAction(i, type, data = {}) {
+    if (isPlotBusy(i)) return;
+    pendingFarmWalk = i;
+
+    const arrived = await walkToPlot(i);
+    if (pendingFarmWalk === i) pendingFarmWalk = null;
+    if (!arrived) return;
+
+    // Quay mặt về phía ô đất (hướng lên trên)
+    const m = typeof me === "function" ? me() : null;
+    if (m) m.up = true;
+
+    const dur = 1.05; // Thời lượng hoạt ảnh 1.05s
+    const t0 = performance.now() / 1000;
+    const crop = data.crop || null;
+
+    // Bắt đầu gọi eco ngay khi khởi động hoạt ảnh
+    let ecoPromise = null;
+    if (type === "plant" && crop) {
+      ecoPromise = Life.eco("plant", { i, c: crop.id });
+    } else if (type === "water") {
+      ecoPromise = Life.eco("water", { i });
+    } else if (type === "harvest") {
+      ecoPromise = Life.eco("harvest", { i });
+    }
+
+    const actionObj = {
+      type,
+      t0,
+      dur,
+      crop,
+      harvestN: 2,
+      isMe: true,
+      flyTriggered: false,
+    };
+    activeFarmActions[i] = actionObj;
+
+    let ecoResult = null;
+    if (ecoPromise) {
+      ecoPromise.then(r => {
+        ecoResult = r;
+        if (r && r.n) actionObj.harvestN = r.n;
+      }).catch(() => {});
+    }
+
+    // Đợi chạy hết hoạt ảnh (1.05s)
+    await new Promise(r => setTimeout(r, dur * 1000));
+
+    // Đảm bảo kết quả eco đã về (tối đa chờ thêm 2s nếu mạng trễ)
+    if (ecoPromise && !ecoResult) {
+      try {
+        ecoResult = await Promise.race([
+          ecoPromise,
+          new Promise(r => setTimeout(() => r(null), 2000))
+        ]);
+        if (ecoResult && ecoResult.n) actionObj.harvestN = ecoResult.n;
+      } catch (e) {}
+    }
+
+    // Xử lý sau khi hoàn thành hoạt ảnh
+    if (ecoResult) {
+      if (type === "plant") {
+        Life.apply({ xp: 1 });
+        Life.commit();
+        toast(`🌱 Đã gieo ${crop.name}. Chạm ô đất để 💧 tưới nước!`);
+      } else if (type === "water") {
+        Life.apply({ xp: 1 });
+        Life.commit();
+        toast(`💧 Đã tưới ${crop.name}! Chín sau ${fmtTime(crop.time)}`);
+      } else if (type === "harvest") {
+        Life.apply({ xp: crop.xp, fun: 4 });
+        Life.commit();
+        const n = actionObj.harvestN || ecoResult.n || 2;
+        toast(`🧺 Thu hoạch ${n} ${crop.e} ${crop.name}! Mang ra bác Năm bán nhé`);
+      }
+    }
+
+    delete activeFarmActions[i];
+    if (m) {
+      m.up = false;
+      farmCrouchOffset = 0;
+    }
+  }
+
   async function tapPlot(i) {
     const farm = (S() && Array.isArray(S().farm)) ? S().farm : [];
     const land = farm.length;
@@ -2005,20 +2536,26 @@ const Areas = (() => {
       return;
     }
 
+    // Đang có hành động trên ô đất này -> bỏ qua chạm để chống gửi yêu cầu kép
+    if (isPlotBusy(i)) return;
+
     // 2. Ô đất đã sở hữu
     const pl = farm[i], inf = plotInfo(pl);
     if (inf.st === "empty") return openSeeds(i);
     if (inf.st === "dry") {
-      if (await Life.eco("water", {i})) { Life.apply({xp: 1}); Life.commit(); toast(`💧 Đã tưới ${inf.c.name}! Chín sau ${fmtTime(inf.c.time)}`); }
+      runFarmAction(i, "water", { crop: inf.c });
       return;
     }
-    if (inf.st === "grow") { toast(`${inf.c.e} ${inf.c.name} đang lớn… còn ${fmtTime(inf.left)}`); return; }
-    const r = await Life.eco("harvest", {i}); if (!r) return;             // server kiểm tra đã chín, tung 2-3 quả
-    Life.apply({xp: inf.c.xp, fun: 4}); Life.commit();
-    toast(`🧺 Thu hoạch ${r.n} ${inf.c.e} ${inf.c.name}! Mang ra bác Năm bán nhé`);
-    addCropFlyAnim(i, inf.c.e, r.n || 2);
+    if (inf.st === "grow") {
+      toast(`${inf.c.e} ${inf.c.name} đang lớn… còn ${fmtTime(inf.left)}`);
+      return;
+    }
+    // inf.st === "ripe"
+    runFarmAction(i, "harvest", { crop: inf.c });
   }
+
   function openSeeds(i) {
+    if (isPlotBusy(i)) return;
     const st = S();
     openSheet("🌱 Gieo hạt",
       `${Life.coinLine()}<div class="grid">${CROPS.map(c => {
@@ -2027,9 +2564,8 @@ const Areas = (() => {
       }).join("")}</div><div class="vol" style="font-size:12px">Gieo xong nhớ chạm lần nữa để 💧 tưới thì cây mới lớn.</div>`,
       el => el.querySelectorAll("[data-c]").forEach(b => b.onclick = async () => {
         const c = CR[b.dataset.c];
-        if (!(await Life.eco("plant", {i, c: c.id}))) return;            // dùng hạt trong rương, hết thì mua
-        Life.apply({xp: 1}); Life.commit(); closeSheet();
-        toast(`🌱 Đã gieo ${c.name}. Chạm ô đất để 💧 tưới nước!`);
+        closeSheet();
+        runFarmAction(i, "plant", { crop: c });
       }));
   }
   function openFarmer() {
@@ -5213,6 +5749,9 @@ const Areas = (() => {
     placing = null; cleanupFishing();
     storeTry = {}; storeUp = false;
     if (storeRaf) { cancelAnimationFrame(storeRaf); storeRaf = 0; }
+    for (const k of Object.keys(activeFarmActions)) delete activeFarmActions[k];
+    pendingFarmWalk = null;
+    farmCrouchOffset = 0;
   }
   function setHome(items) { homeItems = Array.isArray(items) ? items : []; }
 
