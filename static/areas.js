@@ -786,6 +786,226 @@ const Areas = (() => {
     ctx.restore(); // Kết thúc gà con
   }
 
+  // ---------- 6 cột đèn trang trí khu nông trại & dây đèn fairy lights ----------
+  // Các vị trí đặt cột đèn bố trí hài hòa, không cản trở ruộng rau, lối đi, chuồng gà, chuồng bò, giếng, radio, biển exit
+  const FARM_LAMPS = [
+    {x: 40, y: 435},   // Bên trái chuồng gà, sát hàng rào trước
+    {x: 170, y: 435},  // Bên phải chuồng gà, dọc hàng rào trước
+    {x: 290, y: 235},  // Góc trên bên trái ruộng rau, cạnh hàng rào sau
+    {x: 725, y: 235},  // Góc trên bên phải ruộng rau, cạnh hàng rào sau & bù nhìn
+    {x: 735, y: 440},  // Góc dưới bên phải ruộng rau, cạnh lối đi & máy radio
+    {x: 940, y: 465},  // Bên cạnh chuồng bò, gần giếng nước
+  ];
+
+  // Chuỗi bóng đèn tròn nhỏ (fairy lights) treo võng cong giữa 2 đèn ở chuồng gà
+  const FAIRY_BULBS = (() => {
+    const p0 = FARM_LAMPS[0], p1 = FARM_LAMPS[1];
+    const ctrlX = (p0.x + p1.x) / 2, ctrlY = p0.y + 14;
+    const bulbs = [], count = 8;
+    for (let k = 0; k < count; k++) {
+      const u = (k + 1) / (count + 1);
+      const bx = (1 - u) * (1 - u) * p0.x + 2 * (1 - u) * u * ctrlX + u * u * p1.x;
+      const by = (1 - u) * (1 - u) * (p0.y - 10) + 2 * (1 - u) * u * ctrlY + u * u * (p1.y - 10);
+      bulbs.push({x: Math.round(bx * 10) / 10, y: Math.round((by + 3.5) * 10) / 10, k});
+    }
+    return bulbs;
+  })();
+
+  // Bảng màu ấm xen kẽ cho dây đèn trang trí ban đêm
+  const FAIRY_WARM_COLORS = ["#ffd166", "#ff9ebb", "#fff3b0", "#f4a261", "#ff758f", "#ffe66d"];
+  // Màu nhạt cho dây đèn ban ngày khi chưa bật
+  const FAIRY_DAY_COLORS = ["#fae1dd", "#fde2e4", "#fdf0d5", "#f0efeb"];
+
+  // Vẽ các cột đèn mộc mạc và dây đèn trang trí khu nông trại
+  function drawFarmLamps(t, night) {
+    // 1. Dây đèn trang trí (fairy lights) uốn cong võng giữa 2 cột đèn ở chuồng gà
+    const p0 = FARM_LAMPS[0], p1 = FARM_LAMPS[1];
+    const ctrlX = (p0.x + p1.x) / 2, ctrlY = p0.y + 14;
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y - 10);
+    ctx.quadraticCurveTo(ctrlX, ctrlY, p1.x, p1.y - 10);
+    ctx.strokeStyle = night ? "rgba(40, 30, 20, 0.65)" : "rgba(60, 45, 30, 0.75)";
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    // Vẽ từng bóng đèn tròn nhỏ trên dây đèn
+    FAIRY_BULBS.forEach(b => {
+      // Đui đèn đen nhỏ gắn vào dây
+      ctx.fillStyle = "#2d3142";
+      ctx.fillRect(b.x - 1, b.y - 4.5, 2, 2.5);
+
+      if (night) {
+        // Ban đêm: tỏa vầng sáng nhẹ và nhấp nháy êm dịu
+        const tw = Math.sin(t * 4 + b.k * 1.5) * 0.08;
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        const fg = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, 14);
+        fg.addColorStop(0, `rgba(255, 220, 140, ${0.45 + tw})`);
+        fg.addColorStop(0.5, `rgba(255, 170, 70, ${(0.25 + tw) * 0.6})`);
+        fg.addColorStop(1, "rgba(255, 150, 50, 0)");
+        ctx.fillStyle = fg;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Bóng đèn tròn màu ấm xen kẽ
+        ctx.fillStyle = FAIRY_WARM_COLORS[b.k % FAIRY_WARM_COLORS.length];
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 2.4, 0, Math.PI * 2);
+        ctx.fill();
+        // Đốm sáng trắng phản chiếu
+        ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+        ctx.beginPath();
+        ctx.arc(b.x - 0.6, b.y - 0.7, 0.8, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Ban ngày: bóng đèn tắt, màu nhạt
+        ctx.fillStyle = FAIRY_DAY_COLORS[b.k % FAIRY_DAY_COLORS.length];
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.15)";
+        ctx.lineWidth = 0.6;
+        ctx.stroke();
+      }
+    });
+
+    // 2. Vẽ 6 cột đèn nông trại mộc mạc
+    FARM_LAMPS.forEach((l, i) => {
+      const x = l.x, y = l.y;
+
+      // Bóng đổ mờ chân cột trên nền cỏ
+      ctx.fillStyle = "rgba(0, 0, 0, 0.14)";
+      ctx.beginPath();
+      ctx.ellipse(x - 7, y + 16, 5, 2.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Cột gỗ mộc mạc (rustic wooden post) màu nâu với vân gỗ
+      ctx.fillStyle = "#6d4a2d";
+      ctx.fillRect(x - 9, y - 18, 4, 34);
+      // Viền sáng cạnh gỗ
+      ctx.fillStyle = "#8d6346";
+      ctx.fillRect(x - 9, y - 18, 1, 34);
+      // Vân gỗ sẫm màu
+      ctx.fillStyle = "#4f321d";
+      ctx.fillRect(x - 7, y - 11, 1, 11);
+      ctx.fillRect(x - 8, y + 5, 1, 7);
+      // Chóp đầu cột gỗ
+      ctx.fillStyle = "#523720";
+      ctx.fillRect(x - 10, y - 20, 6, 2);
+
+      // Nhánh tay đỡ ngắn bằng gỗ & thanh chéo gia cố
+      ctx.fillStyle = "#523720";
+      ctx.fillRect(x - 8, y - 16, 10, 3);
+      ctx.strokeStyle = "#523720";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(x - 7, y - 8);
+      ctx.lineTo(x - 1, y - 14);
+      ctx.stroke();
+      // Chốt sắt gắn tay đỡ
+      ctx.fillStyle = "#2b2d42";
+      ctx.fillRect(x - 1, y - 17, 3, 4);
+
+      // Dây móc sắt treo đèn
+      ctx.strokeStyle = "#2b2d42";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 13);
+      ctx.lineTo(x, y - 6);
+      ctx.stroke();
+
+      // Chao đèn kim loại nhỏ kiểu nông trại (metal shade)
+      ctx.fillStyle = "#374151";
+      ctx.beginPath();
+      ctx.moveTo(x - 7, y - 3);
+      ctx.lineTo(x - 2, y - 7);
+      ctx.lineTo(x + 2, y - 7);
+      ctx.lineTo(x + 7, y - 3);
+      ctx.closePath();
+      ctx.fill();
+      // Vành kim loại của chao đèn
+      ctx.fillStyle = "#1f2937";
+      ctx.fillRect(x - 8, y - 3, 16, 1.4);
+      // Núm kim loại trên chao đèn
+      ctx.fillStyle = "#111827";
+      ctx.beginPath();
+      ctx.arc(x, y - 7.5, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Bóng đèn (bulb)
+      if (night) {
+        // Ban đêm: vầng sáng vàng ấm tỏa tròn với độ nhấp nháy nhẹ dùng t
+        const flicker = Math.sin(t * 7 + i * 2.1) * 0.05 + Math.sin(t * 13 + i * 1.7) * 0.03;
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        const haloR = 48;
+        const gGlow = ctx.createRadialGradient(x, y, 0, x, y, haloR);
+        const alpha = Math.max(0.1, 0.42 + flicker);
+        gGlow.addColorStop(0, `rgba(255, 230, 130, ${alpha})`);
+        gGlow.addColorStop(0.28, `rgba(255, 185, 60, ${alpha * 0.65})`);
+        gGlow.addColorStop(0.65, `rgba(255, 130, 25, ${alpha * 0.22})`);
+        gGlow.addColorStop(1, "rgba(255, 100, 0, 0)");
+        ctx.fillStyle = gGlow;
+        ctx.beginPath();
+        ctx.arc(x, y, haloR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Thân bóng đèn sáng rực màu vàng ấm
+        ctx.fillStyle = "#ffe066";
+        ctx.beginPath();
+        ctx.arc(x, y, 3.8, 0, Math.PI * 2);
+        ctx.fill();
+        // Tim bóng đèn rực sáng trắng ở giữa
+        ctx.fillStyle = "#fffbeb";
+        ctx.beginPath();
+        ctx.arc(x, y - 0.5, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Đom đóm / bướm đêm lượn quanh bóng đèn lúc đêm về
+        for (let m = 0; m < 3; m++) {
+          const spd = 2.0 + m * 0.8;
+          const ang = t * spd + i * 2.4 + m * 2.1;
+          const dist = 9 + m * 5 + Math.sin(t * 3.5 + m + i) * 3;
+          const mx = x + Math.cos(ang) * dist;
+          const my = y + Math.sin(ang * 1.2) * (dist * 0.55) - 2;
+          // Cánh bướm đêm vỗ nhẹ
+          const flap = Math.sin(t * 24 + m * 4 + i) * 1.3;
+          ctx.fillStyle = "rgba(255, 248, 220, 0.75)";
+          ctx.beginPath();
+          ctx.ellipse(mx - 1, my, Math.abs(flap) + 0.4, 0.9, -0.3, 0, Math.PI * 2);
+          ctx.ellipse(mx + 1, my, Math.abs(flap) + 0.4, 0.9, 0.3, 0, Math.PI * 2);
+          ctx.fill();
+          // Thân phát sáng nhỏ
+          ctx.fillStyle = "#fff8b0";
+          ctx.beginPath();
+          ctx.arc(mx, my, 1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        // Ban ngày: bóng đèn tắt, màu nhạt mờ
+        ctx.fillStyle = "#e9ecef";
+        ctx.beginPath();
+        ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        // Sợi đốt mờ bên trong
+        ctx.strokeStyle = "#adb5bd";
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.arc(x, y - 0.5, 1.4, 0, Math.PI);
+        ctx.stroke();
+        // Viền bóng thủy tinh
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.15)";
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    });
+  }
+
   function drawFarm(t) {
     const {L, R, T, B} = bleed(), wv = R - L;
     const night = Life.darkness() > .5, [s0, s1] = night ? ["#060a22", "#27316b"] : Life.skyColors();
@@ -939,6 +1159,8 @@ const Areas = (() => {
       drawCow(cx, cy, 0.95, t, flip, k + 1);
     }
     ctx.restore();
+    // Đèn nông trại mộc mạc (cột gỗ, bóng vàng ấm, bướm đêm/đom đóm) & dây đèn fairy lights
+    drawFarmLamps(t, night);
     for (let k = 0; k < 6; k++) {                                        // bướm
       const bx = (t * 18 + k * 190) % (W + 40) - 20, byy = 220 + (k % 3) * 60 + Math.sin(t * 2 + k) * 20, f = Math.abs(Math.sin(t * 10 + k)) * 3 + 1;
       ctx.fillStyle = ["#ff8fab", "#ffd166", "#a0c4ff"][k % 3]; ctx.beginPath(); ctx.ellipse(bx - 2, byy, f, 3, 0, 0, 7); ctx.ellipse(bx + 2, byy, f, 3, 0, 0, 7); ctx.fill();
@@ -1664,7 +1886,13 @@ const Areas = (() => {
   }
   function holes(hole, t) {
     if (myArea === "fishing") hole(902, 410, 90, .8);
-    if (myArea === "farm") { hole(84, 90, 80, .7); hole(878, 420, 60, .5); }
+    if (myArea === "farm") {
+      hole(84, 90, 80, .7);
+      hole(878, 420, 60, .5);
+      // Vùng sáng cho các cột đèn nông trại và chuỗi bóng đèn fairy lights
+      FARM_LAMPS.forEach(l => hole(l.x, l.y, 90, .75));
+      FAIRY_BULBS.forEach(b => hole(b.x, b.y, 24, .45));
+    }
     if (myArea === "home") for (const it of homeItems) if (it.k === "f_lamp" || it.k === "f_tv" || it.k === "f_tree") hole(it.x, it.y - 20, 80, .8);
   }
   function act() {
@@ -1681,6 +1909,6 @@ const Areas = (() => {
   function setHome(items) { homeItems = Array.isArray(items) ? items : []; }
 
   return {has: a => NEW.has(a), TXT, draw, seat, ents, tap, holes, act, over: drawSeason, drawAvatar, onJoin, onArea, setHome,
-          openWardrobe, owns, ownLabel, cleanOutfit, outfit: () => cleanOutfit(), npcPos,
+          openWardrobe, owns, ownLabel, cleanOutfit, outfit: () => cleanOutfit(), npcPos, FARM_LAMPS,
           say: (id, text, sec = 4) => { npcTalk[id] = {text, until: performance.now() / 1000 + sec}; }};   // NPC tự nói (tiệm tóc)
 })();
