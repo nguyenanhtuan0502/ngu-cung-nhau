@@ -43,7 +43,7 @@ BOOT_ID = uuid.uuid4().hex[:8]          # mã lần chạy server: đổi khác 
 AREAS = ("sleep", "study", "park", "cinema", "farm", "fishing", "mall", "home", "arcade", "stock", "dating", "salon")
 SHARED = ("park", "study", "cinema", "mall", "fishing", "arcade", "stock", "dating", "salon")   # khu chung chia kênh
 PRIVATE = ("home", "farm")                                 # khu riêng theo playerId
-SEATS = {"sleep": 8, "study": 12, "park": 4, "cinema": 12, "farm": 2, "fishing": 4, "mall": 3, "home": 2,
+SEATS = {"sleep": 8, "study": 12, "park": 4, "cinema": 28, "farm": 2, "fishing": 4, "mall": 3, "home": 2,
          "arcade": 4, "stock": 8, "dating": 6, "salon": 3}
 CHANNEL_CAP = 25          # số người tối đa mỗi kênh khu chung
 MAX_CHANNELS = 50
@@ -54,7 +54,7 @@ ENTRY = {
     "park": (85.0, 350.0),       # cổng vào bên trái công viên (khu ngang 1120x600)
     "sleep": (500.0, 540.0),     # các khu đã vẽ lại ngang: cửa ra ở giữa cạnh dưới
     "study": (500.0, 540.0),
-    "cinema": (44.0, 545.0),     # cửa trái sảnh rạp
+    "cinema": (44.0, 705.0),     # cửa trái sảnh rạp (rạp mới cao 760)
     "farm": (560.0, 540.0),
     "fishing": (560.0, 540.0),
     "mall": (500.0, 540.0),
@@ -132,7 +132,7 @@ def clean_life(d):
 FLOOR = (16, 175, 344, 575)  # x1, y1, x2, y2 (khu dọc cũ 360x640)
 FLOORS = {
     "park": (20, 188, 1100, 585),
-    "sleep": (20, 175, 980, 585), "study": (20, 175, 980, 585), "cinema": (20, 175, 980, 585),
+    "sleep": (20, 175, 980, 585), "study": (20, 175, 980, 585), "cinema": (20, 175, 980, 745),
     "mall": (20, 175, 980, 585), "farm": (20, 175, 1100, 585), "fishing": (20, 352, 1100, 585),
     "home": (20, 175, 820, 585),
     "arcade": (20, 175, 1100, 585), "stock": (20, 175, 980, 585), "dating": (20, 262, 1100, 585),

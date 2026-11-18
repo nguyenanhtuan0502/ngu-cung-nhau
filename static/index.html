@@ -1237,12 +1237,20 @@ const LAYOUTS = {
     tvr: null, scr: null,
     radio: {x: 850, y: 236, w: 58, h: 34}, sw: {x: 950, y: 22, w: 60, h: 60}, moon: {x: 980, y: 52},
   },
-  cinema: {                                  // rạp kiểu Nhật NGANG 1000x600: phòng chiếu (trên, 12 ghế) + sảnh (dưới)
-    ww: 1000, wh: 600, floor: {x1: 20, y1: 175, x2: 980, y2: 585},
-    beds: [130, 256, 382, 508, 634, 760].map(x => ({x, y: 168})).concat([130, 256, 382, 508, 634, 760].map(x => ({x, y: 252}))),
-    bw: 110, bh: 80,
+  cinema: {                                  // rạp phim kiểu rạp hiện đại: sảnh kín (dưới) + phòng chiếu bậc thang (trên, 28 ghế)
+    ww: 1000, wh: 760, floor: {x1: 20, y1: 175, x2: 980, y2: 745},
+    beds: (() => {
+      const arr = [];
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 7; c++) {
+          arr.push({x: 155 + c * 100, y: 176 + r * 62});
+        }
+      }
+      return arr;
+    })(),
+    bw: 90, bh: 60, sitY: 48,
     tvr: {x: 240, y: 12, w: 520, h: 148}, scr: {x: 248, y: 18, w: 504, h: 136},
-    radio: {x: 900, y: 498, w: 44, h: 26}, sw: {x: 960, y: 112, w: 13, h: 19}, moon: null,
+    radio: {x: 855, y: 495, w: 44, h: 26}, sw: {x: 920, y: 485, w: 14, h: 20}, moon: null,
   },
 };
 let BED_W = 110, BED_H = 95, BEDS = LAYOUTS.sleep.beds;
@@ -1253,6 +1261,11 @@ function applyLayout(a) {
   ({beds: BEDS, bw: BED_W, bh: BED_H, tvr: TVR, scr: SCR, radio: RADIO, sw: SWITCH} = LAYOUT);
   WIDE = !!LAYOUT.ww;
   W = LAYOUT.ww || OLD_W; H = LAYOUT.wh || OLD_H; FLOOR = LAYOUT.floor || OLD_FLOOR;
+  if (a === "cinema") {
+    const m = me();
+    cinemaZone = (m && m.y < 455) ? "hall" : "lobby";
+    if (typeof placeTV === "function") placeTV();
+  }
   cam.snap = true;                                         // vào khu mới: camera nhảy thẳng tới nhân vật
 }
 const tvCenter = () => TVR ? {x: TVR.x + TVR.w / 2, y: TVR.y + TVR.h / 2} : {x: 180, y: 90};
@@ -1265,7 +1278,7 @@ const AREA_DOORS = {
   park: [{...GATE, side: "left", spot: {x: 40, y: 350}, to: "map", custom: true}],   // cổng đã vẽ sẵn trong cảnh
   sleep: [{x: 476, y: 538, w: 48, h: 37, side: "bottom", spot: {x: 500, y: 556}, to: "map"}],
   study: [{x: 476, y: 538, w: 48, h: 37, side: "bottom", spot: {x: 500, y: 556}, to: "map"}],
-  cinema: [{...DOOR_L, to: "map"}],
+  cinema: [{x: 0, y: 680, w: 28, h: 65, side: "left", spot: {x: 24, y: 705}, to: "map"}],
 };
 const MAPBOARD = {x: 96, y: 236, w: 60, h: 46};              // bảng bản đồ lớn cạnh cổng
 const doorsHere = () => AREA_DOORS[myArea] || [];
@@ -1341,9 +1354,9 @@ function lighten(hex, amt) {
 const seatIn = (area, b) => LAYOUTS[area].beds[b];
 function bedSpot(b, area = myArea) {
   const L = LAYOUTS[area], s = L.beds[b];
-  return {x: s.x + L.bw / 2, y: s.y + (L.sitY ?? {study: 80, park: 66, cinema: 66, sleep: 56}[area])};
+  return {x: s.x + L.bw / 2, y: s.y + (L.sitY ?? {study: 80, park: 66, cinema: 48, sleep: 56}[area])};
 }
-const standUpY = (area, b) => Math.min(FLOOR.y2, seatIn(area, b).y + LAYOUTS[area].bh + 8);
+const standUpY = (area, b) => Math.min(area === "cinema" ? 430 : FLOOR.y2, seatIn(area, b).y + LAYOUTS[area].bh + 8);
 function bedOwner(b) { for (const p of players.values()) if (p.bed === b && p.area === myArea) return p; return null; }
 function me() { return players.get(myId); }
 function fmtTime(s) {
@@ -1692,6 +1705,9 @@ function applyMedia(slot) {
     updateUnlock(); return;
   }
   box.classList.remove("hidden");
+  if (slot === "tv" && myArea === "cinema" && typeof cinemaZone !== "undefined" && cinemaZone === "lobby") {
+    box.classList.add("hidden");
+  }
   if (slot === "tv") placeTV();
   if (!ytApiReady) { loadYTApi(); return; }
   let p = YTP[slot];
@@ -1736,6 +1752,12 @@ function syncYT(slot) {
     pl.playVideo();
     if (++p.fails >= 2) pl.mute();
   }
+  if (slot === "tv" && p.ready && pl.getVolume) {
+    const inLobby = (myArea === "cinema" && typeof cinemaZone !== "undefined" && cinemaZone === "lobby");
+    const baseVol = Math.round(Sound.vol * 100);
+    const targetVol = inLobby ? Math.round(baseVol * 0.25) : baseVol;
+    if (pl.getVolume() !== targetVol && !pl.isMuted()) pl.setVolume(targetVol);
+  }
   updateUnlock();
 }
 function updateUnlock() {
@@ -1758,12 +1780,18 @@ setInterval(() => { syncYT("tv"); syncYT("music"); }, 3000);
 setInterval(() => { if (joined) fetch("/ping", {cache: "no-store"}).catch(() => {}); }, 4 * 60 * 1000); // giữ server free không ngủ
 function placeTV() {
   const f = $("#tvFrame");
+  // Ở sảnh rạp phim thì ẩn hoàn toàn khung video YouTube
+  if (myArea === "cinema" && typeof cinemaZone !== "undefined" && cinemaZone === "lobby") {
+    f.classList.add("hidden");
+    return;
+  }
   // Khi đang ngồi ghế xem phim trong rạp: đặt #tvFrame khớp chính xác với màn chiếu lớn góc nhìn khán giả
   if (cinemaAudience()) {
     const scr = getCinemaAudienceScr();
     f.style.left = scr.x + "px"; f.style.top = scr.y + "px";
     f.style.width = scr.w + "px"; f.style.height = scr.h + "px";
     f.classList.remove("big");
+    if (media.tv) f.classList.remove("hidden");
     return;
   }
   if (!theater && !SCR) return;
@@ -1771,6 +1799,7 @@ function placeTV() {
   f.style.left = r.x + "px"; f.style.top = r.y + "px";
   f.style.width = r.w + "px"; f.style.height = r.h + "px";
   f.classList.toggle("big", tvBig && !theater);
+  if (media.tv) f.classList.remove("hidden");
 }
 function placeTheater() {
   const th = $("#theater"), tm = $("#theaterTimer");
@@ -2756,7 +2785,7 @@ $("#pomoPill").onclick = () => { if (pomo) openPomo(); };
 
 function toggleSleep() {
   const m = me(); if (!m) return;
-  if (m.bed != null) { send({t: "move", x: m.x, y: Math.min(FLOOR.y2, BEDS[m.bed].y + BED_H + 20)}); return; }
+  if (m.bed != null) { send({t: "move", x: m.x, y: Math.min(myArea === "cinema" ? 430 : FLOOR.y2, BEDS[m.bed].y + BED_H + 8)}); return; }
   let best = -1, bd = 1e9;
   BEDS.forEach((b, i) => {
     if (bedOwner(i)) return;
@@ -2803,6 +2832,82 @@ $("#shareBtn").onclick = async () => {
   } catch (e) { if (e && e.name !== "AbortError") prompt("Gửi link này cho bạn bè:", url); }
 };
 
+// ================== QUẢN LÝ PHÂN VÙNG VÀ DI CHUYỂN RẠP PHIM (CINEMA ZONES) ==================
+let cinemaZone = "lobby"; // "lobby" (sảnh kín, y >= 470) hoặc "hall" (phòng chiếu, y <= 440)
+let cinemaTransitionTimer = null;
+let lastTicketToastAt = 0;
+
+// Kiểm tra khu vực phân vùng trong rạp phim
+const inCinemaLobby = () => myArea === "cinema" && cinemaZone === "lobby";
+const inCinemaHall = () => myArea === "cinema" && cinemaZone === "hall";
+
+// Chuyển đổi giữa sảnh và phòng chiếu với hiệu ứng fade đen (~0.4s)
+function cinemaTransition(toZone) {
+  if (cinemaZone === toZone) return;
+  cinemaZone = toZone;
+  $("#fadeText").textContent = "";
+  $("#fade").classList.add("on");
+  cam.snap = true;
+  placeTV();
+  // Điều chỉnh âm lượng YouTube: ở sảnh nghe nhỏ nhẹ, vào phòng chiếu nghe đầy đủ
+  const p = YTP["tv"];
+  if (p && p.ready && p.pl && !p.pl.isMuted()) {
+    p.pl.setVolume(toZone === "hall" ? Math.round(Sound.vol * 100) : Math.round(Sound.vol * 25));
+  }
+  clearTimeout(cinemaTransitionTimer);
+  cinemaTransitionTimer = setTimeout(() => {
+    $("#fade").classList.remove("on");
+  }, 200);
+}
+
+// Giới hạn di chuyển trong rạp phim (luật soát vé và va chạm bức tường ngăn y 440..470)
+function clampCinemaMove(tx, ty, fromX, fromY, isUserTap) {
+  if (myArea !== "cinema") return {x: tx, y: ty};
+  const hasTk = (typeof Life !== "undefined" && Life.hasTicket && Life.hasTicket());
+  const now = performance.now() / 1000;
+
+  // 1. Không có vé: người chơi không thể đi lên trên y 480
+  if (!hasTk) {
+    if (ty < 480) {
+      ty = 480;
+      if (isUserTap || now - lastTicketToastAt > 2.0) {
+        lastTicketToastAt = now;
+        toast("🎟️ Mua vé ở máy bán vé trước nhé");
+      }
+    }
+    return {x: tx, y: ty};
+  }
+
+  // 2. Đã có vé: chỉ cổng soát vé tại x 460..540 mới cho phép đi qua lại giữa phòng chiếu và sảnh
+  const inGateX = (tx >= 460 && tx <= 540);
+  const fromLobby = (fromY >= 460);
+  const fromHall = (fromY <= 450);
+
+  if (fromLobby) {
+    // Đang ở sảnh: nếu không đi vào cổng soát vé thì bức tường y 440..470 chặn lại
+    if (!inGateX && ty < 475) {
+      ty = 480;
+    }
+  } else if (fromHall) {
+    // Đang ở phòng chiếu: nếu không đi vào cổng soát vé thì bức tường chặn lại
+    if (!inGateX && ty > 435) {
+      ty = 430;
+    }
+  }
+
+  return {x: tx, y: ty};
+}
+
+// Kiểm tra xem người chơi khác có cùng phân vùng rạp phim (sảnh / phòng chiếu) với mình hay không
+function cinemaSameZone(p) {
+  if (myArea !== "cinema") return true;
+  if (p.id === myId) return true;
+  const m = me();
+  const myLobby = (cinemaZone === "lobby") || (m && m.y >= 455 && !m.lying);
+  const pLobby = (!p.lying && p.y >= 455);
+  return myLobby === pLobby;
+}
+
 // ================== INPUT ==================
 let scale = 1, ox = 0, oy = 0, dpr = 1, vw = 0, vh = 0;
 // Chạm / nhấp vào điểm (x, y) của thế giới. walk = true: chạm sàn trống thì đi tới đó.
@@ -2832,7 +2937,10 @@ function tapAt(x, y, walk, noPet) {
     }
   }
   if (!walk) return false;
-  const tx = Math.max(FLOOR.x1, Math.min(FLOOR.x2, x)), ty = Math.max(LAYOUT.minY || FLOOR.y1, Math.min(FLOOR.y2, y));   // hồ câu: không đi xuống nước
+  let tx = Math.max(FLOOR.x1, Math.min(FLOOR.x2, x)), ty = Math.max(LAYOUT.minY || FLOOR.y1, Math.min(FLOOR.y2, y));   // hồ câu: không đi xuống nước
+  if (cinema()) {
+    ({x: tx, y: ty} = clampCinemaMove(tx, ty, m.x, m.y, true));
+  }
   taps.push({x: tx, y: ty, t: performance.now() / 1000});
   send({t: "move", x: tx, y: ty});
   return true;
@@ -2895,8 +3003,11 @@ function steer(t) {
   }
   steering = true; pendingDoor = false; lastSteer = t;
   const look = SPEED * .35;                                       // nhìn trước 0.35 giây để người khác thấy mượt
-  const tx = Math.max(FLOOR.x1, Math.min(FLOOR.x2, m.x + dir.x * look));
-  const ty = Math.max(LAYOUT.minY || FLOOR.y1, Math.min(FLOOR.y2, m.y + dir.y * look));
+  let tx = Math.max(FLOOR.x1, Math.min(FLOOR.x2, m.x + dir.x * look));
+  let ty = Math.max(LAYOUT.minY || FLOOR.y1, Math.min(FLOOR.y2, m.y + dir.y * look));
+  if (cinema()) {
+    ({x: tx, y: ty} = clampCinemaMove(tx, ty, m.x, m.y, false));
+  }
   m.tx = tx; m.ty = ty;
   if (t - steerSent > .12) { steerSent = t; send({t: "move", x: Math.round(tx), y: Math.round(ty)}); }
   // đi vào lối ra → tự mở bản đồ (1 lần cho tới khi đi ra khỏi cửa)
@@ -3006,8 +3117,23 @@ function updateView(snap, dt = 0) {
   const tx = W > visW ? Math.max(0, Math.min(W - visW, fx - visW / 2)) : (W - visW) / 2;
   // nhân vật đứng ở khoảng 60% chiều cao màn hình để thấy được tường/cửa sổ/lò sưởi phía trên
   let ty = H + padB + padT > visH ? Math.max(-padT, Math.min(H - visH + padB, fy - visH * .6)) : (H - visH) / 2;
-  // ngồi ghế rạp phim: camera kéo lên để thấy trọn màn chiếu (camera gần thì màn chiếu bị cắt mất)
-  if (myArea === "cinema" && m && m.lying && TVR) ty = Math.min(ty, TVR.y - padT - 6);
+  // Xử lý camera riêng cho rạp phim: sảnh đóng (không thấy phòng chiếu) và phòng chiếu kín (không thấy sảnh)
+  if (myArea === "cinema") {
+    if (cinemaZone === "lobby") {
+      // Ở sảnh: khóa camera y để tuyệt đối không thấy bất cứ gì phía trên y 440
+      const minTy = 440;
+      const maxTy = Math.max(minTy, H - visH + padB);
+      ty = Math.max(minTy, Math.min(maxTy, fy - visH * .55));
+    } else {
+      // Trong phòng chiếu: camera chỉ giữ trong phòng chiếu (y <= 440), không hiển thị sảnh bên dưới
+      const minTy = -padT;
+      const maxTy = Math.max(minTy, 450 - visH + padB);
+      ty = Math.max(minTy, Math.min(maxTy, fy - visH * .6));
+      if (m && m.lying && TVR) ty = Math.min(ty, TVR.y - padT - 6);
+    }
+  } else {
+    if (m && m.lying && TVR) ty = Math.min(ty, TVR.y - padT - 6);
+  }
   if (snap || cam.snap) { cam.x = tx; cam.y = ty; cam.snap = false; }
   else { const k = Math.min(1, dt * 6); cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k; }
   ox = -cam.x * scale; oy = -cam.y * scale;
@@ -4189,185 +4315,605 @@ function drawBench(i, t) {
   ctx.fillStyle = "#8d5e3c"; rr(ctx, x + 8, y + 64, 94, 6, 3); ctx.fill(); rr(ctx, x + 8, y + 73, 94, 6, 3); ctx.fill();
 }
 
-// ---- 🎬 rạp kiểu Nhật: phòng chiếu (trong) + sảnh (ngay sau cửa) ----
+// ---- 🎬 RẠP PHIM HIỆN ĐẠI: SẢNH KÍN (LOBBY) & PHÒNG CHIẾU BẬC THANG (HALL) ----
 const PRIZES = ["🧸 gấu bông mèo", "🐰 thỏ trắng", "🐼 gấu trúc mini", "🦊 cáo nhỏ"];
-const LOBBY_ITEMS = [                                                      // vật trong sảnh rạp (khu ngang 1000x600)
-  {x: 40, y: 432, w: 40, h: 48, act: () => Life.openTicket(null)},          // máy bán vé (life.js)
-  {x: 120, y: 434, w: 22, h: 40, act: () => toast(`📄 Bạn lấy 1 tờ rơi phim "${(FILMS[Math.random() * FILMS.length | 0].title || FILMS[Math.random() * FILMS.length | 0].name)}" làm kỷ niệm`)},
-  {x: 440, y: 452, w: 120, h: 50, act: () => Life.openPopcorn()},           // quầy bắp nước
-  {x: 820, y: 432, w: 76, h: 50, act: () => Life.openSouvenir()},           // kệ đồ lưu niệm
-  {x: 200, y: 500, w: 34, h: 46, act: () => Life.claw()},                   // 2 máy gắp thú
-  {x: 246, y: 500, w: 34, h: 46, act: () => Life.claw()},
-  {x: 760, y: 500, w: 34, h: 48, act: () => Life.openDrinks()},             // máy bán nước
+const LOBBY_ITEMS = [                                                      // các quầy và máy tương tác trong sảnh rạp (y 470..760)
+  {x: 60, y: 485, w: 50, h: 50, act: () => Life.openTicket(null)},          // máy bán vé tự động (life.js)
+  {x: 125, y: 490, w: 26, h: 45, act: () => toast(`📄 Bạn lấy 1 tờ rơi phim "${(FILMS[Math.random() * FILMS.length | 0].title || FILMS[Math.random() * FILMS.length | 0].name)}" làm kỷ niệm`)}, // kệ tờ rơi
+  {x: 175, y: 485, w: 38, h: 50, act: () => Life.claw()},                   // máy gắp thú 1
+  {x: 220, y: 485, w: 38, h: 50, act: () => Life.claw()},                   // máy gắp thú 2
+  {x: 560, y: 485, w: 125, h: 50, act: () => Life.openPopcorn()},           // quầy bắp nước
+  {x: 700, y: 485, w: 36, h: 50, act: () => Life.openDrinks()},             // máy bán nước tự động
+  {x: 755, y: 485, w: 78, h: 50, act: () => Life.openSouvenir()},           // kệ đồ lưu niệm
 ];
-function drawCinema(t) {                             // 🎬 rạp NGANG 1000x600: phòng chiếu (trên) + sảnh (dưới)
+
+// Vẽ phòng chiếu phim kín (Screening Hall, y 0..440)
+function drawCinemaHall(t) {
   const {L, R, T, B} = bleed(), wv = R - L;
-  // phòng chiếu: tường bọc vải tối, thảm đỏ rượu họa tiết nhỏ
-  ctx.fillStyle = "#16131c"; ctx.fillRect(L, T, wv, 165 - T);
-  for (let x = 20; x < W - 20; x += 64) if (x + 50 < TVR.x - 40 || x > TVR.x + TVR.w + 40) { ctx.fillStyle = "#231a26"; rr(ctx, x, 30, 50, 110, 6); ctx.fill(); }   // tấm tiêu âm
-  ctx.fillStyle = "#4a1626"; ctx.fillRect(L, 160, wv, 230);
-  ctx.fillStyle = "rgba(255,255,255,.04)"; for (let y = 166; y < 362; y += 12) for (let x = Math.floor(L / 12) * 12 + (y % 24 ? 0 : 6); x < R; x += 12) ctx.fillRect(x, y, 2, 2);
-  for (const yy of [214, 298]) { ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.fillRect(L, yy + 32, wv, 3); }                        // bậc thang
-  for (let y = 176; y < 360; y += 20) { ctx.fillStyle = "rgba(255,190,90,.8)"; ctx.fillRect(8, y, 3, 2); ctx.fillRect(W - 11, y, 3, 2); }   // đèn lối đi
-  for (const [x0, dir] of [[TVR.x - 34, 1], [TVR.x + TVR.w + 34, -1]]) for (let k = 0; k < 4; k++) {   // rèm gấp 2 bên màn
-    ctx.fillStyle = k % 2 ? "#3c1a26" : "#5a2434";
-    ctx.beginPath(); ctx.moveTo(x0 + dir * k * 7, -40); ctx.lineTo(x0 + dir * (k * 7 + 8), -40);
-    ctx.quadraticCurveTo(x0 + dir * (k * 7 + 11), 90, x0 + dir * (k * 7 + 8), 160); ctx.lineTo(x0 + dir * k * 7, 160); ctx.fill();
+
+  // 1. Tường tiêu âm bọc vải tối cách âm phía trên
+  ctx.fillStyle = "#120f18";
+  ctx.fillRect(L, T, wv, 165 - T);
+  for (let x = 20; x < W - 20; x += 64) {
+    if (x + 50 < TVR.x - 30 || x > TVR.x + TVR.w + 30) {
+      ctx.fillStyle = "#1f1824";
+      rr(ctx, x, 24, 48, 120, 6);
+      ctx.fill();
+      ctx.fillStyle = "#2a2030";
+      rr(ctx, x + 4, 28, 40, 112, 4);
+      ctx.fill();
+    }
   }
-  ctx.fillStyle = "#0b0b10"; rr(ctx, TVR.x, TVR.y, TVR.w, TVR.h, 3); ctx.fill();
+
+  // 2. Mép bục sân khấu trước màn chiếu
+  ctx.fillStyle = "#200a12";
+  ctx.fillRect(L, 160, wv, 15);
+  ctx.fillStyle = "#c9a227";
+  ctx.fillRect(230, 160, 540, 2);
+
+  // Rèm nhung đỏ gấp nếp 2 bên màn chiếu
+  for (const [x0, dir] of [[TVR.x - 34, 1], [TVR.x + TVR.w + 34, -1]]) {
+    for (let k = 0; k < 4; k++) {
+      ctx.fillStyle = k % 2 ? "#3c1a26" : "#5a2434";
+      ctx.beginPath();
+      ctx.moveTo(x0 + dir * k * 7, -40);
+      ctx.lineTo(x0 + dir * (k * 7 + 8), -40);
+      ctx.quadraticCurveTo(x0 + dir * (k * 7 + 11), 90, x0 + dir * (k * 7 + 8), 160);
+      ctx.lineTo(x0 + dir * k * 7, 160);
+      ctx.fill();
+    }
+  }
+
+  // Khung màn chiếu TVR và nội dung phim
+  ctx.fillStyle = "#08080c";
+  rr(ctx, TVR.x, TVR.y, TVR.w, TVR.h, 3);
+  ctx.fill();
   drawTVScreen(t);
+
   if (!room.tv.on) {
-    ctx.fillStyle = "rgba(255,255,255,.4)"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText("🎬 Chạm màn hình để chọn phim", W / 2, 76);
-    ctx.fillStyle = "rgba(255,255,255,.25)"; ctx.font = "10px system-ui"; ctx.fillText("Sắp chiếu: " + FILMS.slice(0, 4).map(f => f.title || f.name).join(" · ") + "…", W / 2, 98);
+    ctx.fillStyle = "rgba(255,255,255,.45)";
+    ctx.font = "700 13px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("🎬 Chạm màn hình để chọn phim", W / 2, 74);
+    ctx.fillStyle = "rgba(255,255,255,.25)";
+    ctx.font = "10px system-ui";
+    ctx.fillText("Sắp chiếu: " + FILMS.slice(0, 4).map(f => f.title || f.name).join(" · ") + "…", W / 2, 96);
   }
-  drawSwitch();
-  // vách ngăn: phòng máy chiếu + lối vào phòng chiếu
-  ctx.fillStyle = "#24161d"; ctx.fillRect(L, 362, 470 - L, 22); ctx.fillRect(530, 362, R - 530, 22);
-  ctx.fillStyle = "#0e0a0d"; rr(ctx, 488, 352, 24, 12, 2); ctx.fill();
-  ctx.fillStyle = room.tv.on ? "#fff6c8" : "#333"; ctx.fillRect(496, 355, 8, 6);
-  // sảnh: sàn gạch bóng
-  ctx.fillStyle = "#2e2a33"; ctx.fillRect(L, 384, wv, B - 384);
-  ctx.fillStyle = "rgba(255,255,255,.05)"; for (let y = 384, r = 0; y < B; y += 20, r++) for (let x = Math.floor(L / 40) * 40 + (r % 2 ? 20 : 0); x < R; x += 40) ctx.fillRect(x, y, 20, 20);   // gạch caro
-  // thảm đỏ trung tâm chạy từ cửa vào giữa sảnh
+
+  // 3. Sàn phòng chiếu thảm đỏ rượu bậc thang (y 175..430)
+  ctx.fillStyle = "#35101c";
+  ctx.fillRect(L, 175, wv, 265);
+
+  // Họa tiết chấm thảm nhung rạp phim
+  ctx.fillStyle = "rgba(255,255,255,.03)";
+  for (let y = 178; y < 435; y += 12) {
+    for (let x = Math.floor(L / 12) * 12 + (y % 24 ? 0 : 6); x < R; x += 12) {
+      ctx.fillRect(x, y, 2, 2);
+    }
+  }
+
+  // Bục nâng giật cấp cho 4 hàng ghế (Row 0..3)
+  const stepYs = [236, 298, 360];
+  stepYs.forEach(yy => {
+    ctx.fillStyle = "rgba(0,0,0,.35)";
+    ctx.fillRect(145, yy - 1, 710, 4);
+    ctx.fillStyle = "rgba(255,210,120,.4)";
+    ctx.fillRect(145, yy + 2, 710, 1.5);
+  });
+
+  // Tên hàng ghế A, B, C, D trên thảm cạnh 2 bên lối đi
+  const rowNames = ["A", "B", "C", "D"];
+  for (let r = 0; r < 4; r++) {
+    const ry = 176 + r * 62 + 30;
+    ctx.fillStyle = "rgba(255,210,120,.35)";
+    ctx.font = "800 10px monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(rowNames[r], 135, ry);
+    ctx.fillText(rowNames[r], 865, ry);
+  }
+
+  // Đèn hắt lối đi 2 bên mép phòng chiếu
+  for (let y = 180; y < 430; y += 22) {
+    ctx.fillStyle = "rgba(255,190,90,.85)";
+    ctx.fillRect(12, y, 4, 2.5);
+    ctx.fillRect(W - 16, y, 4, 2.5);
+    ctx.fillStyle = "rgba(255,190,90,.2)";
+    ctx.beginPath();
+    ctx.arc(14, y + 1, 6, 0, 7);
+    ctx.arc(W - 14, y + 1, 6, 0, 7);
+    ctx.fill();
+  }
+
+  // 4. Bức tường sau phòng chiếu (y 440..470) và cửa thoát ra sảnh (Exit Door back to Lobby)
+  ctx.fillStyle = "#16111a";
+  ctx.fillRect(L, 436, wv, 34);
+  ctx.fillStyle = "#0e0b12";
+  ctx.fillRect(L, 436, wv, 3);
+
+  // Cửa sổ buồng máy chiếu (projection booth)
+  ctx.fillStyle = "#0a080d";
+  rr(ctx, 488, 412, 24, 12, 2);
+  ctx.fill();
+  ctx.fillStyle = room.tv.on ? "#fff6c8" : "#222";
+  ctx.fillRect(495, 415, 10, 6);
+
+  // Cửa thoát đôi kính mờ ra sảnh tại x 460..540
+  ctx.fillStyle = "#1e1622";
+  rr(ctx, 458, 422, 84, 22, 3);
+  ctx.fill();
+  const doorGrad = ctx.createLinearGradient(460, 424, 540, 424);
+  doorGrad.addColorStop(0, "#2c2030");
+  doorGrad.addColorStop(0.5, "#433240");
+  doorGrad.addColorStop(1, "#2c2030");
+  ctx.fillStyle = doorGrad;
+  rr(ctx, 462, 424, 76, 18, 2);
+  ctx.fill();
+
+  // Ánh sáng từ sảnh hắt nhẹ qua cửa ra phòng chiếu
+  const floorLight = ctx.createLinearGradient(500, 442, 500, 415);
+  floorLight.addColorStop(0, "rgba(255,220,150,.25)");
+  floorLight.addColorStop(1, "rgba(255,220,150,0)");
+  ctx.fillStyle = floorLight;
+  ctx.fillRect(460, 415, 80, 27);
+
+  // Biển EXIT / LỐI RA SẢNH dạ quang màu xanh lá
+  ctx.fillStyle = "#1d8f3a";
+  rr(ctx, 480, 416, 40, 10, 2);
+  ctx.fill();
+  ctx.fillStyle = "#eaffea";
+  ctx.font = "800 6px system-ui";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("EXIT 🚪 SẢNH", 500, 421);
+}
+
+// Vẽ sảnh chờ rạp phim đóng kín (Cinema Lobby, y 470..760)
+function drawCinemaLobby(t) {
+  const {L, R, T, B} = bleed(), wv = R - L;
+
+  // 1. Bức tường ngăn phía trên sảnh (y 440..470)
+  ctx.fillStyle = "#1b1420";
+  ctx.fillRect(L, 440, wv, 32);
+  ctx.fillStyle = "#c9a227";
+  ctx.fillRect(L, 440, wv, 2);
+  ctx.fillRect(L, 470, wv, 2);
+
+  // 2. Cổng vào PHÒNG CHIẾU 1 tại x 460..540
+  ctx.fillStyle = "#2a1c26";
+  rr(ctx, 456, 442, 88, 30, 4);
+  ctx.fill();
+  ctx.strokeStyle = "#c9a227";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Hai cánh cửa gỗ đỏ sang trọng
+  ctx.fillStyle = "#3e1c22";
+  ctx.fillRect(462, 444, 36, 26);
+  ctx.fillRect(502, 444, 36, 26);
+  ctx.fillStyle = "#52262e";
+  rr(ctx, 465, 447, 30, 20, 2); ctx.fill();
+  rr(ctx, 505, 447, 30, 20, 2); ctx.fill();
+  ctx.fillStyle = "#e0b040";
+  ctx.fillRect(495, 454, 2, 8);
+  ctx.fillRect(503, 454, 2, 8);
+
+  // Biển hiệu "PHÒNG CHIẾU 1" trên đỉnh cửa
+  ctx.fillStyle = "#140e14";
+  rr(ctx, 464, 434, 72, 11, 2);
+  ctx.fill();
+  ctx.strokeStyle = "#e0b040";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = "#ffd27a";
+  ctx.font = "800 6.5px system-ui";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("🎬 PHÒNG CHIẾU 1", 500, 439.5);
+
+  // Biển đèn LED hiển thị tên phim đang chiếu (getCinemaSched)
+  const sched = getCinemaSched();
+  const curFilm = (sched && sched.film) ? (sched.film.title || sched.film.name) : "Đang cập nhật";
+  ctx.fillStyle = "#0a0a0d";
+  rr(ctx, 445, 420, 110, 12, 2.5);
+  ctx.fill();
+  ctx.strokeStyle = "#38bdf8";
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+  ctx.fillStyle = "#38bdf8";
+  ctx.font = "700 6px monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const filmDisp = curFilm.length > 18 ? curFilm.slice(0, 17) + "…" : curFilm;
+  ctx.fillText("▶ ĐANG CHIẾU: " + filmDisp, 500, 426);
+
+  // Cổng soát vé (turnstile) + bục nhân viên (staff stand) tại lối vào x 460..540
+  const hasTk = (typeof Life !== "undefined" && Life.hasTicket && Life.hasTicket());
+  // Bục nhân viên soát vé bên trái
+  ctx.fillStyle = "#4a2a1a";
+  rr(ctx, 462, 466, 18, 12, 2);
+  ctx.fill();
+  ctx.fillStyle = "#d4af37";
+  ctx.fillRect(465, 468, 12, 2);
+
+  // Cổng xoay soát vé inox
+  ctx.fillStyle = "#8a94a6";
+  rr(ctx, 493, 466, 14, 10, 2);
+  ctx.fill();
+  ctx.fillStyle = "#b0b8c6";
+  ctx.fillRect(495, 468, 10, 3);
+  // Đèn báo vé (xanh: có vé, đỏ: chưa có vé)
+  ctx.fillStyle = hasTk ? "#22c55e" : "#ef4444";
+  ctx.beginPath();
+  ctx.arc(500, 469, 2.5, 0, 7);
+  ctx.fill();
+  // Cần xoay inox
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(497, 471); ctx.lineTo(491, 475);
+  ctx.moveTo(503, 471); ctx.lineTo(509, 475);
+  ctx.stroke();
+
+  // Dây nhung đỏ hướng dẫn xếp hàng vào cổng soát vé
+  for (const [px, side] of [[456, -1], [544, 1]]) {
+    ctx.fillStyle = "#c9a227";
+    ctx.fillRect(px - 1.5, 466, 3, 12);
+    ctx.fillStyle = "#ffd166";
+    ctx.beginPath(); ctx.arc(px, 465, 3, 0, 7); ctx.fill();
+  }
+
+  // 3. Sàn gạch caro bóng sảnh rạp (y 470..760)
+  ctx.fillStyle = "#27232d";
+  ctx.fillRect(L, 472, wv, B - 472);
+  ctx.fillStyle = "rgba(255,255,255,.04)";
+  for (let y = 472, r = 0; y < B; y += 22, r++) {
+    for (let x = Math.floor(L / 44) * 44 + (r % 2 ? 22 : 0); x < R; x += 44) {
+      ctx.fillRect(x, y, 22, 22);
+    }
+  }
+
+  // Thảm đỏ trung tâm nối từ cửa vào đến cổng soát vé (x 460..540)
   const carpW = 80;
-  ctx.fillStyle = "#8b0000"; ctx.fillRect(W / 2 - carpW / 2, 384, carpW, B - 384);
-  ctx.fillStyle = "#a00000"; for (let ky = 390; ky < B; ky += 18) ctx.fillRect(W / 2 - carpW / 2 + 4, ky, carpW - 8, 2);
-  ctx.strokeStyle = "#ffd27a"; ctx.lineWidth = 2; ctx.strokeRect(W / 2 - carpW / 2, 384, carpW, B - 384);
-  // cột đèn vàng + dây nhung 2 bên thảm đỏ (hàng xếp)
-  for (const [px, side] of [[W / 2 - carpW / 2 - 14, -1], [W / 2 + carpW / 2 + 14, 1]]) {
-    for (let ky = 400; ky < B - 20; ky += 60) {
-      ctx.fillStyle = "#c9a227"; ctx.fillRect(px - 2, ky, 4, 46);
-      ctx.fillStyle = "#ffd166"; ctx.beginPath(); ctx.arc(px, ky - 1, 5, 0, 7); ctx.fill();
-      ctx.fillStyle = `rgba(255,210,80,${.6 + Math.sin(t * 2 + ky) * .2})`; ctx.beginPath(); ctx.arc(px, ky - 1, 8, 0, 7); ctx.fill();
-    }
-    if (side === 1) {
-      ctx.strokeStyle = "#7b1d1d"; ctx.lineWidth = 3;
-      ctx.beginPath();
-      for (let ky = 400; ky < B - 20; ky += 60) { const ny = Math.min(ky + 60, B - 20); ctx.moveTo(px, ky - 1); ctx.quadraticCurveTo(px + side * 6, (ky + ny) / 2, px, ny - 1); }
-      ctx.stroke();
-    } else {
-      ctx.strokeStyle = "#7b1d1d"; ctx.lineWidth = 3;
-      ctx.beginPath();
-      for (let ky = 400; ky < B - 20; ky += 60) { const ny = Math.min(ky + 60, B - 20); ctx.moveTo(px, ky - 1); ctx.quadraticCurveTo(px + side * 6, (ky + ny) / 2, px, ny - 1); }
-      ctx.stroke();
-    }
+  ctx.fillStyle = "#800d1d";
+  ctx.fillRect(W / 2 - carpW / 2, 472, carpW, B - 472);
+  ctx.fillStyle = "#9a1426";
+  for (let ky = 478; ky < B; ky += 18) {
+    ctx.fillRect(W / 2 - carpW / 2 + 4, ky, carpW - 8, 2);
   }
-  // poster phim + bảng giờ chiếu điện tử (dời các biển bên phải tránh bị nút HUD che)
-  const schedNow = getCinemaSched();
-  const curSchedIdx = schedNow ? schedNow.index : 0;
-  [30, 74, 250, 670, 730, 790].forEach((px, k) => {
-    const f = FILMS[(curSchedIdx + k) % FILMS.length], py = 390;
-    ctx.fillStyle = "#e9e3d6"; rr(ctx, px, py, 40, 34, 2); ctx.fill();
+  ctx.strokeStyle = "#ffd27a";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(W / 2 - carpW / 2, 472, carpW, B - 472);
+
+  // Cột inox và dây nhung đỏ dọc 2 bên thảm đỏ
+  for (const [px, side] of [[W / 2 - carpW / 2 - 12, -1], [W / 2 + carpW / 2 + 12, 1]]) {
+    for (let ky = 490; ky < B - 20; ky += 60) {
+      ctx.fillStyle = "#c9a227";
+      ctx.fillRect(px - 2, ky, 4, 46);
+      ctx.fillStyle = "#ffd166";
+      ctx.beginPath(); ctx.arc(px, ky - 1, 4.5, 0, 7); ctx.fill();
+      ctx.fillStyle = `rgba(255,210,80,${.6 + Math.sin(t * 2 + ky) * .2})`;
+      ctx.beginPath(); ctx.arc(px, ky - 1, 7, 0, 7); ctx.fill();
+    }
+    ctx.strokeStyle = "#7b1d1d";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let ky = 490; ky < B - 20; ky += 60) {
+      const ny = Math.min(ky + 60, B - 20);
+      ctx.moveTo(px, ky - 1);
+      ctx.quadraticCurveTo(px + side * 5, (ky + ny) / 2, px, ny - 1);
+    }
+    ctx.stroke();
+  }
+
+  // 4. Poster phim và bảng giờ chiếu trên tường sảnh
+  const curSchedIdx = sched ? sched.index : 0;
+  [28, 80, 270, 780, 840, 900].forEach((px, k) => {
+    const f = FILMS[(curSchedIdx + k) % FILMS.length], py = 444;
+    ctx.fillStyle = "#e9e3d6";
+    rr(ctx, px, py, 38, 24, 2);
+    ctx.fill();
     const img = POSTER_IMGS[f.id];
     if (img && img.complete && img.naturalWidth > 0) {
       ctx.save();
-      rr(ctx, px + 2, py + 2, 36, 22, 1);
+      rr(ctx, px + 2, py + 2, 34, 16, 1);
       ctx.clip();
-      ctx.drawImage(img, px + 2, py + 2, 36, 22);
+      ctx.drawImage(img, px + 2, py + 2, 34, 16);
       ctx.restore();
     } else {
-      const pg = ctx.createLinearGradient(0, py, 0, py + 30);
+      const pg = ctx.createLinearGradient(0, py, 0, py + 20);
       pg.addColorStop(0, f.color || f.c1);
       pg.addColorStop(1, f.c2 || "#14112b");
       ctx.fillStyle = pg;
-      ctx.fillRect(px + 2, py + 2, 36, 22);
+      ctx.fillRect(px + 2, py + 2, 34, 16);
     }
-    ctx.fillStyle = "#222"; ctx.font = "700 5px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = "#222";
+    ctx.font = "700 4.5px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
     const titleTxt = f.title || f.name;
-    ctx.fillText(titleTxt.length > 11 ? titleTxt.slice(0, 10) + "…" : titleTxt, px + 20, py + 29);
+    ctx.fillText(titleTxt.length > 9 ? titleTxt.slice(0, 8) + "…" : titleTxt, px + 19, py + 20);
   });
-  ctx.save(); ctx.translate(320, 0);
-  ctx.fillStyle = "#0c0c0c"; rr(ctx, 124, 390, 112, 30, 3); ctx.fill();
-  ctx.fillStyle = "#39ff88"; ctx.font = "700 7px monospace"; ctx.textAlign = "center";
+
+  // Bảng điện tử hiển thị lịch chiếu phim
+  ctx.save();
+  ctx.translate(330, 0);
+  ctx.fillStyle = "#0c0c0c";
+  rr(ctx, 0, 443, 108, 24, 3);
+  ctx.fill();
+  ctx.fillStyle = "#39ff88";
+  ctx.font = "700 6.5px monospace";
+  ctx.textAlign = "center";
   const sh = (curSchedIdx + Math.floor(t / 4)) % FILMS.length;
   const f1 = FILMS[sh], f2 = FILMS[(sh + 1) % FILMS.length];
-  ctx.fillText(`${f1.title || f1.name}  ${TIME_CFG.SHOWTIMES[0]}`, 180, 399);
-  ctx.fillText(`${f2.title || f2.name}  ${TIME_CFG.SHOWTIMES[1]}`, 180, 411);
+  ctx.fillText(`${(f1.title || f1.name).slice(0, 12)}  ${TIME_CFG.SHOWTIMES[0]}`, 54, 451);
+  ctx.fillText(`${(f2.title || f2.name).slice(0, 12)}  ${TIME_CFG.SHOWTIMES[1]}`, 54, 461);
   ctx.restore();
-  // biển neon dọc 2 bên sảnh
-  for (const [nx, txt] of [[372, "映画館"], [612, "シネマ"]]) {
-    ctx.fillStyle = "#1b1b2f"; rr(ctx, nx, 388, 16, 44, 3); ctx.fill();
-    ctx.fillStyle = (Math.floor(t * 2 + nx) % 2) ? "#ff4fd8" : "#4cc9f0"; ctx.font = "800 7px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    [...txt].forEach((ch, k) => ctx.fillText(ch, nx + 8, 396 + k * 10));
+
+  // Biển neon dọc 2 bên
+  for (const [nx, txt] of [[240, "映画館"], [750, "シネマ"]]) {
+    ctx.fillStyle = "#1b1b2f";
+    rr(ctx, nx, 443, 14, 25, 2);
+    ctx.fill();
+    ctx.fillStyle = (Math.floor(t * 2 + nx) % 2) ? "#ff4fd8" : "#4cc9f0";
+    ctx.font = "800 6px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    [...txt].forEach((ch, k) => ctx.fillText(ch, nx + 7, 448 + k * 7));
   }
-  // máy bán vé + kệ tờ rơi
-  ctx.save(); ctx.translate(20, 0);
-  for (let k = 0; k < 2; k++) { ctx.fillStyle = "#d9dde3"; rr(ctx, 20 + k * 21, 432, 18, 48, 3); ctx.fill(); ctx.fillStyle = "#4cc9f0"; ctx.fillRect(23 + k * 21, 436, 12, 10); ctx.fillStyle = "#555"; ctx.fillRect(25 + k * 21, 452, 8, 2); }
-  ctx.restore();
-  ctx.save(); ctx.translate(28, 0);
-  ctx.fillStyle = "#5e3d27"; rr(ctx, 92, 434, 22, 40, 2); ctx.fill();
-  for (let k = 0; k < Math.min(4, FILMS.length); k++) { ctx.fillStyle = FILMS[k].color || FILMS[k].c1; ctx.fillRect(95, 437 + k * 9, 16, 7); }
-  ctx.restore();
-  // quầy bắp nước + bảng menu đèn (giữa sảnh)
-  ctx.save(); ctx.translate(320, 0);
-  ctx.fillStyle = "#111"; rr(ctx, 124, 430, 112, 22, 3); ctx.fill();
-  ctx.fillStyle = "#ffd27a"; ctx.font = "700 6.5px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("🍿 MUỐI · CARAMEL · BƠ · TRÀ XANH", 180, 437); ctx.fillStyle = "#ff8fab"; ctx.fillText("COMBO + CỐC NHÂN VẬT", 180, 446);
-  ctx.fillStyle = "#c1121f"; rr(ctx, 120, 456, 120, 26, 4); ctx.fill();
-  ctx.fillStyle = "#f8f1e5"; ctx.fillRect(124, 458, 112, 8);
-  ctx.fillStyle = "#fff3c4"; for (let k = 0; k < 10; k++) { ctx.beginPath(); ctx.arc(130 + k * 3.2, 466 - (k % 3) * 2 - Math.abs(Math.sin(t * 6 + k)) * 2, 2.5, 0, 7); ctx.fill(); }   // bắp nổ lách tách
-  ctx.fillStyle = "rgba(200,230,255,.45)"; ctx.fillRect(126, 456, 34, 12);
-  ctx.restore();
-  // kệ đồ lưu niệm sáng đèn
-  ctx.save(); ctx.translate(564, 0);
-  ctx.fillStyle = "#3a3a46"; rr(ctx, 256, 432, 76, 50, 3); ctx.fill();
-  ctx.fillStyle = "rgba(255,236,170,.25)"; ctx.fillRect(259, 435, 70, 44);
-  for (let r = 0; r < 3; r++) for (let k = 0; k < 6; k++) { ctx.fillStyle = ["#ff8fab", "#4cc9f0", "#ffd166", "#90be6d", "#cdb4db", "#f4a261"][(r + k) % 6]; ctx.fillRect(262 + k * 11, 438 + r * 14, 7, 9); }
-  ctx.restore();
-  // 2 máy gắp thú + máy bán nước
-  for (const dx of [130, 176]) {
-    ctx.save(); ctx.translate(dx, 0);
-    ctx.fillStyle = dx === 130 ? "#ff8fab" : "#a0c4ff"; rr(ctx, 70, 500, 34, 46, 4); ctx.fill();
-    ctx.fillStyle = "rgba(200,240,255,.55)"; ctx.fillRect(74, 504, 26, 24);
-    ctx.strokeStyle = "#555"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(87, 504); ctx.lineTo(87 + Math.sin(t + dx) * 6, 512); ctx.stroke();
-    ["#ffd166", "#f3f0ea", "#90be6d"].forEach((c, k) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(80 + k * 7, 524, 3.2, 0, 7); ctx.fill(); });
-    ctx.restore();
+
+  // 5. Quầy và máy móc trong sảnh
+  // Máy bán vé tự động (Ticket Kiosks, x 60..110, y 485..535)
+  for (let k = 0; k < 2; k++) {
+    const kx = 60 + k * 24;
+    ctx.fillStyle = "#d9dde3";
+    rr(ctx, kx, 485, 22, 50, 3);
+    ctx.fill();
+    ctx.fillStyle = "#4cc9f0";
+    ctx.fillRect(kx + 3, 489, 16, 12);
+    ctx.fillStyle = "#555";
+    ctx.fillRect(kx + 6, 508, 10, 2);
+    ctx.fillStyle = "#ffd27a";
+    ctx.font = "700 5px system-ui";
+    ctx.textAlign = "center";
+    ctx.fillText("VÉ", kx + 11, 496);
   }
-  ctx.save(); ctx.translate(512, 0);
-  ctx.fillStyle = "#e9ecef"; rr(ctx, 248, 500, 34, 48, 3); ctx.fill();
-  ctx.fillStyle = `rgba(255,220,150,${.8 + Math.sin(t * 2) * .1})`; ctx.fillRect(251, 503, 28, 26);
-  for (let r = 0; r < 2; r++) for (let k = 0; k < 4; k++) { ctx.fillStyle = ["#2a9d8f", "#6b4226", "#e63946", "#4cc9f0"][k]; ctx.fillRect(253 + k * 7, 506 + r * 12, 4, 8); }
-  ctx.restore();
-  // ghế chờ dài bọc da + chậu cây + loa sảnh
-  for (const bx of [400, 570]) { ctx.fillStyle = "#6b2f2f"; rr(ctx, bx, 520, 34, 14, 4); ctx.fill(); }
-  for (const px of [330, 680]) { ctx.fillStyle = "#3a3a46"; rr(ctx, px - 8, 522, 16, 14, 3); ctx.fill(); ctx.fillStyle = "#2d6a4f"; ctx.beginPath(); ctx.arc(px, 512, 11, 0, 7); ctx.arc(px - 6, 506, 6, 0, 7); ctx.arc(px + 6, 505, 6, 0, 7); ctx.fill(); }
-  ctx.fillStyle = "#2b2d42"; rr(ctx, RADIO.x - 2, RADIO.y + 26, RADIO.w + 4, 24, 3); ctx.fill();
+
+  // Kệ tờ rơi phim (x 125, y 490, w 26, h 45)
+  ctx.fillStyle = "#5e3d27";
+  rr(ctx, 125, 490, 24, 44, 2);
+  ctx.fill();
+  for (let k = 0; k < Math.min(4, FILMS.length); k++) {
+    ctx.fillStyle = FILMS[k].color || FILMS[k].c1;
+    ctx.fillRect(128, 493 + k * 10, 18, 8);
+  }
+
+  // 2 máy gắp thú bông (Claw machines, x 175, 220, y 485)
+  for (const dx of [175, 220]) {
+    ctx.fillStyle = dx === 175 ? "#ff8fab" : "#a0c4ff";
+    rr(ctx, dx, 485, 38, 50, 4);
+    ctx.fill();
+    ctx.fillStyle = "rgba(200,240,255,.55)";
+    ctx.fillRect(dx + 4, 489, 30, 26);
+    ctx.strokeStyle = "#555";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(dx + 19, 489);
+    ctx.lineTo(dx + 19 + Math.sin(t + dx) * 5, 498);
+    ctx.stroke();
+    ["#ffd166", "#f3f0ea", "#90be6d"].forEach((c, k) => {
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.arc(dx + 10 + k * 8, 510, 3.2, 0, 7);
+      ctx.fill();
+    });
+  }
+
+  // Quầy bắp nước (Popcorn & Concessions, x 560..685, y 485..535)
+  ctx.fillStyle = "#111";
+  rr(ctx, 560, 474, 125, 14, 2);
+  ctx.fill();
+  ctx.fillStyle = "#ffd27a";
+  ctx.font = "700 5.5px system-ui";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("🍿 BẮP: BƠ · CARAMEL · PHÔ MAI", 622, 481);
+
+  ctx.fillStyle = "#c1121f";
+  rr(ctx, 560, 490, 125, 45, 4);
+  ctx.fill();
+  ctx.fillStyle = "#f8f1e5";
+  ctx.fillRect(564, 492, 117, 8);
+  ctx.fillStyle = "rgba(200,230,255,.45)";
+  ctx.fillRect(566, 502, 38, 26);
+  ctx.fillStyle = "#fff3c4";
+  for (let k = 0; k < 10; k++) {
+    ctx.beginPath();
+    ctx.arc(570 + k * 3.4, 522 - (k % 3) * 3 - Math.abs(Math.sin(t * 6 + k)) * 2, 2.5, 0, 7);
+    ctx.fill();
+  }
+
+  // Máy bán nước tự động (Drinks vending machine, x 700, y 485)
+  ctx.fillStyle = "#e9ecef";
+  rr(ctx, 700, 485, 36, 50, 3);
+  ctx.fill();
+  ctx.fillStyle = `rgba(255,220,150,${.8 + Math.sin(t * 2) * .1})`;
+  ctx.fillRect(704, 489, 28, 26);
+  for (let r = 0; r < 2; r++) {
+    for (let k = 0; k < 4; k++) {
+      ctx.fillStyle = ["#2a9d8f", "#6b4226", "#e63946", "#4cc9f0"][k];
+      ctx.fillRect(706 + k * 6.5, 492 + r * 12, 4.5, 8);
+    }
+  }
+
+  // Kệ đồ lưu niệm (Souvenir shelf, x 755, y 485)
+  ctx.fillStyle = "#3a3a46";
+  rr(ctx, 755, 485, 78, 50, 3);
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,236,170,.25)";
+  ctx.fillRect(758, 488, 72, 44);
+  for (let r = 0; r < 3; r++) {
+    for (let k = 0; k < 6; k++) {
+      ctx.fillStyle = ["#ff8fab", "#4cc9f0", "#ffd166", "#90be6d", "#cdb4db", "#f4a261"][(r + k) % 6];
+      ctx.fillRect(761 + k * 11.5, 491 + r * 14, 7.5, 9);
+    }
+  }
+
+  // Ghế chờ dài bọc da (Waiting benches at x 280, 640, y 615)
+  for (const bx of [280, 640]) {
+    ctx.fillStyle = "#6b2f2f";
+    rr(ctx, bx, 615, 75, 24, 4);
+    ctx.fill();
+    ctx.fillStyle = "#8a3c3c";
+    rr(ctx, bx + 3, 618, 69, 8, 2);
+    ctx.fill();
+  }
+
+  // Chậu cây cảnh trang trí sảnh (Potted plants at x 245, 735, y 615)
+  for (const px of [245, 735]) {
+    ctx.fillStyle = "#3a3a46";
+    rr(ctx, px - 8, 618, 16, 16, 3);
+    ctx.fill();
+    ctx.fillStyle = "#2d6a4f";
+    ctx.beginPath();
+    ctx.arc(px, 608, 12, 0, 7);
+    ctx.arc(px - 6, 602, 7, 0, 7);
+    ctx.arc(px + 6, 601, 7, 0, 7);
+    ctx.fill();
+  }
+
+  // Kệ radio phát nhạc sảnh (radio console at x 855, y 495)
+  ctx.fillStyle = "#2b2d42";
+  rr(ctx, RADIO.x - 2, RADIO.y + 26, RADIO.w + 4, 22, 3);
+  ctx.fill();
   drawRadio(t);
+
+  // Công tắc đèn rạp
+  drawSwitch();
 }
-function drawCinemaSeat(i, t) {
-  const b = BEDS[i], o = bedOwner(i), sit = o && o.lying, x = b.x + 10, y = b.y + 30, w = 90;
-  const per = Math.ceil(BEDS.length / 2), row = i < per ? "A" : "B", num = (i % per) + 1;
-  ctx.fillStyle = "rgba(0,0,0,.3)"; rr(ctx, x + 2, y + 14, w, 40, 8); ctx.fill();
-  ctx.fillStyle = "#1d2d50"; rr(ctx, x, y + 10, w, 26, 8); ctx.fill();
-  ctx.fillStyle = "#2c4a7c"; rr(ctx, x + 4, y + 12, w - 8, 20, 7); ctx.fill();
-  if (sit) {
-    drawPlayer({...o, x: b.x + 55, y: b.y + 66 + Math.sin(t * 2 + i) * .4, walking: false, up: true, sit: true}, t);
-    ctx.fillStyle = "#c1121f"; ctx.fillRect(x + w - 6, y + 20, 10, 12);
-    ctx.fillStyle = "#fff3c4"; ctx.beginPath(); ctx.arc(x + w - 3, y + 19, 3, 0, 7); ctx.arc(x + w + 2, y + 18, 3, 0, 7); ctx.fill();
+
+// Vẽ tổng thể rạp phim: phân nhánh hiển thị theo phân vùng (sảnh vs phòng chiếu)
+function drawCinema(t) {
+  if (cinemaZone === "lobby") {
+    drawCinemaLobby(t);
+  } else {
+    drawCinemaHall(t);
   }
-  ctx.fillStyle = "#111827"; rr(ctx, x - 6, y + 8, 8, 34, 3); ctx.fill(); rr(ctx, x + w - 2, y + 8, 8, 34, 3); ctx.fill();
-  ctx.fillStyle = "#555"; ctx.beginPath(); ctx.arc(x + w + 2, y + 12, 3, 0, 7); ctx.fill();                           // giá để cốc
-  ctx.fillStyle = "#2c4a7c"; rr(ctx, x, y + 34, w, 14, 6); ctx.fill();
-  ctx.fillStyle = "#3d5f99"; rr(ctx, x + 6, y + 36, w - 12, 5, 3); ctx.fill();
-  ctx.fillStyle = "#ffd27a"; ctx.font = "700 6px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText(row + num, x - 2, y + 40);                                                                           // số ghế
 }
-function drawCinemaFX(t) {                         // luồng sáng máy chiếu + biển EXIT xanh
+
+// Vẽ ghế ngồi rạp chiếu phim (28 ghế = 4 hàng x 7 cột, xếp giật cấp kiểu rạp hiện đại)
+function drawCinemaSeat(i, t) {
+  if (inCinemaLobby()) return; // Ở sảnh thì không vẽ ghế phòng chiếu
+  const b = BEDS[i];
+  if (!b) return;
+  const o = bedOwner(i), sit = o && o.lying;
+  const row = Math.floor(i / 7); // 0..3: A, B, C, D
+  const col = i % 7;             // 0..6: 1..7
+  const rowLetter = ["A", "B", "C", "D"][row] || "A";
+  const num = col + 1;
+  const x = b.x, y = b.y, w = 90, h = 60;
+
+  // Bóng đổ dưới chân ghế
+  ctx.fillStyle = "rgba(0,0,0,.32)";
+  rr(ctx, x + 2, y + 20, w - 4, 34, 8);
+  ctx.fill();
+
+  // Khung tựa lưng ghế nhung sẫm màu
+  ctx.fillStyle = "#151928";
+  rr(ctx, x + 2, y + 4, w - 4, 28, 8);
+  ctx.fill();
+
+  // Đệm tựa lưng (xanh navy sang trọng hoặc đỏ rượu)
+  const isNavy = (row % 2 === 0);
+  ctx.fillStyle = isNavy ? "#1d2d50" : "#4a1220";
+  rr(ctx, x + 4, y + 6, w - 8, 24, 7);
+  ctx.fill();
+
+  // Đệm gối tựa đầu
+  ctx.fillStyle = isNavy ? "#2c4a7c" : "#68182d";
+  rr(ctx, x + 10, y + 8, w - 20, 12, 5);
+  ctx.fill();
+
+  // Nếu người chơi đang ngồi xem
+  if (sit) {
+    drawPlayer({...o, x: x + 45, y: y + 48 + Math.sin(t * 2 + i) * .4, walking: false, up: true, sit: true}, t);
+    // Hộp bắp rang trên tay người ngồi
+    ctx.fillStyle = "#c1121f";
+    ctx.fillRect(x + w - 18, y + 24, 11, 14);
+    ctx.fillStyle = "#fff3c4";
+    ctx.beginPath();
+    ctx.arc(x + w - 15, y + 23, 3, 0, 7);
+    ctx.arc(x + w - 10, y + 22, 3, 0, 7);
+    ctx.fill();
+  }
+
+  // Đệm ngồi phía dưới
+  ctx.fillStyle = isNavy ? "#223b63" : "#5a1526";
+  rr(ctx, x + 4, y + 28, w - 8, 20, 6);
+  ctx.fill();
+  ctx.fillStyle = isNavy ? "#34568e" : "#761c33";
+  rr(ctx, x + 8, y + 30, w - 16, 8, 4);
+  ctx.fill();
+
+  // Tay vịn 2 bên ghế
+  ctx.fillStyle = "#0d111a";
+  rr(ctx, x - 3, y + 8, 7, 34, 3);
+  ctx.fill();
+  rr(ctx, x + w - 4, y + 8, 7, 34, 3);
+  ctx.fill();
+
+  // Giá để cốc nước ở tay vịn bên phải
+  ctx.fillStyle = "#333";
+  ctx.beginPath();
+  ctx.arc(x + w - 1, y + 14, 3.5, 0, 7);
+  ctx.fill();
+  ctx.fillStyle = "#ffd166";
+  ctx.fillRect(x + w - 2.5, y + 10, 3, 7);
+
+  // Biển số ghế mạ vàng kim (A1..A7, B1..B7, C1..C7, D1..D7)
+  ctx.fillStyle = "#ffd27a";
+  ctx.font = "700 7px system-ui";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(rowLetter + num, x + 7, y + 42);
+}
+
+// Luồng sáng máy chiếu và biển báo EXIT trong phòng chiếu
+function drawCinemaFX(t) {
+  if (cinemaZone === "lobby") return; // Ở sảnh thì không chiếu đèn máy chiếu
   if (room.tv.on) {
-    ctx.save(); ctx.globalCompositeOperation = "lighter";
-    const g = ctx.createLinearGradient(500, 356, 500, 150);
-    g.addColorStop(0, `rgba(200,220,255,${.18 * lightLevel + .04})`); g.addColorStop(1, "rgba(200,220,255,0)");
-    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(496, 358); ctx.lineTo(504, 358); ctx.lineTo(TVR.x + TVR.w - 10, TVR.y + TVR.h); ctx.lineTo(TVR.x + 10, TVR.y + TVR.h); ctx.fill();
-    for (let k = 0; k < 18; k++) {
-      const ph = (t * .05 + k * .056) % 1, yy = 356 - ph * 200, spread = (356 - yy) / 206 * TVR.w * .45;
-      ctx.fillStyle = `rgba(255,255,255,${.35 * Math.sin(ph * Math.PI)})`; ctx.fillRect(500 + Math.sin(k * 7.3 + t * .3) * spread, yy, 1.2, 1.2);
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    // Luồng sáng chiếu từ cửa sổ máy chiếu (500, 420) hướng về màn hình lớn TVR
+    const g = ctx.createLinearGradient(500, 420, 500, 160);
+    g.addColorStop(0, `rgba(200,220,255,${.22 * lightLevel + .06})`);
+    g.addColorStop(1, "rgba(200,220,255,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(495, 420);
+    ctx.lineTo(505, 420);
+    ctx.lineTo(TVR.x + TVR.w - 10, TVR.y + TVR.h);
+    ctx.lineTo(TVR.x + 10, TVR.y + TVR.h);
+    ctx.fill();
+    for (let k = 0; k < 22; k++) {
+      const ph = (t * .05 + k * .045) % 1;
+      const yy = 420 - ph * 260;
+      const spread = (420 - yy) / 260 * TVR.w * .48;
+      ctx.fillStyle = `rgba(255,255,255,${.35 * Math.sin(ph * Math.PI)})`;
+      ctx.fillRect(500 + Math.sin(k * 7.3 + t * .3) * spread, yy, 1.2, 1.2);
     }
     ctx.restore();
   }
   for (const ex of [16, W - 16]) {
-    ctx.fillStyle = "#1d8f3a"; rr(ctx, ex - 12, 166, 24, 10, 2); ctx.fill();
-    ctx.fillStyle = "#e9ffe9"; ctx.font = "700 6.5px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("EXIT", ex, 171);
+    ctx.fillStyle = "#1d8f3a";
+    rr(ctx, ex - 12, 166, 24, 10, 2);
+    ctx.fill();
+    ctx.fillStyle = "#e9ffe9";
+    ctx.font = "700 6.5px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("EXIT", ex, 171);
   }
 }
 
@@ -4665,60 +5211,50 @@ function drawAudienceCurtain(x, y, w, h, dir, filmPlaying, flicker) {
   ctx.beginPath(); ctx.arc(tieX + dir * 5, tieY + 9, 2.5, 0, 7); ctx.fill();
 }
 
-// Vẽ 2 hàng ghế nhung nhìn từ phía sau và bóng đầu vai của người chơi ngồi hàng trước
+// Vẽ các hàng ghế nhung nhìn từ phía sau và bóng đầu vai của người chơi ngồi các hàng phía trước mình
 function drawAudienceSeatsAndPlayers(scr, t, filmPlaying, flicker) {
   const m = me();
   const myBed = m ? m.bed : -1;
-  // Hàng trước = ghế 0..5, Hàng sau = ghế 6..11
-  // Nếu mình ngồi hàng sau (myBed >= 6): những ai ngồi hàng trước (bed 0..5) sẽ hiện đầu/vai trước mặt mình
-  const myRowIsBack = (myBed != null && myBed >= 6);
+  if (myBed == null || myBed < 0) return;
+
+  const myRow = Math.floor(myBed / 7); // Hàng ghế hiện tại của mình (0: A, 1: B, 2: C, 3: D)
+  const totalInFront = myRow;          // Các hàng ghế nằm phía trước mình (giữa mình và màn chiếu)
+
+  // Nếu ngồi hàng A (hàng đầu tiên sát màn chiếu, myRow === 0): không có hàng nào phía trước
+  if (totalInFront <= 0) return;
 
   const small = vh <= 460;
   const seatAreaTop = scr.y + scr.h + (small ? 2 : 4);
   const seatAreaBot = vh - hudBot + (small ? 6 : 8);
   const seatAreaH = Math.max(38, seatAreaBot - seatAreaTop);
 
-  // Thông số Hàng 1 (hàng trước, xa người xem hơn một chút)
-  const r1Y = seatAreaTop + seatAreaH * 0.18;
-  const r1H = seatAreaH * 0.52;
-  const spanW1 = Math.min(vw - 16, Math.max(scr.w * 1.05, vw * 0.76));
-  const left1 = (vw - spanW1) / 2;
-  const gap1 = Math.max(4, Math.min(10, spanW1 * 0.012));
-  const seatW1 = (spanW1 - 5 * gap1) / 6;
+  // Vẽ lần lượt từng hàng phía trước theo thứ tự từ xa đến gần màn hình (A -> ... -> myRow - 1)
+  for (let r = 0; r < totalInFront; r++) {
+    const step = (r + 1) / (totalInFront + 1);
+    const rowY = seatAreaTop + seatAreaH * (step * 0.72);
+    const rowH = seatAreaH * (0.36 + step * 0.36);
+    const spanW = Math.min(vw - 8, Math.max(scr.w * (0.96 + step * 0.2), vw * (0.7 + step * 0.16)));
+    const left = (vw - spanW) / 2;
+    const gap = Math.max(3, Math.min(9, spanW * 0.012));
+    const seatW = (spanW - 6 * gap) / 7;
+    const rowLetter = ["A", "B", "C", "D"][r] || "A";
+    const isFore = (r === totalInFront - 1);
 
-  // Thông số Hàng 2 (hàng sau, gần người xem hơn)
-  const r2Y = seatAreaTop + seatAreaH * 0.48;
-  const r2H = seatAreaH * 0.65;
-  const spanW2 = Math.min(vw - 8, Math.max(scr.w * 1.12, vw * 0.82));
-  const left2 = (vw - spanW2) / 2;
-  const gap2 = Math.max(5, Math.min(12, spanW2 * 0.014));
-  const seatW2 = (spanW2 - 5 * gap2) / 6;
+    for (let c = 0; c < 7; c++) {
+      const sx = left + c * (seatW + gap);
+      const sy = rowY;
+      const seatIdx = r * 7 + c;
+      const isRed = ((c + r) % 2 === 0);
 
-  // 1. VẼ HÀNG GHẾ 1 (GHẾ 0 - 5: HÀNG TRƯỚC)
-  for (let k = 0; k < 6; k++) {
-    const sx = left1 + k * (seatW1 + gap1);
-    const sy = r1Y;
-    const seatIdx = k;
-    const isRed = (k % 2 === 0);
+      // 1. Vẽ lưng ghế nhung nhìn từ phía sau
+      drawSingleAudienceSeat(sx, sy, seatW, rowH, rowLetter + (c + 1), isRed, filmPlaying, flicker, isFore);
 
-    // Vẽ lưng ghế hàng 1 trước
-    drawSingleAudienceSeat(sx, sy, seatW1, r1H, "A" + (k + 1), isRed, filmPlaying, flicker, false);
-
-    // Nếu mình ngồi hàng sau và có người chơi đang ngồi ghế k ở hàng trước -> vẽ bóng người
-    if (myRowIsBack) {
+      // 2. Nếu có người chơi đang ngồi ở ghế này -> vẽ bóng đầu và vai
       const pl = here().find(p => p.lying && p.bed === seatIdx);
       if (pl) {
-        drawAudiencePlayerSilhouette(pl, sx, sy, seatW1, r1H, t, filmPlaying, flicker);
+        drawAudiencePlayerSilhouette(pl, sx, sy, seatW, rowH, t, filmPlaying, flicker);
       }
     }
-  }
-
-  // 2. VẼ HÀNG GHẾ 2 (GHẾ 6 - 11: HÀNG SAU - GẦN CAMERA)
-  for (let k = 0; k < 6; k++) {
-    const sx = left2 + k * (seatW2 + gap2);
-    const sy = r2Y;
-    const isRed = (k % 2 === 1);
-    drawSingleAudienceSeat(sx, sy, seatW2, r2H, "B" + (k + 1), isRed, filmPlaying, flicker, true);
   }
 }
 
@@ -5324,6 +5860,28 @@ function frame() {
       p.x = p.tx; p.y = p.ty; p.walking = false; p.up = false;
       if (p.bed != null) { p.lying = true; if (p.id === myId) updateUI(); }
     }
+    // Giữ an toàn va chạm trong rạp phim cho người chơi chính
+    if (p.area === "cinema" && p.id === myId && p.bed == null) {   // đang đi tới ghế thì không chặn tường
+      const hasTk = (typeof Life !== "undefined" && Life.hasTicket && Life.hasTicket());
+      if (!hasTk && p.y < 480) { p.y = 480; p.ty = Math.max(480, p.ty); }
+      if (p.y > 430 && p.y < 475 && (p.x < 460 || p.x > 540)) {
+        if (cinemaZone === "lobby") p.y = 480;
+        else p.y = 430;
+      }
+    }
+  }
+  // Tự động chuyển phân vùng rạp phim khi đi qua cổng soát vé (y <= 440: phòng chiếu, y >= 465: sảnh)
+  if (myArea === "cinema") {
+    const m = me();
+    if (m && m.bed != null) {
+      if (cinemaZone === "lobby") cinemaTransition("hall");   // đã chọn ghế = đang ở phòng chiếu
+    } else if (m) {
+      if (cinemaZone === "lobby" && m.y <= 440) {
+        cinemaTransition("hall");
+      } else if (cinemaZone === "hall" && m.y >= 465) {
+        cinemaTransition("lobby");
+      }
+    }
   }
   updatePets(dt);
   if (pendingDoor) {
@@ -5362,11 +5920,17 @@ function frame() {
 
     drawTheater(t);
     drawRoom(t);
-    BEDS.forEach((_, i) => drawBed(i, t));
+    if (!(myArea === "cinema" && cinemaZone === "lobby")) {
+      BEDS.forEach((_, i) => drawBed(i, t));
+    }
     taps.forEach(tp => { const a = (t - tp.t) / .6; ctx.strokeStyle = `rgba(255,210,122,${1 - a})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(tp.x, tp.y, 4 + a * 12, 2 + a * 5, 0, 0, 7); ctx.stroke(); });
-    doorsHere().forEach(d => { if (!d.custom) drawDoorAt(d, t); });
+    doorsHere().forEach(d => {
+      if (myArea === "cinema" && cinemaZone === "hall") return;
+      if (!d.custom) drawDoorAt(d, t);
+    });
     const ents = [];                                                // vẽ theo thứ tự y
     for (const p of here()) {
+      if (!cinemaSameZone(p)) continue;
       if (!p.lying) ents.push({y: p.y, f: () => drawPlayer(p, t)});
       if (p.petObj) {
         const o = p.petObj, f = () => drawPet(p.pet.type, PETS[p.pet.type].color, o, t, p.id.charCodeAt(0));
@@ -5393,9 +5957,10 @@ function frame() {
     ctx.font = "14px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     notes.forEach(n => { const a = (t - n.t) / 3; ctx.fillStyle = `rgba(255,210,122,${1 - a})`; ctx.fillText(n.s, n.x + Math.sin(a * 8) * 6, n.y - a * 50); });
 
-    for (const p of here()) if (p.petObj) petOverlay(p.petObj, p.pet.name, t);
+    for (const p of here()) if (cinemaSameZone(p) && p.petObj) petOverlay(p.petObj, p.pet.name, t);
     if (roomPet.area === myArea) petOverlay(roomPet, ROOM_PET.name, t);
     for (const d of doorsHere()) {
+      if (myArea === "cinema" && cinemaZone === "hall") continue;
       const txt = d.side === "right" ? `${AREA_NAME[d.to]} →` : d.side === "left" ? `← ${AREA_NAME[d.to]}` : d.side === "bottom" || d.side === "gate" ? `↓ ${AREA_NAME[d.to]}` : `↑ ${AREA_NAME[d.to]}`;
       const lx = d.side === "right" ? d.x - 24 : d.side === "left" ? d.x + 50 : d.x + d.w / 2;
       const ly = d.side === "gate" ? d.y - 18 : d.custom && d.side === "left" ? d.y - 32 : d.custom && d.side !== "wall" ? d.y - 12 : d.y - 9;
@@ -5407,6 +5972,7 @@ function frame() {
     if (Zones.has(myArea)) Zones.over(t);
 
     for (const p of here()) {
+      if (!cinemaSameZone(p)) continue;
       let hx, hy;
       if (p.lying) {
         const b = BEDS[p.bed]; hx = b.x + BED_W / 2; hy = b.y + 6;

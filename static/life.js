@@ -440,5 +440,6 @@ const Life = (() => {
     setData, legacy, dropLegacy, eco, onEco, openBag, openMe,
     level: () => levelOf(S.xp), clockFull, minutes, onJoin, onArea, canSit, darkness, isDay, drawTint, skyColors, lightBtnHtml,
     openClock, openParkShop, openTicket, openPopcorn, openDrinks, openSouvenir, claw, openQuiz, spinWheel,
+    hasTicket: () => ticket, // getter kiểm tra trạng thái vé xem phim rạp
   };
 })();
