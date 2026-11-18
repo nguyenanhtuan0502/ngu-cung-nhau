@@ -522,6 +522,51 @@
    2000
   ]
  },
+ "ANIMALS": {
+  "chicken": {
+   "_note": "Nuôi gà mái để lấy trứng gà, cho ăn và chờ đủ thời gian để thu hoạch",
+   "name": "Gà mái",
+   "e": "🐔",
+   "start": 2,
+   "max": 8,
+   "prices": [
+    60,
+    90,
+    130,
+    180,
+    240,
+    300
+   ],
+   "feed": 3,
+   "time": 120,
+   "product": {
+    "id": "egg",
+    "e": "🥚",
+    "name": "Trứng gà",
+    "sell": 8
+   }
+  },
+  "cow": {
+   "_note": "Nuôi bò sữa để lấy sữa bò, cho ăn và chờ đủ thời gian để thu hoạch",
+   "name": "Bò sữa",
+   "e": "🐄",
+   "start": 1,
+   "max": 4,
+   "prices": [
+    250,
+    400,
+    600
+   ],
+   "feed": 8,
+   "time": 300,
+   "product": {
+    "id": "milk",
+    "e": "🥛",
+    "name": "Sữa bò",
+    "sell": 25
+   }
+  }
+ },
  "FISH": [
   {
    "id": "carp",
@@ -530,7 +575,10 @@
    "w": 30,
    "price": 8,
    "color": "#e0a458",
-   "kg": [0.8, 4]
+   "kg": [
+    0.8,
+    4
+   ]
   },
   {
    "id": "perch",
@@ -539,7 +587,10 @@
    "w": 25,
    "price": 10,
    "color": "#8d9440",
-   "kg": [0.2, 1]
+   "kg": [
+    0.2,
+    1
+   ]
   },
   {
    "id": "gold",
@@ -548,7 +599,10 @@
    "w": 14,
    "price": 16,
    "color": "#ffb703",
-   "kg": [0.1, 0.5]
+   "kg": [
+    0.1,
+    0.5
+   ]
   },
   {
    "id": "shrimp",
@@ -557,7 +611,10 @@
    "w": 12,
    "price": 12,
    "color": "#ff8fab",
-   "kg": [0.05, 0.2]
+   "kg": [
+    0.05,
+    0.2
+   ]
   },
   {
    "id": "crab",
@@ -566,7 +623,10 @@
    "w": 8,
    "price": 15,
    "color": "#e63946",
-   "kg": [0.1, 0.4]
+   "kg": [
+    0.1,
+    0.4
+   ]
   },
   {
    "id": "koi",
@@ -576,7 +636,10 @@
    "price": 40,
    "color": "#ff6b6b",
    "rare": true,
-   "kg": [1.5, 6]
+   "kg": [
+    1.5,
+    6
+   ]
   },
   {
    "id": "puffer",
@@ -586,7 +649,10 @@
    "price": 55,
    "color": "#f4d35e",
    "rare": true,
-   "kg": [0.5, 2.5]
+   "kg": [
+    0.5,
+    2.5
+   ]
   },
   {
    "id": "turtle",
@@ -596,7 +662,10 @@
    "price": 120,
    "color": "#90be6d",
    "rare": true,
-   "kg": [3, 12]
+   "kg": [
+    3,
+    12
+   ]
   },
   {
    "id": "boot",
@@ -605,7 +674,10 @@
    "w": 6,
    "price": 1,
    "color": "#6d4c41",
-   "kg": [0.5, 1]
+   "kg": [
+    0.5,
+    1
+   ]
   }
  ],
  "BAITS": [

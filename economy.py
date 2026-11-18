@@ -25,9 +25,10 @@ BAITS = {b["id"]: b for b in CAT["BAITS"]}
 CLOTHES = {c["id"]: c for c in CAT["CLOTHES"]}
 FURN = {f["id"]: f for f in CAT["FURNITURE"]}
 PETS = {p["id"]: p for p in CAT["PET_SHOP"]}
+ANIMALS = CAT.get("ANIMALS", {})
 DEFAULT_OUTFIT = {"gender": "g_f", "hair": "short", "hairColor": "nau", "shirt": "", "hat": "hat_nightcap",
                   "glasses": "gl_none", "neck": "neck_none", "back": "back_none"}
-ECO_KEYS = ("coins", "inv", "owned", "bait", "farm", "daily", "wheelDay", "wheelUsed", "hairs", "salonFree", "land")
+ECO_KEYS = ("coins", "inv", "owned", "bait", "farm", "daily", "wheelDay", "wheelUsed", "hairs", "salonFree", "land", "animals")
 # Móc cho tiệm tóc (salon.py gắn vào lúc khởi động, tránh import vòng):
 ENSURE_HOOKS = []          # hàm(data) chạy đầu ensure(): chuyển tóc bản cũ, thêm data["hairs"]/["salonFree"]
 HAIR = None                # hàm(data, kiểu muốn để, outfit hiện tại) -> (kiểu, màu) hợp lệ
@@ -72,6 +73,29 @@ def ensure(data):
     farm = data.get("farm") if isinstance(data.get("farm"), list) else []
     farm = [p if isinstance(p, dict) and p.get("c") in CROPS else None for p in farm][:data["land"]]
     data["farm"] = farm + [None] * (data["land"] - len(farm))
+    raw_animals = data.get("animals") if isinstance(data.get("animals"), dict) else {}
+    animals_clean = {}
+    for ak, acfg in ANIMALS.items():
+        if not isinstance(acfg, dict):
+            continue
+        start = acfg.get("start", 1)
+        max_n = acfg.get("max", start)
+        raw_list = raw_animals.get(ak) if isinstance(raw_animals.get(ak), list) else []
+        clean_list = []
+        for item in raw_list:
+            if isinstance(item, dict):
+                f = item.get("f")
+                if isinstance(f, (int, float)) and not isinstance(f, bool) and f >= 0:
+                    clean_list.append({"f": f})
+                else:
+                    clean_list.append({"f": 0})
+            else:
+                clean_list.append({"f": 0})
+        clean_list = clean_list[:max_n]
+        if len(clean_list) < start:
+            clean_list.extend([{"f": 0}] * (start - len(clean_list)))
+        animals_clean[ak] = clean_list
+    data["animals"] = animals_clean
     for k in ("daily", "wheelDay"):
         data[k] = data.get(k) if isinstance(data.get(k), str) else ""
     data["wheelUsed"] = data.get("wheelUsed") if isinstance(data.get("wheelUsed"), int) else 0
@@ -350,7 +374,24 @@ def _sell(data, prefix, table, price_key):
 
 def a_sell_crops(st, data, d):
     _need_area(st, "farm", "Bác Năm")
-    return _sell(data, "crop_", CROPS, "sell")
+    total = 0
+    # Bán nông sản
+    for iid in [k for k in data["inv"] if k.startswith("crop_")]:
+        it = CROPS.get(iid[len("crop_"):])
+        if it:
+            total += data["inv"][iid]["n"] * it["sell"]
+            del data["inv"][iid]
+    # Bán sản phẩm chăn nuôi (trứng, sữa...)
+    animal_prods = {a["product"]["id"]: a["product"] for a in ANIMALS.values() if isinstance(a, dict) and "product" in a}
+    for iid in [k for k in data["inv"] if k.startswith("prod_")]:
+        it = animal_prods.get(iid[len("prod_"):])
+        if it:
+            total += data["inv"][iid]["n"] * it["sell"]
+            del data["inv"][iid]
+    if not total:
+        raise EcoError("Chưa có gì để bán")
+    data["coins"] += total
+    return {"total": total}
 
 
 def a_sell_fish(st, data, d):
@@ -506,6 +547,117 @@ def a_lotto(st, data, d):
     return {"i": i}
 
 
+def a_feed_animal(st, data, d):
+    """Cho 1 con vật nuôi ăn (trả xu thức ăn, ghi nhận thời gian cho ăn)."""
+    _need_area(st, "farm", "Chuồng trại")
+    k = d.get("k")
+    if not isinstance(k, str) or k not in ANIMALS:
+        raise EcoError("Loài vật không hợp lệ")
+    i = d.get("i")
+    if not isinstance(i, int) or isinstance(i, bool):
+        raise EcoError("Chỉ số con vật không hợp lệ")
+    alist = data["animals"].get(k, [])
+    if not (0 <= i < len(alist)):
+        raise EcoError("Con vật không tồn tại")
+    an = alist[i]
+    if an.get("f", 0) > 0:
+        raise EcoError("Bé này đã no rồi, không cần cho ăn nữa!")
+    cfg = ANIMALS[k]
+    pay(data, cfg["feed"])
+    an["f"] = time.time()
+    return {"k": k, "i": i}
+
+
+def a_collect_animal(st, data, d):
+    """Thu hoạch trứng/sữa từ 1 con vật nuôi đã ăn và đủ thời gian."""
+    _need_area(st, "farm", "Chuồng trại")
+    k = d.get("k")
+    if not isinstance(k, str) or k not in ANIMALS:
+        raise EcoError("Loài vật không hợp lệ")
+    i = d.get("i")
+    if not isinstance(i, int) or isinstance(i, bool):
+        raise EcoError("Chỉ số con vật không hợp lệ")
+    alist = data["animals"].get(k, [])
+    if not (0 <= i < len(alist)):
+        raise EcoError("Con vật không tồn tại")
+    an = alist[i]
+    f = an.get("f", 0)
+    if f <= 0:
+        raise EcoError("Con này chưa được cho ăn!")
+    cfg = ANIMALS[k]
+    if time.time() - f < cfg["time"]:
+        raise EcoError("Chưa đến lúc thu hoạch, chờ thêm nhé!")
+    prod = cfg["product"]
+    item_id = "prod_" + prod["id"]
+    add_item(data, item_id, prod["e"], prod["name"], "prod", 1)
+    an["f"] = 0
+    return {"k": k, "i": i, "item": item_id, "n": 1}
+
+
+def a_feed_all(st, data, d):
+    """Cho ăn tất cả con vật đang đói (mọi loài), trả tổng tiền một lần."""
+    _need_area(st, "farm", "Chuồng trại")
+    hungry = []
+    total_cost = 0
+    for k, cfg in ANIMALS.items():
+        if not isinstance(cfg, dict):
+            continue
+        for an in data["animals"].get(k, []):
+            if an.get("f", 0) <= 0:
+                hungry.append((an, cfg["feed"]))
+                total_cost += cfg["feed"]
+    if not hungry:
+        raise EcoError("Không có bé nào đang đói cả!")
+    pay(data, total_cost)
+    now = time.time()
+    for an, _ in hungry:
+        an["f"] = now
+    return {"n": len(hungry), "price": total_cost}
+
+
+def a_collect_all(st, data, d):
+    """Thu hoạch tất cả con vật đã sẵn sàng (mọi loài)."""
+    _need_area(st, "farm", "Chuồng trại")
+    now = time.time()
+    ready = []
+    for k, cfg in ANIMALS.items():
+        if not isinstance(cfg, dict):
+            continue
+        for an in data["animals"].get(k, []):
+            f = an.get("f", 0)
+            if f > 0 and now - f >= cfg["time"]:
+                ready.append((an, cfg))
+    if not ready:
+        raise EcoError("Chưa có bé nào sẵn sàng để thu hoạch!")
+    for an, cfg in ready:
+        prod = cfg["product"]
+        item_id = "prod_" + prod["id"]
+        add_item(data, item_id, prod["e"], prod["name"], "prod", 1)
+        an["f"] = 0
+    return {"n": len(ready)}
+
+
+def a_buy_animal(st, data, d):
+    """Mua thêm 1 con vật nuôi, giá tăng dần theo số con hiện có."""
+    _need_area(st, "farm", "Chuồng trại")
+    k = d.get("k")
+    if not isinstance(k, str) or k not in ANIMALS:
+        raise EcoError("Loài vật không hợp lệ")
+    cfg = ANIMALS[k]
+    alist = data["animals"].get(k, [])
+    start = cfg.get("start", 1)
+    max_n = cfg.get("max", start)
+    prices = cfg.get("prices", [])
+    count = len(alist)
+    idx = count - start
+    if count >= max_n or idx >= len(prices):
+        raise EcoError(f"Bạn đã có tối đa {max_n} con {cfg.get('name', '')} rồi!")
+    price = prices[idx]
+    pay(data, price)
+    alist.append({"f": 0})
+    return {"k": k, "count": len(alist), "price": price}
+
+
 def a_drop(st, data, d):
     if not take_item(data, d.get("id"), data["inv"].get(d.get("id"), {}).get("n", 0) or 1):
         raise EcoError("Không có món này trong rương")
@@ -528,6 +680,8 @@ ACTIONS = {
     "buyLand": a_buy_land, "buySeed": a_buy_seed, "plant": a_plant, "water": a_water, "harvest": a_harvest, "sellCrops": a_sell_crops,
     "buyBait": a_buy_bait, "cast": a_cast, "pull": a_pull, "reel": a_reel, "sellFish": a_sell_fish,
     "buyCloth": a_buy_cloth, "adopt": a_adopt, "treat": a_treat, "buyFurn": a_buy_furn, "lotto": a_lotto,
+    "feedAnimal": a_feed_animal, "collectAnimal": a_collect_animal,
+    "feedAll": a_feed_all, "collectAll": a_collect_all, "buyAnimal": a_buy_animal,
     "drop": a_drop, "reset": a_reset,
 }
 
