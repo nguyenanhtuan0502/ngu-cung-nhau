@@ -348,6 +348,8 @@ const Areas = (() => {
     w: 58,
     h: 70
   }));
+  // Vị trí kho lương thực (kho gỗ đặt bên phải cánh đồng, nằm giữa luống hoa hướng dương)
+  const BARN = { x: 875, y: 220, w: 124, h: 120 };
   const S = () => Life.S();
   function farmLandCfg() {
     return (typeof CATALOG !== "undefined" && CATALOG.FARM_LAND)
@@ -379,6 +381,28 @@ const Areas = (() => {
         dur: 0.9 + Math.random() * 0.6,
         size: 2 + Math.random() * 2.5,
         color: colors[k % colors.length]
+      });
+    }
+  }
+  // Hiệu ứng nông sản bay vào kho lương thực khi thu hoạch
+  let cropFlyAnims = [];
+  function addCropFlyAnim(plotIdx, emoji, count = 2) {
+    const pl = PLOTS[plotIdx];
+    if (!pl) return;
+    const sx = pl.x + pl.w / 2, sy = pl.y + pl.h / 2;
+    const tx = BARN.x + BARN.w / 2, ty = BARN.y + BARN.h - 22;
+    const now = performance.now() / 1000;
+    for (let k = 0; k < count; k++) {
+      cropFlyAnims.push({
+        x0: sx + (Math.random() - 0.5) * 12,
+        y0: sy + (Math.random() - 0.5) * 12,
+        x1: tx + (Math.random() - 0.5) * 12,
+        y1: ty + (Math.random() - 0.5) * 8,
+        e: emoji,
+        t0: now + k * 0.08,
+        dur: 0.75 + Math.random() * 0.1,
+        arc: 45 + Math.random() * 20,
+        rot: (Math.random() - 0.5) * 0.8
       });
     }
   }
@@ -1212,6 +1236,258 @@ const Areas = (() => {
     });
   }
 
+  // Vẽ kho lương thực (Barn / Granary) bằng gỗ đỏ mộc mạc và ấm cúng
+  function drawBarn(t, night) {
+    const bx = BARN.x, by = BARN.y, bw = BARN.w, bh = BARN.h;
+
+    // 1. Bóng đổ êm dịu trên nền đất dưới chân kho
+    ctx.fillStyle = "rgba(0, 0, 0, 0.18)";
+    ctx.beginPath();
+    ctx.ellipse(bx + bw / 2, by + bh - 2, bw / 2 + 6, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Thân tường gỗ kho (đỏ nâu ấm cúng)
+    const wx = bx + 8, wy = by + 34, ww = bw - 16, wh = bh - 36;
+    ctx.fillStyle = night ? "#5c241e" : "#9e382f";
+    ctx.fillRect(wx, wy, ww, wh);
+
+    // Đường vân các tấm ván gỗ dọc thân kho
+    ctx.strokeStyle = night ? "rgba(35, 12, 8, 0.55)" : "rgba(75, 20, 15, 0.4)";
+    ctx.lineWidth = 1;
+    for (let px = wx + 9; px < wx + ww; px += 9) {
+      ctx.beginPath();
+      ctx.moveTo(px, wy);
+      ctx.lineTo(px, wy + wh);
+      ctx.stroke();
+    }
+
+    // Cột trụ gỗ chịu lực ở góc và xà ngang chân tường
+    ctx.fillStyle = night ? "#441814" : "#7d2921";
+    ctx.fillRect(wx, wy, 7, wh);                  // cột góc trái
+    ctx.fillRect(wx + ww - 7, wy, 7, wh);          // cột góc phải
+    ctx.fillRect(wx, wy + wh - 4, ww, 4);          // chân tường gỗ
+
+    // 3. Mái ngói gambrel (mái vòm nông trại 2 độ dốc đặc trưng)
+    // Tam giác hồi mái bằng ván gỗ đỏ
+    ctx.fillStyle = night ? "#6a2923" : "#ab3e33";
+    ctx.beginPath();
+    ctx.moveTo(bx + 4, by + 35);
+    ctx.lineTo(bx + 18, by + 17);
+    ctx.lineTo(bx + bw / 2, by + 4);
+    ctx.lineTo(bx + bw - 18, by + 17);
+    ctx.lineTo(bx + bw - 4, by + 35);
+    ctx.closePath();
+    ctx.fill();
+
+    // Nẹp mái và mặt ngói gỗ sẫm
+    ctx.fillStyle = night ? "#2d1c16" : "#553022";
+    ctx.beginPath();
+    ctx.moveTo(bx - 6, by + 36);
+    ctx.lineTo(bx + 15, by + 15);
+    ctx.lineTo(bx + bw / 2, by + 1);
+    ctx.lineTo(bx + bw - 15, by + 15);
+    ctx.lineTo(bx + bw + 6, by + 36);
+    ctx.lineTo(bx + bw + 6, by + 40);
+    ctx.lineTo(bx - 6, by + 40);
+    ctx.closePath();
+    ctx.fill();
+
+    // Viền bờ nóc mái
+    ctx.strokeStyle = night ? "#43281c" : "#7d4832";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Hàng ngói lợp (shingles)
+    ctx.strokeStyle = night ? "rgba(20, 10, 5, 0.5)" : "rgba(235, 190, 150, 0.3)";
+    ctx.lineWidth = 1.1;
+    [by + 10, by + 18, by + 26, by + 34].forEach((sy, idx) => {
+      ctx.beginPath();
+      const span = (sy - by) / 36;
+      const xL = bx + bw / 2 - (bw / 2 + 5) * span;
+      const xR = bx + bw / 2 + (bw / 2 + 5) * span;
+      ctx.moveTo(xL, sy);
+      ctx.lineTo(xR, sy);
+      ctx.stroke();
+      for (let kx = xL + 7 + (idx % 2) * 5; kx < xR - 4; kx += 10) {
+        ctx.beginPath();
+        ctx.moveTo(kx, sy - 7);
+        ctx.lineTo(kx, sy);
+        ctx.stroke();
+      }
+    });
+
+    // 4. Cửa gác xép để rơm (hay loft window)
+    const lx = bx + bw / 2 - 11, ly = by + 13, lw = 22, lh = 20;
+    // Khung cửa gác xép
+    ctx.fillStyle = night ? "#26130c" : "#4a2416";
+    rr(ctx, lx - 2, ly - 2, lw + 4, lh + 4, 3);
+    ctx.fill();
+    // Ô cửa sổ: ban đêm tỏa ánh sáng vàng ấm áp
+    if (night) {
+      const glow = ctx.createRadialGradient(lx + lw / 2, ly + lh / 2, 2, lx + lw / 2, ly + lh / 2, 22);
+      glow.addColorStop(0, "#fff6be");
+      glow.addColorStop(0.5, "#ffd166");
+      glow.addColorStop(1, "rgba(255, 190, 40, 0.2)");
+      ctx.fillStyle = glow;
+      rr(ctx, lx, ly, lw, lh, 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = "#ffe49e";
+      rr(ctx, lx, ly, lw, lh, 2);
+      ctx.fill();
+    }
+    // Chữ thập khung cửa sổ (+)
+    ctx.strokeStyle = night ? "#3a1c11" : "#68351f";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(lx + lw / 2, ly); ctx.lineTo(lx + lw / 2, ly + lh);
+    ctx.moveTo(lx, ly + lh / 2); ctx.lineTo(lx + lw, ly + lh / 2);
+    ctx.stroke();
+
+    // Rơm vàng vắt ra ngoài cửa gác xép (hay peeking out)
+    ctx.fillStyle = "#e9c46a";
+    ctx.beginPath();
+    ctx.moveTo(lx + 3, ly + lh);
+    ctx.lineTo(lx + 6, ly + lh + 5);
+    ctx.lineTo(lx + 9, ly + lh + 1);
+    ctx.lineTo(lx + 13, ly + lh + 6);
+    ctx.lineTo(lx + 16, ly + lh + 2);
+    ctx.lineTo(lx + 19, ly + lh + 4);
+    ctx.lineTo(lx + 19, ly + lh);
+    ctx.closePath();
+    ctx.fill();
+
+    // 5. Tấm biển nhỏ "🏚️ Kho lương thực"
+    const sw = 86, sh = 16, sx = bx + bw / 2 - sw / 2, sy = by + 46;
+    // Dây xích sắt treo biển
+    ctx.strokeStyle = "#4d392a";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(sx + 10, sy - 6); ctx.lineTo(sx + 10, sy);
+    ctx.moveTo(sx + sw - 10, sy - 6); ctx.lineTo(sx + sw - 10, sy);
+    ctx.stroke();
+    // Tấm gỗ biển
+    ctx.fillStyle = night ? "#6a4529" : "#dfb37c";
+    rr(ctx, sx, sy, sw, sh, 3);
+    ctx.fill();
+    ctx.strokeStyle = night ? "#442a17" : "#7d5028";
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    // Chữ biển hiệu
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "bold 8.5px system-ui";
+    ctx.fillStyle = night ? "#ffe49e" : "#43250e";
+    ctx.fillText("🏚️ Kho lương thực", sx + sw / 2, sy + sh / 2 + 0.5);
+
+    // 6. Cửa đôi lớn bằng gỗ (big double door)
+    const dw = 48, dh = 48, dx = bx + (bw - dw) / 2, dy = by + bh - dh;
+    // Khung cửa đậm
+    ctx.fillStyle = night ? "#221008" : "#4a2416";
+    rr(ctx, dx - 2, dy - 2, dw + 4, dh + 2, 3);
+    ctx.fill();
+    // Lòng trong cửa tối
+    ctx.fillStyle = night ? "#120804" : "#2b140b";
+    ctx.fillRect(dx, dy, dw, dh);
+
+    // 2 cánh cửa gỗ
+    const doorW = 22;
+    ctx.fillStyle = night ? "#58221c" : "#943b2f";
+    rr(ctx, dx, dy, doorW, dh, 1); ctx.fill();
+    rr(ctx, dx + dw - doorW, dy, doorW, dh, 1); ctx.fill();
+
+    // Nẹp chữ X chéo trên mỗi cánh cửa (classic barn X brace)
+    ctx.strokeStyle = night ? "#38130e" : "#68241b";
+    ctx.lineWidth = 2;
+    // Cánh trái
+    ctx.beginPath();
+    ctx.moveTo(dx + 2, dy + 2); ctx.lineTo(dx + doorW - 2, dy + dh - 2);
+    ctx.moveTo(dx + doorW - 2, dy + 2); ctx.lineTo(dx + 2, dy + dh - 2);
+    ctx.stroke();
+    // Cánh phải
+    ctx.beginPath();
+    ctx.moveTo(dx + dw - doorW + 2, dy + 2); ctx.lineTo(dx + dw - 2, dy + dh - 2);
+    ctx.moveTo(dx + dw - 2, dy + 2); ctx.lineTo(dx + dw - doorW + 2, dy + dh - 2);
+    ctx.stroke();
+
+    // Bản lề sắt & tay nắm cửa
+    ctx.fillStyle = "#2c2c2c";
+    ctx.fillRect(dx - 1, dy + 10, 4, 3);
+    ctx.fillRect(dx - 1, dy + dh - 12, 4, 3);
+    ctx.fillRect(dx + dw - 3, dy + 10, 4, 3);
+    ctx.fillRect(dx + dw - 3, dy + dh - 12, 4, 3);
+    ctx.fillStyle = "#e9c46a";
+    ctx.beginPath();
+    ctx.arc(dx + doorW - 3, dy + dh / 2, 2, 0, 7);
+    ctx.arc(dx + dw - doorW + 3, dy + dh / 2, 2, 0, 7);
+    ctx.fill();
+
+    // 7. Đồ đạc nông sản bày bên ngoài kho
+    // Bên trái: Bao gạo / bao lúa bố đay
+    ctx.fillStyle = "#d4b27d";
+    rr(ctx, bx + 15, by + bh - 22, 14, 20, 5); ctx.fill();
+    ctx.fillStyle = "#9c7244"; ctx.fillRect(bx + 18, by + bh - 24, 8, 3);
+    ctx.strokeStyle = "rgba(120,80,30,0.35)"; ctx.strokeRect(bx + 18, by + bh - 15, 8, 8);
+    // Bao thứ 2 nghiêng bên cạnh
+    ctx.fillStyle = "#c9a36b";
+    rr(ctx, bx + 26, by + bh - 16, 13, 14, 4); ctx.fill();
+    ctx.fillStyle = "#9c7244"; ctx.fillRect(bx + 29, by + bh - 18, 7, 3);
+    // Vài nhánh bông lúa
+    ctx.font = '11px "Segoe UI Emoji","Apple Color Emoji",system-ui';
+    ctx.fillText("🌾", bx + 16, by + bh - 8);
+
+    // Xếp bí đỏ (pumpkins) bên trái
+    const px1 = bx + 9, py1 = by + bh - 7;
+    ctx.fillStyle = "#e85d04"; ctx.beginPath(); ctx.ellipse(px1, py1, 7, 6, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#f48c06"; ctx.beginPath(); ctx.ellipse(px1, py1, 4.5, 6, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#2d6a4f"; ctx.fillRect(px1 - 1, py1 - 8, 2, 3);
+    // Quả bí nhỏ hơn
+    const px2 = bx + 4, py2 = by + bh - 5;
+    ctx.fillStyle = "#f48c06"; ctx.beginPath(); ctx.ellipse(px2, py2, 5, 4.2, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#2d6a4f"; ctx.fillRect(px2 - 1, py2 - 6, 1.5, 2.5);
+
+    // Bên phải: Thùng gỗ đựng bắp ngô (corn crate)
+    const cw = 22, ch = 16, cx = bx + 92, cy = by + bh - 18;
+    ctx.fillStyle = night ? "#533722" : "#8d5b34";
+    rr(ctx, cx, cy, cw, ch, 2); ctx.fill();
+    ctx.strokeStyle = night ? "#3a2212" : "#653d1d"; ctx.lineWidth = 1;
+    ctx.strokeRect(cx, cy, cw, ch);
+    ctx.beginPath(); ctx.moveTo(cx, cy + ch / 2); ctx.lineTo(cx + cw, cy + ch / 2); ctx.stroke();
+    // Bắp ngô vàng đầy ắp thùng
+    ctx.font = '11px "Segoe UI Emoji","Apple Color Emoji",system-ui';
+    ctx.fillText("🌽", cx + 7, cy + 5);
+    ctx.fillText("🌽", cx + 15, cy + 6);
+
+    // Quả bí ngô bên cạnh thùng bắp
+    const px3 = bx + 117, py3 = by + bh - 6;
+    ctx.fillStyle = "#e85d04"; ctx.beginPath(); ctx.ellipse(px3, py3, 6, 5, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#2d6a4f"; ctx.fillRect(px3 - 1, py3 - 7, 2, 2.5);
+
+    // 8. Khi có nông sản trong kho: emoji thò ra từ cửa và huy hiệu tổng số
+    const st = S();
+    const cropsInBarn = st && st.inv ? Object.entries(st.inv).filter(([id, x]) => x && x.cat === "crop" && x.n > 0) : [];
+    const totalCropCount = cropsInBarn.reduce((sum, [, x]) => sum + (x.n || 0), 0);
+    if (totalCropCount > 0) {
+      // Biểu tượng nông sản nhô ra từ khe cửa
+      const peekEmojis = cropsInBarn.slice(0, 3).map(([, x]) => x.e);
+      ctx.font = '13px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",system-ui';
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      if (peekEmojis[0]) ctx.fillText(peekEmojis[0], dx + dw / 2 - 4, dy + dh - 12);
+      if (peekEmojis[1]) ctx.fillText(peekEmojis[1], dx + dw / 2 + 5, dy + dh - 16);
+      if (peekEmojis[2]) ctx.fillText(peekEmojis[2], dx + dw / 2, dy + dh - 23);
+
+      // Huy hiệu nhỏ đỏ/cam hiển thị tổng số lượng nông sản (badge)
+      const badgeText = totalCropCount > 99 ? "99+" : String(totalCropCount);
+      const badgeX = dx + dw + 2, badgeY = dy + 5;
+      ctx.fillStyle = "#e63946";
+      rr(ctx, badgeX - 10, badgeY - 8, 20, 15, 7); ctx.fill();
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 9px system-ui";
+      ctx.fillText(badgeText, badgeX, badgeY);
+    }
+  }
+
   function drawFarm(t) {
     const {L, R, T, B} = bleed(), wv = R - L;
     const night = Life.darkness() > .5, [s0, s1] = night ? ["#060a22", "#27316b"] : Life.skyColors();
@@ -1379,12 +1655,16 @@ const Areas = (() => {
         else { ctx.fillStyle = "rgba(0,0,0,.35)"; rr(ctx, r.x + 6, r.y + r.h - 6, r.w - 12, 4, 2); ctx.fill(); ctx.fillStyle = "#80ed99"; rr(ctx, r.x + 6, r.y + r.h - 6, (r.w - 12) * k, 4, 2); ctx.fill(); }
       }
     });
-    // ruộng hướng dương trang trí bên phải (rạp theo gió)
+    // ruộng hướng dương trang trí bên phải (rạp theo gió, chừa chỗ cho kho lương thực)
     for (let r = 0; r < 4; r++) for (let k = 0; k < 7; k++) {
-      const x = 770 + k * 44 + (r % 2) * 18, y = 214 + r * 40, sw = Math.sin(t * 1.4 + k * .5 + r) * 2.5;
+      const x = 770 + k * 44 + (r % 2) * 18, y = 214 + r * 40;
+      if (x >= 865 && x <= 1005 && y >= 210 && y <= 345) continue;
+      const sw = Math.sin(t * 1.4 + k * .5 + r) * 2.5;
       ctx.strokeStyle = "#4f7942"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y + 20); ctx.lineTo(x + sw, y); ctx.stroke();
       ctx.fillStyle = "#ffc300"; ctx.beginPath(); ctx.arc(x + sw, y, 6, 0, 7); ctx.fill(); ctx.fillStyle = "#7f4f24"; ctx.beginPath(); ctx.arc(x + sw, y, 2.6, 0, 7); ctx.fill();
     }
+    // Kho lương thực (barn / granary) bằng gỗ đỏ/nâu ấm cúng
+    drawBarn(t, night);
     // hàng rào trắng phía trước ruộng (có lối vào ở giữa)
     ctx.fillStyle = "#f8f9fa"; ctx.fillRect(L, 442, 520 - L, 4); ctx.fillRect(L, 454, 520 - L, 4); ctx.fillRect(600, 442, R - 600, 4); ctx.fillRect(600, 454, R - 600, 4);
     for (let x = Math.floor(L / 18) * 18 + 4; x < R; x += 18) { if (x > 514 && x < 600) continue; rr(ctx, x, 436, 6, 28, 2); ctx.fill(); }
@@ -1481,6 +1761,41 @@ const Areas = (() => {
       }
       ctx.restore();
     }
+    // Hoạt ảnh nông sản bay từ ruộng vào kho lương thực khi thu hoạch
+    if (cropFlyAnims.length) {
+      const curT = performance.now() / 1000;
+      cropFlyAnims = cropFlyAnims.filter(a => curT - a.t0 < a.dur + 0.25);
+      ctx.save();
+      for (const a of cropFlyAnims) {
+        const dt = curT - a.t0;
+        if (dt < 0) continue;
+        const p = Math.min(1, dt / a.dur);
+        const ease = p * (2 - p);
+        const curX = a.x0 + (a.x1 - a.x0) * ease;
+        const curY = a.y0 + (a.y1 - a.y0) * ease - Math.sin(p * Math.PI) * a.arc;
+        const scale = p < 0.2 ? 0.6 + (p / 0.2) * 0.6 : (p > 0.8 ? 1.2 - ((p - 0.8) / 0.2) * 0.6 : 1.2);
+        const alpha = p > 0.9 ? 1 - (p - 0.9) / 0.1 : 1;
+
+        ctx.save();
+        ctx.translate(curX, curY);
+        ctx.scale(scale, scale);
+        ctx.rotate(a.rot * p * 3);
+        ctx.globalAlpha = Math.max(0, alpha);
+        ctx.font = '18px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",system-ui';
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(a.e, 0, 0);
+        ctx.restore();
+
+        if (p < 0.85 && Math.random() < 0.35) {
+          ctx.fillStyle = "rgba(255, 235, 130, 0.75)";
+          ctx.beginPath();
+          ctx.arc(curX - 4 + (Math.random() - 0.5) * 8, curY + 4 + (Math.random() - 0.5) * 6, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
     for (let k = 0; k < 6; k++) {                                        // bướm
       const bx = (t * 18 + k * 190) % (W + 40) - 20, byy = 220 + (k % 3) * 60 + Math.sin(t * 2 + k) * 20, f = Math.abs(Math.sin(t * 10 + k)) * 3 + 1;
       ctx.fillStyle = ["#ff8fab", "#ffd166", "#a0c4ff"][k % 3]; ctx.beginPath(); ctx.ellipse(bx - 2, byy, f, 3, 0, 0, 7); ctx.ellipse(bx + 2, byy, f, 3, 0, 0, 7); ctx.fill();
@@ -1542,6 +1857,7 @@ const Areas = (() => {
     const r = await Life.eco("harvest", {i}); if (!r) return;             // server kiểm tra đã chín, tung 2-3 quả
     Life.apply({xp: inf.c.xp, fun: 4}); Life.commit();
     toast(`🧺 Thu hoạch ${r.n} ${inf.c.e} ${inf.c.name}! Mang ra bác Năm bán nhé`);
+    addCropFlyAnim(i, inf.c.e, r.n || 2);
   }
   function openSeeds(i) {
     const st = S();
@@ -1577,6 +1893,43 @@ const Areas = (() => {
           if (await Life.eco("buySeed", {c: b.dataset.c})) openFarmer();
         });
       });
+  }
+
+  // Bảng thông tin kho lương thực (nông sản & hạt giống dự trữ)
+  function openBarn() {
+    const st = S();
+    const cropPrice = id => (CR[id.slice(5)] || CR[id] || {}).sell || 0;
+    const crops = Object.entries(st.inv || {}).filter(([id, x]) => x && x.cat === "crop" && x.n > 0).map(([id, x]) => [id, {...x, sell: cropPrice(id)}]);
+    const total = crops.reduce((s, [, x]) => s + x.n * x.sell, 0);
+    const seeds = Object.entries(st.inv || {}).filter(([id, x]) => x && (x.cat === "seed" || id.startsWith("seed_")) && x.n > 0);
+
+    const cropsHtml = crops.length ? `
+      <div class="board">${crops.map(([, x]) => `<div><span>${x.e} ${esc(x.name)} ×${x.n} <small style="opacity:.75">(${x.sell} 💰)</small></span><b>${x.n * x.sell} 💰</b></div>`).join("")}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px 2px;font-size:13px">
+        <span style="opacity:.85">Tổng giá trị:</span><b>${total} 💰</b>
+      </div>
+      <button class="primary" id="sellAllBarn" style="margin-top:8px">Bán hết (+${total} 💰)</button>
+    ` : `<div class="vol" style="margin:0">Kho còn trống. Trồng rau rồi thu hoạch nhé!</div>`;
+
+    const seedsHtml = seeds.length ? `
+      <div class="grid">${seeds.map(([, x]) => `<div class="opt" style="cursor:default"><span>${x.e || "🌱"} ${esc(x.name)}</span><small>Số lượng: ${x.n}</small></div>`).join("")}</div>
+    ` : `<div class="vol" style="margin:0">Chưa có hạt giống trong kho.</div>`;
+
+    openSheet("🏚️ Kho lương thực",
+      `${Life.coinLine()}
+       <div class="sec">🧺 Nông sản</div>
+       ${cropsHtml}
+       <div class="sec">🌱 Hạt giống trong kho</div>
+       ${seedsHtml}
+       <div class="vol" style="font-size:12px;margin-top:10px">💡 Nông sản thu hoạch tự cất vào kho.</div>`,
+      el => {
+        const sa = el.querySelector("#sellAllBarn");
+        if (sa) sa.onclick = async () => {
+          const r = await Life.eco("sellCrops"); if (!r) return;
+          Life.apply({xp: Math.ceil(r.total / 20)}); Life.commit(); closeSheet(); toast(`💰 Bán được ${r.total} xu!`);
+        };
+      }
+    );
   }
 
   // ---------- 6. Hồ câu cá ----------
@@ -2625,9 +2978,10 @@ const Areas = (() => {
     ctx.fillStyle = "#f3e9dc"; rr(ctx, 988, 376, 84, 66, 4); ctx.fill(); ctx.strokeStyle = "#6b4a35"; ctx.lineWidth = 2; ctx.stroke();
     ctx.fillStyle = "#264653"; ctx.font = "800 7px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🏆 KỶ LỤC TUẦN", 1030, 386);
     ctx.font = "9px system-ui"; ctx.fillText("🐟 🐠 🐡", 1030, 400);
-    if (fishState && fishState.lastRare) {
+    const rareFishName = lastRareFish || (fishState && fishState.lastRare);
+    if (rareFishName) {
       ctx.fillStyle = "#e63946"; rr(ctx, 988, 412, 84, 26, 3); ctx.fill();
-      ctx.fillStyle = "#fff"; ctx.font = "700 7px system-ui"; ctx.fillText("⭐ " + fishState.lastRare, 1030, 425);
+      ctx.fillStyle = "#fff"; ctx.font = "700 7px system-ui"; ctx.fillText("⭐ " + rareFishName, 1030, 425);
     }
     // ghế xếp + xô cá + bàn để radio
     ctx.save(); ctx.translate(200, 0);
@@ -3594,7 +3948,11 @@ const Areas = (() => {
   }
   function tap(x, y) {
     for (const {n, p} of npcsHere()) if (Math.abs(x - p.x) < 15 && y > p.y - AV_TOP + 4 && y < p.y + 6) { talkNpc(n); return true; }
-    if (myArea === "farm") { const i = PLOTS.findIndex(r => inRect(x, y, r)); if (i >= 0) { tapPlot(i); return true; } }
+    if (myArea === "farm") {
+      if (inRect(x, y, BARN)) { openBarn(); return true; }
+      const i = PLOTS.findIndex(r => inRect(x, y, r));
+      if (i >= 0) { tapPlot(i); return true; }
+    }
     if (myArea === "fishing" && inRect(x, y, {x: 850, y: 380, w: 104, h: 80})) { openBait(); return true; }
     if (myArea === "mall") { const s = STORE_R.find(r => inRect(x, y, r)); if (s) { openStore(s); return true; } if (inRect(x, y, CASHIER_R)) { openCashier(); return true; } }
     if (myArea === "home") {
@@ -3613,6 +3971,8 @@ const Areas = (() => {
     if (myArea === "farm") {
       hole(84, 90, 80, .7);
       hole(878, 420, 60, .5);
+      // Vùng sáng ấm áp cho cửa gác xép kho lương thực
+      hole(BARN.x + BARN.w / 2, BARN.y + 24, 60, .75);
       // Vùng sáng cho các cột đèn nông trại và chuỗi bóng đèn fairy lights
       FARM_LAMPS.forEach(l => hole(l.x, l.y, 90, .75));
       FAIRY_BULBS.forEach(b => hole(b.x, b.y, 24, .45));
@@ -3653,6 +4013,6 @@ const Areas = (() => {
   function setHome(items) { homeItems = Array.isArray(items) ? items : []; }
 
   return {has: a => NEW.has(a), TXT, draw, seat, ents, tap, holes, act, over: drawSeason, drawAvatar, onJoin, onArea, setHome,
-          openWardrobe, owns, ownLabel, cleanOutfit, outfit: () => cleanOutfit(), npcPos, FARM_LAMPS, fishIcon,
+          openWardrobe, owns, ownLabel, cleanOutfit, outfit: () => cleanOutfit(), npcPos, FARM_LAMPS, fishIcon, BARN, openBarn,
           say: (id, text, sec = 4) => { npcTalk[id] = {text, until: performance.now() / 1000 + sec}; }};   // NPC tự nói (tiệm tóc)
 })();
