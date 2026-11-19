@@ -502,32 +502,26 @@ const Weather = (() => {
     if (hudBadgeEl && document.body.contains(hudBadgeEl)) return hudBadgeEl;
     hudBadgeEl = document.getElementById('weather-badge');
     if (!hudBadgeEl) {
-      hudBadgeEl = document.createElement('div');
+      // Dự phòng nếu trong HTML chưa có sẵn phần tử #weather-badge
+      hudBadgeEl = document.createElement('button');
       hudBadgeEl.id = 'weather-badge';
-      hudBadgeEl.style.cssText = `
-        position: fixed;
-        top: 10px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 99;
-        display: none;
-        align-items: center;
-        gap: 6px;
-        padding: 3px 11px;
-        background: rgba(16, 22, 34, 0.72);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        border-radius: 16px;
-        color: #f0f4f8;
-        font-size: 12px;
-        font-weight: 500;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
-        pointer-events: none;
-        user-select: none;
-      `;
-      document.body.appendChild(hudBadgeEl);
+      hudBadgeEl.className = 'pill';
+      hudBadgeEl.title = 'Thời tiết (chạm để xem chi tiết)';
+      const topBar = document.getElementById('top');
+      if (topBar) {
+        const rightGroup = topBar.querySelector('.tgroup:last-child');
+        if (rightGroup) rightGroup.insertBefore(hudBadgeEl, rightGroup.querySelector('#clockPill') || rightGroup.firstChild);
+        else topBar.appendChild(hudBadgeEl);
+      } else {
+        document.body.appendChild(hudBadgeEl);
+      }
+    }
+    if (!hudBadgeEl._boundClick) {
+      hudBadgeEl._boundClick = true;
+      hudBadgeEl.addEventListener('click', () => {
+        const info = WEATHER_INFO[lastLoggedDominant] || WEATHER_INFO.clear;
+        if (typeof toast === 'function') toast(info.enterMsg || `${info.emoji} Thời tiết: ${info.name}`);
+      });
     }
     return hudBadgeEl;
   }
@@ -557,23 +551,8 @@ const Weather = (() => {
       return;
     }
 
-    // Định vị cạnh đồng hồ nếu có element #clock, ngược lại đặt ở giữa phía trên
-    const clock = document.getElementById('clock') || document.querySelector('.clock');
-    if (clock && clock.getBoundingClientRect) {
-      const cr = clock.getBoundingClientRect();
-      if (cr.width > 0 && cr.height > 0 && cr.top >= 0 && cr.top < 120) {
-        badge.style.left = `${cr.right + 8}px`;
-        badge.style.top = `${cr.top + Math.max(0, (cr.height - 24) / 2)}px`;
-        badge.style.transform = 'none';
-      } else {
-        badge.style.left = '50%';
-        badge.style.top = '10px';
-        badge.style.transform = 'translateX(-50%)';
-      }
-    }
-
     const info = WEATHER_INFO[dominant] || WEATHER_INFO.clear;
-    const innerHtml = `<span style="font-size: 14px; line-height: 1;">${info.emoji}</span><span>${info.name}</span>`;
+    const innerHtml = `<span class="w-emoji">${info.emoji}</span><span class="w-name"> ${info.name}</span>`;
     if (badge.innerHTML !== innerHtml) {
       badge.innerHTML = innerHtml;
     }

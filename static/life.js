@@ -185,7 +185,7 @@ const Life = (() => {
   const bar = (v, col) => `<span class="mbar"><i style="width:${Math.round(v)}%;background:${col}"></i></span>`;
   function render() {
     const lv = levelOf(S.xp);
-    $("#lifeStats").innerHTML = `⭐${lv} · 💰${S.coins} · ⚡${bar(S.energy, "#ffd166")} 😊${bar(S.fun, "#ff8fab")} 📖${Math.floor(S.know)}`;
+    $("#lifeStats").innerHTML = `<span class="stat-lv">⭐${lv}</span> <span class="stat-coins">💰${S.coins}</span> <span class="stat-energy">⚡${bar(S.energy, "#ffd166")}</span> <span class="stat-fun">😊${bar(S.fun, "#ff8fab")}</span> <span class="stat-know">📖${Math.floor(S.know)}</span>`;
     const p = phase();
     $("#clockPill").textContent = `${p.icon} ${clockFull()}`;
     if (outdoor()) $("#lightBtn").innerHTML = `${p.icon}<span>${clockText()}</span>`;

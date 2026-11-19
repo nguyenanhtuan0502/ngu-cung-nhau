@@ -27,7 +27,10 @@
   /* top bar */
   #top{position:fixed;top:calc(8px + env(safe-area-inset-top));left:10px;right:10px;display:flex;justify-content:space-between;gap:8px;pointer-events:none;z-index:5}
   .pill{pointer-events:auto;background:rgba(20,17,45,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-    border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:6px 12px;font-size:13px;white-space:nowrap}
+    border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:6px 12px;font-size:13px;white-space:nowrap;
+    position:relative;touch-action:manipulation;cursor:pointer}
+  .pill::after{content:"";position:absolute;inset:-4px -3px}
+  #weather-badge{background:rgba(20,17,45,.72);border:1px solid rgba(255,255,255,.12);cursor:pointer;display:inline-flex;align-items:center;gap:4px}
   #shareBtn{background:rgba(255,210,122,.18);border-color:rgba(255,210,122,.4)}
 
   #log{position:fixed;top:calc(46px + env(safe-area-inset-top));left:10px;max-width:70%;z-index:4;pointer-events:none;
@@ -54,10 +57,17 @@
 
   /* bottom sheet */
   #sheet{position:fixed;inset:0;z-index:20;background:rgba(5,4,15,.45);display:flex;align-items:flex-end;justify-content:center}
-  .sheet-inner{width:100%;max-width:440px;background:var(--panel);border-radius:22px 22px 0 0;padding:16px 16px calc(18px + env(safe-area-inset-bottom));
-    border-top:1px solid rgba(255,255,255,.1);animation:up .22s ease-out;max-height:82vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .sheet-inner{width:100%;max-width:440px;background:var(--panel);border-radius:22px 22px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom));
+    border-top:1px solid rgba(255,255,255,.1);animation:up .22s ease-out;max-height:84vh;display:flex;flex-direction:column}
   @keyframes up{from{transform:translateY(100%)}}
-  .sheet-title{font-weight:700;margin-bottom:12px;font-size:16px}
+  .sheet-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex:0 0 auto;position:sticky;top:0;z-index:5;background:var(--panel)}
+  .sheet-title{font-weight:700;margin:0;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sheet-close{width:38px;height:38px;min-width:38px;min-height:38px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);
+    color:#fff;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .12s,background .15s;
+    position:relative;touch-action:manipulation;padding:0;line-height:1}
+  .sheet-close::after{content:"";position:absolute;inset:-4px}
+  .sheet-close:active{transform:scale(.9);background:rgba(255,122,138,.35)}
+  .sheet-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .opt{background:var(--panel2);border-radius:14px;padding:13px 10px;font-size:14px;border:1px solid transparent;text-align:left}
   .opt.active{border-color:var(--accent);background:rgba(255,210,122,.15)}
@@ -937,24 +947,76 @@
   @keyframes turn{0%,20%{transform:rotate(0)}50%,80%{transform:rotate(-90deg)}100%{transform:rotate(0)}}
   #rotate small{color:var(--muted)}
   @media (orientation:portrait) and (pointer:coarse){ body.ingame #rotate{display:flex} }
-  /* Màn hình thấp (điện thoại ngang): thu nhỏ chữ, nút */
-  @media (max-height:460px){
-    #top .pill{height:32px;font-size:12px;padding:0 9px}
-    #top .pill.icon{width:34px;font-size:15px}
-    #log{max-width:min(34vw,330px)}
-    #log div{font-size:10.5px;padding:3px 8px;background:rgba(10,8,25,.5)}
-    #log div:nth-last-child(n+4){display:none}
+  /* Màn hình thấp (điện thoại ngang: 844x390, 740x360, 915x412): ưu tiên bố cục gọn gàng, nút ≥ 44px, không tràn */
+  @media (max-height:500px){
+    #top{top:calc(6px + var(--st));left:calc(8px + var(--sl));right:calc(8px + var(--sr));gap:4px}
+    .tgroup{gap:4px}
+    #top .pill{height:32px;font-size:11.5px;padding:0 8px;gap:3px}
+    #top .pill.icon{width:34px;min-width:34px;font-size:14px}
+    #weather-badge{padding:0 7px;min-width:34px;justify-content:center}
+    #weather-badge .w-name{display:none!important} /* chỉ hiện biểu tượng thời tiết ☀️ để gọn thanh trên */
+    #shareBtn,#fsBtn{display:none!important}     /* ẩn nút mời bạn & toàn màn hình trên điện thoại ngang; dùng qua ⚙️ Cài đặt */
+    #lifeStats{font-size:11.5px;padding:0 7px;display:inline-flex;align-items:center;gap:4px}
+    #lifeStats .stat-know{display:none!important}  /* ẩn kiến thức 📖 để ⭐ cấp · 💰 xu · ⚡ năng lượng · 😊 vui không bị che */
+    .mbar{width:20px;height:6px}
+    #actPill{background:rgba(155,140,255,.32);border-color:rgba(155,140,255,.65);font-weight:700}
+
+    /* Thông báo (log): dạng toast gọn ở giữa trên, tối đa 2 thông báo, tự mờ nhanh */
+    #log{top:calc(42px + var(--st));left:50%;transform:translateX(-50%);max-width:min(86vw,420px);align-items:center;gap:3px}
+    #log div{font-size:11px;padding:2.5px 10px;border-radius:999px;background:rgba(14,11,28,.78);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+      border:1px solid rgba(255,255,255,.12);box-shadow:0 2px 8px rgba(0,0,0,.35);text-align:center;width:auto}
+    #log div:nth-last-child(n+3){display:none!important}
+
     .map:not(.town-map-wrap) .opt,.mapgate:not(.town-gate){padding:7px 4px;font-size:12px}
     .maphint{display:none}
-    .sheet-title{margin-bottom:8px}
-    #hud button{width:48px;height:48px;font-size:18px;border-radius:14px}
-    #hud button span{font-size:9px}
-    #joy{width:104px;height:104px}
+
+    /* Thanh nút dưới (HUD): gọn gàng 44x44px, không che chân nhân vật, không chạm joystick/E */
+    #hud{bottom:calc(6px + var(--sb));gap:4px}
+    #hud button{width:44px;height:44px;font-size:16px;border-radius:12px;background:rgba(20,16,42,.62);
+      border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+    #hud button span{font-size:8.5px}
+
+    /* Cần điều khiển ảo & nút E: chuẩn ngón cái ≥ 44px, cách mép an toàn tai thỏ */
+    #joy{width:104px;height:104px;left:calc(16px + var(--sl));bottom:calc(12px + var(--sb))}
     #joyKnob{width:46px;height:46px;margin:-23px 0 0 -23px}
     #joyKnob::after{width:18px;height:18px;margin:-9px 0 0 -9px}
-    #actBtns button{width:58px;height:58px}
-    #shareBtn .lbl{display:none}
-    .sheet-inner{max-height:92vh;padding-top:12px}
+    #actBtns{right:calc(16px + var(--sr));bottom:calc(14px + var(--sb))}
+    #actBtns button{width:58px;height:58px;min-width:44px;min-height:44px}
+
+    /* Bảng (sheet) trên điện thoại nằm ngang: tận dụng chiều ngang 2 cột, không tràn, nút đóng luôn thấy */
+    .sheet-inner{width:min(95vw,760px);max-width:760px;max-height:94vh;border-radius:20px 20px 0 0;padding:10px 14px calc(10px + var(--sb));
+      display:flex;flex-direction:column}
+    .sheet-header{margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:5;background:var(--panel)}
+    .sheet-title{font-size:14.5px}
+    .sheet-close{width:36px;height:36px;min-width:36px;min-height:36px;font-size:16px}
+    .sheet-body{flex:1 1 auto;max-height:calc(94vh - 48px);overscroll-behavior:contain;padding-right:2px}
+    .grid{gap:6px}
+    .opt{padding:9px 8px;font-size:13px;border-radius:12px}
+    .emojis{gap:6px}
+    .emojis button{font-size:24px;padding:6px 0;border-radius:12px}
+
+    /* Tủ đồ 2 cột trên điện thoại nằm ngang: bên trái là nhân vật, bên phải là danh sách đồ cuộn được */
+    .sheet-body:has(#pv){display:grid;grid-template-columns:148px 1fr;gap:10px;align-items:start}
+    .sheet-body:has(#pv) > div:first-child{position:sticky;top:0;display:flex;flex-direction:column;align-items:center}
+    .sheet-body:has(#pv) #pv{width:136px;height:142px}
+    .sheet-body:has(#pv) .tabs{margin:0 0 6px;padding-bottom:0}
+    .sheet-body:has(#pv) .grid{grid-template-columns:repeat(2,1fr);max-height:calc(94vh - 96px);overflow-y:auto}
+    .sheet-body:has(#pv) .vol{grid-column:1 / -1;margin-top:6px;font-size:11px}
+
+    /* Bầu cua 2 cột trên điện thoại nằm ngang: cột 1 cược + xúc xắc, cột 2 lịch sử + luật */
+    .sheet-body:has(#bcBox) #bcBox{display:grid;grid-template-columns:1.35fr 1fr;gap:8px;align-items:start}
+    .sheet-body:has(#bcBox) .pomoSub,.sheet-body:has(#bcBox) .bcDice{grid-column:1 / -1;margin-bottom:4px}
+    .sheet-body:has(#bcBox) .bcDice{font-size:26px}
+    .sheet-body:has(#bcBox) .bcGrid{grid-template-columns:repeat(3,1fr);gap:4px}
+    .sheet-body:has(#bcBox) .bcCell{padding:4px 2px}
+    .sheet-body:has(#bcBox) .bcCell b{font-size:22px}
+    .sheet-body:has(#bcBox) .timers{grid-column:1;margin-top:4px}
+    .sheet-body:has(#bcBox) .timers button{padding:7px 0;font-size:12px}
+    .sheet-body:has(#bcBox) .sec,.sheet-body:has(#bcBox) .bcHist,.sheet-body:has(#bcBox) .rules{grid-column:2;margin-top:2px}
+
+    /* Chứng khoán trên điện thoại ngang */
+    .stkWrap{gap:6px}
+    .stkList{max-height:calc(94vh - 90px)}
   }
 
   /* ================== PIN (ver_3 V2.2) ================== */
@@ -991,12 +1053,12 @@
   .setrow{display:flex;gap:10px;align-items:flex-start;background:var(--panel2);border-radius:12px;padding:10px 12px;margin-top:8px;cursor:pointer;min-height:56px}
   .setrow input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex:0 0 auto}
   .setrow small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
-  /* điện thoại ngang (màn thấp): nút nhỏ hơn, xếp 2 cột để không đè nút E */
-  @media (max-height:460px){
-    #quick{top:calc(48px + var(--st));gap:8px}
+  /* điện thoại ngang (màn thấp): nút chuẩn ≥ 44px, xếp 2 cột để không đè nút E */
+  @media (max-height:500px){
+    #quick{top:calc(46px + var(--st));gap:8px}
     #quick .qitems{display:grid;grid-template-columns:44px 44px;gap:8px}
     .qb{width:44px;height:44px;font-size:21px}
-    .qarrow{width:40px;height:40px;font-size:22px}
+    .qarrow{width:44px;height:44px;font-size:24px}
     .dot{min-width:15px;height:15px;line-height:15px;font-size:9px}
     #pomoPill{right:calc(112px + var(--sr))}
   }
@@ -1062,16 +1124,17 @@
 <body>
 <canvas id="c"></canvas>
 
-<!-- Thanh trên: trái = khu/kênh + chỉ số nhân vật, phải = giờ + các nút menu -->
+<!-- Thanh trên: trái = khu/kênh + chỉ số nhân vật, phải = nút hành động, thời tiết, giờ, pin, menu -->
 <div id="top" class="hidden">
   <div class="tgroup" id="lifeBar">
     <button class="pill" id="instPill" title="Khu / kênh đang ở (chạm để đổi kênh)">📍 <b id="roomCode"></b> · 👥 <span id="count">1</span> · <span id="sleepIcon">😴</span> <span id="sleepCount">0</span></button>
     <button class="pill" id="lifeStats" title="Nhân vật & túi đồ"></button>
   </div>
   <div class="tgroup">
-    <span class="pill batt hidden" id="battPill"></span>
-    <button class="pill" id="clockPill" title="Giờ Việt Nam (chạm để xem chi tiết)"></button>
     <button class="pill hidden" id="actPill"></button>
+    <button class="pill" id="weather-badge" title="Thời tiết (chạm để xem chi tiết)"></button>
+    <button class="pill" id="clockPill" title="Giờ Việt Nam (chạm để xem chi tiết)"></button>
+    <span class="pill batt hidden" id="battPill"></span>
     <button class="pill icon hidden" id="mapBtn" title="Bản đồ (M)">🗺️</button>   <!-- đã chuyển sang thanh nhanh -->
     <button class="pill icon hidden" id="wardPill" title="Tủ đồ">👗</button>
     <button class="pill" id="shareBtn" title="Mời bạn">🔗<span class="lbl"> Mời bạn</span></button>
@@ -1117,7 +1180,7 @@
 <div id="actBtns"><button id="eBtn" aria-label="Tương tác">E<small>Chạm</small></button></div>
 <div id="rotate"><div class="ph">📱</div><b>Xoay ngang điện thoại để chơi</b><small>Game dùng màn hình ngang cho cả điện thoại và máy tính</small></div>
 <div id="chatBar" class="hidden"><input id="chatInput" maxlength="60" placeholder="Nhắn gì đó…" enterkeyhint="send"><button id="chatSend">Gửi</button></div>
-<div id="sheet" class="hidden"><div class="sheet-inner"><div class="sheet-title"></div><div class="sheet-body"></div></div></div>
+<div id="sheet" class="hidden"><div class="sheet-inner"><div class="sheet-header"><div class="sheet-title"></div><button class="sheet-close" id="sheetClose" aria-label="Đóng bảng">✕</button></div><div class="sheet-body"></div></div></div>
 <div id="toast"></div>
 <div id="fade"><span id="fadeText"></span></div>
 <div id="tvFrame" class="hidden"><div class="ythold" id="tvHold"></div><button id="tvShrink">✕ Thu nhỏ</button></div>
@@ -1404,8 +1467,11 @@ function toast(msg) {
 function log(html) {
   const el = document.createElement("div"); el.innerHTML = html;
   const box = $("#log"); box.appendChild(el);
-  while (box.children.length > 4) box.firstChild.remove();
-  setTimeout(() => { el.style.opacity = 0; setTimeout(() => el.remove(), 900); }, 9000);
+  const isMobile = window.innerHeight <= 500 || window.innerWidth <= 900;
+  const maxItems = isMobile ? 2 : 4;
+  while (box.children.length > maxItems) box.firstChild.remove();
+  const dur = isMobile ? 3200 : 8000;
+  setTimeout(() => { el.style.opacity = 0; setTimeout(() => el.remove(), 600); }, dur);
 }
 function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
 function nameOf(id) { const p = players.get(id); return p ? p.name : "Ai đó"; }
@@ -2314,10 +2380,19 @@ function openSettings() {
      <div class="sec">🪫 Tiết kiệm pin (30 FPS, bớt hiệu ứng)${Power.supported() ? "" : " · máy này không cho đọc % pin"}</div>
      <div class="timers" style="grid-template-columns:repeat(3,1fr)">${[["auto", "Tự động (pin ≤15%)"], ["on", "Luôn bật"], ["off", "Tắt"]]
        .map(([k, n]) => `<button data-pw="${k}" class="${Power.mode() === k ? "cur" : ""}">${n}</button>`).join("")}</div>
+     <div class="sec">📱 Tiện ích nhanh</div>
+     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+       <button id="setShareBtn" class="opt" style="text-align:center;padding:11px 8px;font-size:13px;font-weight:700">🔗 Mời bạn bè</button>
+       <button id="setFsBtn" class="opt" style="text-align:center;padding:11px 8px;font-size:13px;font-weight:700">⛶ Toàn màn hình</button>
+     </div>
      <div class="sec">⌨️ Phím tắt trên máy tính</div>
      <div class="vol" style="margin:0;font-size:12px;line-height:1.6">←→↑↓ / WASD đi · <b>E</b> tương tác · <b>M</b> bản đồ · <b>C</b> tủ đồ · <b>I</b> túi đồ · <b>L</b> xếp hạng ·
        <b>B</b> thu gọn/mở thanh nhanh · <b>Enter</b> chat · <b>1-6</b> biểu cảm · <b>Esc</b> đóng bảng</div>`,
     el => {
+      const ssb = el.querySelector("#setShareBtn");
+      if (ssb) ssb.onclick = () => { closeSheet(); $("#shareBtn").click(); };
+      const sfb = el.querySelector("#setFsBtn");
+      if (sfb) sfb.onclick = () => { $("#fsBtn").click(); };
       el.querySelector("#vol").oninput = e => { Sound.setVol(+e.target.value); el.querySelector("#volP").textContent = Math.round(Sound.vol * 100) + "%"; showVol(); };
       el.querySelector("#sLefty").onchange = e => {
         document.body.classList.toggle("lefty", e.target.checked); localStorage.setItem("nc_lefty", e.target.checked ? "1" : "0"); Quick.render();
@@ -2630,6 +2705,7 @@ function openSheet(title, html, bind) {
 }
 function closeSheet() { $("#sheet").classList.add("hidden"); document.body.classList.remove("sheet-open"); }
 $("#sheet").addEventListener("click", e => { if (e.target.id === "sheet") closeSheet(); });
+$("#sheetClose")?.addEventListener("click", () => closeSheet());
 
 function ytControls(slot) {
   const m = media[slot];
@@ -6131,8 +6207,24 @@ function frame() {
       if (myArea === "cinema" && cinemaZone === "hall") continue;
       const txt = d.side === "right" ? `${AREA_NAME[d.to]} →` : d.side === "left" ? `← ${AREA_NAME[d.to]}` : d.side === "bottom" || d.side === "gate" ? `↓ ${AREA_NAME[d.to]}` : `↑ ${AREA_NAME[d.to]}`;
       const lx = d.side === "right" ? d.x - 24 : d.side === "left" ? d.x + 50 : d.x + d.w / 2;
-      const ly = d.side === "gate" ? d.y - 18 : d.custom && d.side === "left" ? d.y - 32 : d.custom && d.side !== "wall" ? d.y - 12 : d.y - 9;
-      label(txt, Math.max(52, Math.min(W - 52, lx)), ly, "#ffe2a8");
+      // Đặt nhãn cao hơn để không đè lên đỉnh đầu nhân vật
+      const ly = d.side === "gate" ? d.y - 36 : d.custom && d.side === "left" ? d.y - 50 : d.custom && d.side !== "wall" ? d.y - 28 : d.y - 28;
+      // Tự động mờ đi khi nhân vật đứng gần hoặc đứng sát cửa
+      const myM = me();
+      let doorAlpha = 1;
+      if (myM) {
+        const tx = d.spot ? d.spot.x : (d.x + d.w / 2);
+        const ty = d.spot ? d.spot.y : (d.y + d.h / 2);
+        const dist = Math.hypot(myM.x - tx, myM.y - ty);
+        if (dist < 40) doorAlpha = 0.15;
+        else if (dist < 85) doorAlpha = 0.15 + (dist - 40) / 45 * 0.85;
+      }
+      if (doorAlpha > 0.05) {
+        ctx.save();
+        ctx.globalAlpha = doorAlpha;
+        label(txt, Math.max(52, Math.min(W - 52, lx)), ly, "#ffe2a8");
+        ctx.restore();
+      }
     }
     if (outdoor() && lightLevel > .05 && !Power.on()) drawFireflies(t);
     if (myArea === "sleep" && !Power.on()) drawFairyLights(t);
