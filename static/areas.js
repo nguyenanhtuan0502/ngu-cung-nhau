@@ -23,7 +23,7 @@ const Areas = (() => {
   Object.assign(LAYOUTS, {
     // Tất cả đã vẽ lại NGANG: ww/wh = kích thước thế giới, floor = vùng đi lại (khớp FLOORS ở server.py)
     farm:    {ww: 1120, wh: 600, floor: {x1: 20, y1: 175, x2: 1100, y2: 585},
-              beds: [{x: 450, y: 470}, {x: 610, y: 470}], bw: 56, bh: 36, sitY: 26,                       // 2 kiện rơm để ngồi
+              beds: [{x: 450, y: 498}, {x: 610, y: 498}], bw: 56, bh: 36, sitY: 26,                       // 2 kiện rơm để ngồi
               tvr: null, scr: null, radio: {x: 796, y: 398, w: 44, h: 26}, sw: OFF, moon: {x: 700, y: 40}},
     fishing: {ww: 1120, wh: 600, floor: {x1: 20, y1: 386, x2: 1100, y2: 585},
               beds: [{x: 170, y: 346}, {x: 330, y: 346}, {x: 730, y: 346}, {x: 890, y: 346}], bw: 70, bh: 56, sitY: 44, minY: 386,
@@ -733,9 +733,10 @@ const Areas = (() => {
 
   // ---------- 5. Nông trại (NGANG 1120x600: ruộng giữa màn hình, cảnh vật nền sau) ----------
   // Bố cục 16 ô đất nông trại (8 cột x 2 hàng), kích thước 58x70, căn giữa khu đất y: 250..432
+  const FIELD_DY = 30;                     // lùi cả ruộng xuống (xa đường làng): ô đất, viền, dây đèn, hàng rào trước, bù nhìn
   const PLOTS = Array.from({length: 16}, (_, i) => ({
     x: 191 + (i % 8) * 64,
-    y: 260 + (i / 8 | 0) * 82,
+    y: 260 + FIELD_DY + (i / 8 | 0) * 82,
     w: 58,
     h: 70
   }));
@@ -1363,11 +1364,11 @@ const Areas = (() => {
   // ---------- 6 cột đèn trang trí khu nông trại & dây đèn fairy lights ----------
   // Các vị trí đặt cột đèn bố trí hài hòa, không cản trở ruộng rau, lối đi, chuồng gà, chuồng bò, giếng, radio, biển exit
   const FARM_LAMPS = [
-    {x: 40, y: 435},   // Bên trái chuồng gà, sát hàng rào trước
-    {x: 170, y: 435},  // Bên phải chuồng gà, dọc hàng rào trước
-    {x: 168, y: 235},  // Góc trên bên trái ruộng rau, cạnh hàng rào sau
-    {x: 725, y: 235},  // Góc trên bên phải ruộng rau, cạnh hàng rào sau & bù nhìn
-    {x: 735, y: 440},  // Góc dưới bên phải ruộng rau, cạnh lối đi & máy radio
+    {x: 40, y: 435 + FIELD_DY},   // Bên trái chuồng gà, sát hàng rào trước
+    {x: 170, y: 435 + FIELD_DY},  // Bên phải chuồng gà, dọc hàng rào trước
+    {x: 168, y: 235 + FIELD_DY},  // Góc trên bên trái ruộng rau, cạnh hàng rào sau
+    {x: 725, y: 235 + FIELD_DY},  // Góc trên bên phải ruộng rau, cạnh hàng rào sau & bù nhìn
+    {x: 735, y: 440 + FIELD_DY},  // Góc dưới bên phải ruộng rau, cạnh lối đi & máy radio
     {x: 940, y: 465},  // Bên cạnh chuồng bò, gần giếng nước
   ];
 
@@ -1583,13 +1584,13 @@ const Areas = (() => {
   // ---------- Dây đèn trang trí & đèn lồng quanh ruộng rau (fairy lights & lamp posts) ----------
   // Bố trí quanh viền ruộng (180..708, 250..432) không che lấp ô đất
   const FIELD_POSTS = [
-    {x: 180, y: 245, corner: true},
-    {x: 312, y: 245},
-    {x: 444, y: 245},
-    {x: 576, y: 245},
-    {x: 708, y: 245, corner: true},
-    {x: 180, y: 430, corner: true},
-    {x: 708, y: 430, corner: true},
+    {x: 180, y: 245 + FIELD_DY, corner: true},
+    {x: 312, y: 245 + FIELD_DY},
+    {x: 444, y: 245 + FIELD_DY},
+    {x: 576, y: 245 + FIELD_DY},
+    {x: 708, y: 245 + FIELD_DY, corner: true},
+    {x: 180, y: 430 + FIELD_DY, corner: true},
+    {x: 708, y: 430 + FIELD_DY, corner: true},
   ];
 
   const FIELD_BULBS = (() => {
@@ -1598,7 +1599,7 @@ const Areas = (() => {
     // Dây đèn dọc mép trên ruộng (4 nhịp uốn cong nhẹ)
     const topXs = [180, 312, 444, 576, 708];
     for (let s = 0; s < topXs.length - 1; s++) {
-      const x1 = topXs[s], x2 = topXs[s + 1], y0 = 244;
+      const x1 = topXs[s], x2 = topXs[s + 1], y0 = 244 + FIELD_DY;
       const count = 4;
       for (let k = 1; k <= count; k++) {
         const u = k / (count + 1);
@@ -1609,7 +1610,7 @@ const Areas = (() => {
     }
     // Dây đèn 2 bên mép ruộng (trái & phải)
     for (const sx of [180, 708]) {
-      const y1 = 246, y2 = 428, count = 3;
+      const y1 = 246 + FIELD_DY, y2 = 428 + FIELD_DY, count = 3;
       for (let k = 1; k <= count; k++) {
         const u = k / (count + 1);
         const by = y1 + (y2 - y1) * u;
@@ -1628,14 +1629,14 @@ const Areas = (() => {
     for (let s = 0; s < topXs.length - 1; s++) {
       const x1 = topXs[s], x2 = topXs[s + 1];
       ctx.beginPath();
-      ctx.moveTo(x1, 244);
-      ctx.quadraticCurveTo((x1 + x2) / 2, 248.5, x2, 244);
+      ctx.moveTo(x1, 244 + FIELD_DY);
+      ctx.quadraticCurveTo((x1 + x2) / 2, 248.5 + FIELD_DY, x2, 244 + FIELD_DY);
       ctx.stroke();
     }
     for (const sx of [180, 708]) {
       ctx.beginPath();
-      ctx.moveTo(sx, 246);
-      ctx.quadraticCurveTo(sx + (sx === 180 ? -2 : 2), 337, sx, 428);
+      ctx.moveTo(sx, 246 + FIELD_DY);
+      ctx.quadraticCurveTo(sx + (sx === 180 ? -2 : 2), 337 + FIELD_DY, sx, 428 + FIELD_DY);
       ctx.stroke();
     }
 
@@ -2055,7 +2056,7 @@ const Areas = (() => {
     for (let x = Math.floor(L / 18) * 18 + 4; x < R; x += 18) { if (x > 454 && x < 660) continue; rr(ctx, x, 210, 5, 22, 2); ctx.fill(); }
 
     // Ruộng 16 ô đất ở giữa màn hình (8 cột x 2 hàng, y: 250..432)
-    ctx.fillStyle = "#8d6346"; rr(ctx, 180, 250, 528, 182, 8); ctx.fill();
+    ctx.fillStyle = "#8d6346"; rr(ctx, 180, 250 + FIELD_DY, 528, 182, 8); ctx.fill();
     const farm = (S() && Array.isArray(S().farm)) ? S().farm : [];
     const land = farm.length;
     PLOTS.forEach((r, i) => {
@@ -2193,10 +2194,10 @@ const Areas = (() => {
     // Kho lương thực (barn / granary) bằng gỗ đỏ/nâu ấm cúng
     drawBarn(t, night);
     // hàng rào trắng phía trước ruộng (có lối vào ở giữa)
-    ctx.fillStyle = "#f8f9fa"; ctx.fillRect(L, 442, 520 - L, 4); ctx.fillRect(L, 454, 520 - L, 4); ctx.fillRect(600, 442, R - 600, 4); ctx.fillRect(600, 454, R - 600, 4);
-    for (let x = Math.floor(L / 18) * 18 + 4; x < R; x += 18) { if (x > 514 && x < 600) continue; rr(ctx, x, 436, 6, 28, 2); ctx.fill(); }
+    ctx.fillStyle = "#f8f9fa"; ctx.fillRect(L, 442 + FIELD_DY, 520 - L, 4); ctx.fillRect(L, 454 + FIELD_DY, 520 - L, 4); ctx.fillRect(600, 442 + FIELD_DY, R - 600, 4); ctx.fillRect(600, 454 + FIELD_DY, R - 600, 4);
+    for (let x = Math.floor(L / 18) * 18 + 4; x < R; x += 18) { if (x > 514 && x < 600) continue; rr(ctx, x, 436 + FIELD_DY, 6, 28, 2); ctx.fill(); }
     // bù nhìn rơm đứng cạnh ruộng (bên phải)
-    ctx.save(); ctx.translate(720, -50);
+    ctx.save(); ctx.translate(720, -50 + FIELD_DY);
     ctx.fillStyle = "#6b4a35"; ctx.fillRect(0, 330, 4, 34); ctx.fillRect(-12, 340 + Math.sin(t * 2) * 1, 28, 3);
     ctx.fillStyle = "#e9c46a"; ctx.beginPath(); ctx.arc(2, 328, 7, 0, 7); ctx.fill(); ctx.fillStyle = "#9c6644"; ctx.fillRect(-6, 318, 16, 4); ctx.fillRect(-3, 312, 10, 6);
     ctx.restore();
@@ -6110,13 +6111,13 @@ const Areas = (() => {
       FARM_LAMPS.forEach(l => hole(l.x, l.y, 90, .75));
       FAIRY_BULBS.forEach(b => hole(b.x, b.y, 24, .45));
       // Vùng sáng cho đèn ruộng: 4 góc và bao phủ toàn bộ cánh đồng cây trồng
-      hole(180, 250, 75, .8);
-      hole(708, 250, 75, .8);
-      hole(180, 430, 75, .8);
-      hole(708, 430, 75, .8);
+      hole(180, 250 + FIELD_DY, 75, .8);
+      hole(708, 250 + FIELD_DY, 75, .8);
+      hole(180, 430 + FIELD_DY, 75, .8);
+      hole(708, 430 + FIELD_DY, 75, .8);
       for (let hx = 225; hx <= 665; hx += 70) {
-        hole(hx, 295, 75, .8);
-        hole(hx, 377, 75, .8);
+        hole(hx, 295 + FIELD_DY, 75, .8);
+        hole(hx, 377 + FIELD_DY, 75, .8);
       }
     }
     if (myArea === "home") {
