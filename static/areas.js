@@ -733,7 +733,7 @@ const Areas = (() => {
 
   // ---------- 5. Nông trại (NGANG 1120x600: ruộng giữa màn hình, cảnh vật nền sau) ----------
   // Bố cục 16 ô đất nông trại (8 cột x 2 hàng), kích thước 58x70, căn giữa khu đất y: 250..432
-  const FIELD_DY = -30;                    // đẩy cả ruộng lên trên (xa lối đi phía dưới): ô đất, viền, dây đèn, hàng rào trước, bù nhìn
+  const FIELD_DY = -45;                    // đẩy cả ruộng lên trên (xa lối đi phía dưới): ô đất, viền, dây đèn, hàng rào trước, bù nhìn
   const PLOTS = Array.from({length: 16}, (_, i) => ({
     x: 191 + (i % 8) * 64,
     y: 260 + FIELD_DY + (i / 8 | 0) * 82,
