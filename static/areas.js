@@ -23,7 +23,7 @@ const Areas = (() => {
   Object.assign(LAYOUTS, {
     // Tất cả đã vẽ lại NGANG: ww/wh = kích thước thế giới, floor = vùng đi lại (khớp FLOORS ở server.py)
     farm:    {ww: 1120, wh: 600, floor: {x1: 20, y1: 175, x2: 1100, y2: 585},
-              beds: [{x: 450, y: 498}, {x: 610, y: 498}], bw: 56, bh: 36, sitY: 26,                       // 2 kiện rơm để ngồi
+              beds: [{x: 450, y: 522}, {x: 610, y: 522}], bw: 56, bh: 36, sitY: 26,                       // 2 kiện rơm để ngồi
               tvr: null, scr: null, radio: {x: 796, y: 398, w: 44, h: 26}, sw: OFF, moon: {x: 700, y: 40}},
     fishing: {ww: 1120, wh: 600, floor: {x1: 20, y1: 386, x2: 1100, y2: 585},
               beds: [{x: 170, y: 346}, {x: 330, y: 346}, {x: 730, y: 346}, {x: 890, y: 346}], bw: 70, bh: 56, sitY: 44, minY: 386,
@@ -733,7 +733,7 @@ const Areas = (() => {
 
   // ---------- 5. Nông trại (NGANG 1120x600: ruộng giữa màn hình, cảnh vật nền sau) ----------
   // Bố cục 16 ô đất nông trại (8 cột x 2 hàng), kích thước 58x70, căn giữa khu đất y: 250..432
-  const FIELD_DY = 30;                     // lùi cả ruộng xuống (xa đường làng): ô đất, viền, dây đèn, hàng rào trước, bù nhìn
+  const FIELD_DY = 55;                     // lùi cả ruộng xuống (xa đường làng): ô đất, viền, dây đèn, hàng rào trước, bù nhìn
   const PLOTS = Array.from({length: 16}, (_, i) => ({
     x: 191 + (i % 8) * 64,
     y: 260 + FIELD_DY + (i / 8 | 0) * 82,
