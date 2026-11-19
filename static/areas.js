@@ -5449,10 +5449,16 @@ const Areas = (() => {
   }
   function openPetShop() {
     openSheet("🐾 Tiệm thú cưng",
-      `${Life.coinLine()}<div class="grid">${PET_SHOP.map(p => `<button class="opt ${myPet.type === p.id ? "active" : ""}" data-p="${p.id}">${p.e} ${p.name}<small>${myPet.type === p.id ? "đang nuôi" : p.price + " 💰"}</small></button>`).join("")}
+      `${Life.coinLine()}${[...new Set(PET_SHOP.map(p => p.group || "Khác"))].map(g => `<div class="sec">${g}</div><div class="grid petgrid">${PET_SHOP.filter(p => (p.group || "Khác") === g).map(p => `<button class="opt petopt ${myPet.type === p.id ? "active" : ""}" data-p="${p.id}"><canvas class="peticon" data-icon="${p.id}" width="96" height="80"></canvas><b>${p.label || p.name}</b><small>${myPet.type === p.id ? "đang nuôi" : p.price + " 💰"}</small></button>`).join("")}</div>`).join("")}
+       <div class="grid" style="margin-top:8px">
        <button class="opt" id="treat">${PET_TREAT.e} ${PET_TREAT.name}<small>${PET_TREAT.price} 💰 · 😊+${PET_TREAT.fun}</small></button></div>
        <div class="vol" style="font-size:12px">Nhận nuôi bé mới thì bé cũ về nhà nghỉ nhé 🏡</div>`,
       el => {
+        // chân dung từng bé (static/pets.js); không có thì hiện emoji
+        el.querySelectorAll("[data-icon]").forEach(cv => {
+          if (typeof Pets !== "undefined" && Pets.has(cv.dataset.icon)) Pets.icon(cv, cv.dataset.icon, 0);
+          else cv.replaceWith(Object.assign(document.createElement("span"), {className: "peticon", textContent: PETS[cv.dataset.icon].e}));
+        });
         el.querySelectorAll("[data-p]").forEach(b => b.onclick = async () => {
           const p = PET_SHOP.find(x => x.id === b.dataset.p);
           if (myPet.type === p.id) return;
@@ -6137,7 +6143,7 @@ const Areas = (() => {
   }
   function setHome(items) { homeItems = Array.isArray(items) ? items : []; }
 
-  return {has: a => NEW.has(a), TXT, draw, seat, ents, tap, holes, act, over: drawSeason, drawAvatar, onJoin, onArea, setHome,
+  return {has: a => NEW.has(a), openPetShop, TXT, draw, seat, ents, tap, holes, act, over: drawSeason, drawAvatar, onJoin, onArea, setHome,
           openWardrobe, owns, ownLabel, cleanOutfit, outfit: () => cleanOutfit(), npcPos, FARM_LAMPS, fishIcon, BARN, openBarn, openAnimals,
           say: (id, text, sec = 4) => { npcTalk[id] = {text, until: performance.now() / 1000 + sec}; }};   // NPC tự nói (tiệm tóc)
 })();
