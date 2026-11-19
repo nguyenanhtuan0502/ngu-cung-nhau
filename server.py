@@ -1060,7 +1060,7 @@ async def revalidate_static(request, handler):
     # (file không đổi thì server chỉ trả 304, rất nhẹ). Không có dòng này, sau khi deploy người chơi có thể
     # còn chạy file js cũ một lúc và lệch với server mới.
     resp = await handler(request)
-    if request.path.startswith("/static/") and "Cache-Control" not in resp.headers:
+    if (request.path == "/" or request.path.startswith("/static/")) and "Cache-Control" not in resp.headers:
         resp.headers["Cache-Control"] = "no-cache"
     return resp
 
