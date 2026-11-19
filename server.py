@@ -241,6 +241,33 @@ def cinema_fill(room, now):
     return False
 
 
+async def cinema_light(room, on, delay=0.0):
+    """Rạp phim tự bật/tắt đèn theo phim (phim chạy: tắt, dừng/hết: bật). delay > 0: đổi sau vài giây (giải lao)."""
+    A = room["areas"].get("cinema")
+    if not A:
+        return
+    task = A.get("_light_task")
+    if task and not task.done():
+        task.cancel()
+
+    async def apply():
+        if A["light"] != on:
+            A["light"] = on
+            await broadcast(room, {"t": "light", "area": "cinema", "on": on, "by": "🎬 Rạp"})
+
+    if not delay:
+        await apply()
+        return
+
+    async def later():
+        try:
+            await asyncio.sleep(delay)
+        except asyncio.CancelledError:
+            return
+        await apply()
+    A["_light_task"] = asyncio.create_task(later())
+
+
 def public_area(a):
     return {"beds": a["beds"], "tv": a["tv"], "music": a["music"], "light": a["light"],
             "media": a["media"], "tvTimer": a["tv_timer"]}
@@ -494,6 +521,7 @@ async def enter(sess, key, info):
              sat_at=None, studied=0.0)
     sid = p["id"]
     if area == "cinema" and cinema_fill(room, time.time()):   # rạp trống / phim lịch đã hết: chiếu phim theo lịch
+        room["areas"]["cinema"]["light"] = False                  # phim đang chiếu: phòng chiếu tắt đèn
         await broadcast(room, {"t": "media", "area": "cinema", "slot": "tv", "a": "sched",
                                "media": room["areas"]["cinema"]["media"]["tv"], "now": time.time(), "by": "🎬 Lịch chiếu"})
     room["players"][sid] = p
@@ -874,6 +902,10 @@ async def ws_handler(request):
                             continue                    # nhiều máy cùng báo hết phim: chỉ đổi 1 lần
                     A["media"]["tv"], A["tv"] = cinema_sched(now), {"on": True, "ch": -1}
                     cancel_tv_timer(A)
+                elif act == "ended":                        # phim (link YouTube) vừa hết: rạp bật đèn
+                    if an == "cinema" and slot == "tv":
+                        await cinema_light(room, True)
+                    continue
                 elif act == "stop":
                     A["media"][slot] = None
                     if slot == "tv":
@@ -883,6 +915,14 @@ async def ws_handler(request):
                     continue
                 await broadcast(room, {"t": "media", "area": an, "slot": slot, "a": act,
                                        "media": A["media"][slot], "now": now, "by": me["name"]})
+                if an == "cinema" and slot == "tv":         # đèn rạp tự động theo phim
+                    if act == "sched" and d.get("end"):     # hết phim theo lịch: bật đèn giải lao 10 giây rồi tắt
+                        await cinema_light(room, True)
+                        await cinema_light(room, False, delay=10)
+                    elif act in ("load", "play", "sched"):
+                        await cinema_light(room, False)
+                    elif act in ("pause", "stop"):
+                        await cinema_light(room, True)
 
             elif t == "light":
                 A["light"] = bool(d.get("on"))

@@ -1843,7 +1843,7 @@ function applyMedia(slot) {
         onReady: () => { p.ready = true; p.pl.setVolume(ytVol(slot)); syncYT(slot); },
         onStateChange: e => {
           // rạp phim: phim theo lịch vừa hết -> báo server chuyển sang phim kế tiếp
-          if (e.data === 0 && slot === "tv" && myArea === "cinema" && media.tv && media.tv.sched) send({t: "media", slot: "tv", a: "sched"});
+          if (e.data === 0 && slot === "tv" && myArea === "cinema" && media.tv) send(media.tv.sched ? {t: "media", slot: "tv", a: "sched", end: true} : {t: "media", slot: "tv", a: "ended"});   // hết phim: rạp tự bật đèn
           if (e.data === 1) {
             p.fails = 0; updateUnlock();
             if (slot === "music") $("#mTitle").textContent = (p.pl.getVideoData() || {}).title || "YouTube";
