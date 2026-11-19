@@ -810,6 +810,20 @@ const Weather = (() => {
   // ---------------------------------------------------------------------------
 
   // Weather.draw(t, out): gọi trước lớp bóng tối darkness
+  // Mức hiệu ứng thời tiết (⚙️ Cài đặt, lưu nc_wfx): full = đầy đủ, light = nhẹ (mặc định), off = tắt hẳn hình ảnh.
+  // Chỉ giảm phần HÌNH (mưa, sương, tối trời); tên thời tiết trên biểu tượng vẫn theo thời tiết thật.
+  const FX_LEVEL = {full: 1, light: 0.4, off: 0};
+  function fxMode() { try { const m = localStorage.getItem('nc_wfx'); return FX_LEVEL[m] !== undefined ? m : 'light'; } catch (e) { return 'light'; } }
+  function setFxMode(m) { if (FX_LEVEL[m] === undefined) return; try { localStorage.setItem('nc_wfx', m); } catch (e) {} }
+  function fxWeights(w) {
+    const k = FX_LEVEL[fxMode()];
+    if (k === 1) return w;
+    const o = {}; let sum = 0;
+    for (const key in w) { if (key === 'clear') continue; o[key] = w[key] * k; sum += o[key]; }
+    o.clear = Math.max(0, 1 - sum);
+    return o;
+  }
+
   function draw(t, out) {
     try {
       if (typeof ctx === 'undefined' || !ctx) return;
@@ -817,8 +831,9 @@ const Weather = (() => {
       lastTimeSeconds = t;
 
       const now = getNow();
-      const weights = getCurrentWeights(now);
-      const dominant = getDominantWeather(weights);
+      const raw = getCurrentWeights(now);
+      const dominant = getDominantWeather(raw);                 // tên thời tiết thật cho biểu tượng
+      const weights = fxWeights(raw);                           // hình ảnh theo mức hiệu ứng đã chọn
       const bounds = getViewBounds();
       const batterySaver = isBatterySaver();
 
@@ -839,8 +854,8 @@ const Weather = (() => {
       if (typeof ctx === 'undefined' || !ctx) return;
       const bounds = getViewBounds();
       const now = getNow();
-      const weights = getCurrentWeights(now);
-      const flashAlpha = getLightningFlashAlpha(t);
+      const weights = fxWeights(getCurrentWeights(now));
+      const flashAlpha = FX_LEVEL[fxMode()] ? getLightningFlashAlpha(t) * FX_LEVEL[fxMode()] : 0;
 
       if (out) {
         // Ngoài trời: Chớp sáng rực rỡ và tia sét chói lòa
@@ -921,7 +936,7 @@ const Weather = (() => {
   function dim() {
     try {
       const now = getNow();
-      const weights = getCurrentWeights(now);
+      const weights = fxWeights(getCurrentWeights(now));
       const extraDim = (
         weights.cloudy * WEATHER_INFO.cloudy.dim +
         weights.rain   * WEATHER_INFO.rain.dim +
@@ -938,7 +953,9 @@ const Weather = (() => {
   return {
     draw,
     top,
-    dim
+    dim,
+    fxMode,
+    setFxMode
   };
 })();
 

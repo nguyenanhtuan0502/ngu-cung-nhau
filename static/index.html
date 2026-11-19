@@ -2385,6 +2385,9 @@ function openSettings() {
      <div class="timers" style="grid-template-columns:repeat(3,1fr)">${[["fixed", "Cố định"], ["float", "Nổi"], ["off", "Ẩn (chạm để đi)"]]
        .map(([k, n]) => `<button data-joy="${k}" class="${joyMode() === k ? "cur" : ""}">${n}</button>`).join("")}</div>
      <div class="vol" style="margin:4px 0 8px;font-size:11.5px">Cố định: chỉ chạm vào cần mới điều khiển · Nổi: chạm vùng bên cạnh là cần nhảy tới · Ẩn: chạm vào đâu nhân vật đi tới đó</div>
+     <div class="sec">🌦️ Hiệu ứng thời tiết (mưa, sương mù, trời tối khi mưa) · chạm biểu tượng thời tiết trên cùng để xem tên</div>
+     <div class="timers" style="grid-template-columns:repeat(3,1fr)">${[["full", "Đầy đủ"], ["light", "Nhẹ"], ["off", "Tắt"]]
+       .map(([k, n]) => `<button data-wfx="${k}" class="${(typeof Weather !== "undefined" && Weather.fxMode ? Weather.fxMode() : "light") === k ? "cur" : ""}">${n}</button>`).join("")}</div>
      ${chk("sLefty", lefty, "🫲 Chơi tay trái (cần bên phải)", "Cần điều khiển sang phải; nút E và thanh nhanh sang trái")}
      ${chk("sAuto", auto, "⏱️ Tự thu gọn thanh nhanh", "Sau 6 giây không chạm thì tự thu vào mép màn hình")}
      ${chk("sFast", fastTravel(), "🚌 Bỏ hiệu ứng chuyển khu", "Đi thẳng tới khu mới, không mờ dần")}
@@ -2410,6 +2413,10 @@ function openSettings() {
       el.querySelector("#sLefty").onchange = e => {
         document.body.classList.toggle("lefty", e.target.checked); localStorage.setItem("nc_lefty", e.target.checked ? "1" : "0"); Quick.render();
       };
+      el.querySelectorAll("[data-wfx]").forEach(b => b.onclick = () => {
+        if (typeof Weather !== "undefined" && Weather.setFxMode) Weather.setFxMode(b.dataset.wfx);
+        el.querySelectorAll("[data-wfx]").forEach(x => x.classList.toggle("cur", x === b));
+      });
       el.querySelectorAll("[data-joy]").forEach(b => b.onclick = () => {
         setJoyMode(b.dataset.joy); el.querySelectorAll("[data-joy]").forEach(x => x.classList.toggle("cur", x === b));
       });
