@@ -1,557 +1,553 @@
-// ================== TÓC NHÂN VẬT (V6 – Tiệm Làm Tóc) ==================
+// ================== TÓC NHÂN VẬT THEO ĐÚNG PHONG CÁCH SVG ==================
 // Kiểu tóc + màu nhuộm lấy từ salon/hair_catalog.json (server gửi qua CATALOG.SALON).
-// File này CHỈ vẽ tóc lên canvas, không có logic mua bán. Nạp TRƯỚC areas.js.
-//
-// Toạ độ chibi (giống drawAvatar trong areas.js): x = giữa người, hy = tâm đầu (đầu là elip rộng 11.2, cao 10.3),
-// hipY = hông (tóc dài buông tới đây). Mỗi kiểu tóc có 3 lớp:
-//   back(g, P)  : tóc phía SAU đầu, vẽ trước thân người (tóc dài, đuôi ngựa, bím…)
-//   front(g, P) : tóc phía TRƯỚC (vòm tóc + mái), vẽ sau mặt
-//   view(g, P)  : nhìn từ SAU lưng (nhân vật đi lên trên màn hình), vẽ thay cho mặt
-// P = {x, hy, hipY, c (màu tóc), hl (màu ánh sáng), line (viền), sh (bóng), male}
+// Vẽ theo chuẩn phong cách SVG (viền nâu ấm #6b4a3a, màu phẳng, vệt sáng cong trên đỉnh đầu).
+// Tối ưu tốc độ cao: không gradient, không shadow, giảm thiểu beginPath, cache màu nhuộm.
 "use strict";
 
 const Hair = (() => {
-  const SAL = CATALOG.SALON;
-  const STY = Object.fromEntries(SAL.hairstyles.map(h => [h.id, h]));
-  const DYE = Object.fromEntries(SAL.dyes.map(d => [d.id, d]));
+  const SAL = (typeof CATALOG !== "undefined" && CATALOG.SALON) || { hairstyles: [], dyes: [], default: { hair: "short", hairColor: "nau" } };
+  const STY = Object.fromEntries((SAL.hairstyles || []).map(h => [h.id, h]));
+  const DYE = Object.fromEntries((SAL.dyes || []).map(d => [d.id, d]));
   // Tóc bản cũ (trước V6) → kiểu/màu mới (NPC, dữ liệu cũ còn dùng mã cũ)
-  const OLD_HAIR = {hair_short: "short", hair_long: "long", hair_bun: "twinbun", hair_spiky: "spiky"};
-  const OLD_COLOR = {hc_brown: "naudam", hc_black: "den", hc_blonde: "vang", hc_pink: "hong", hc_blue: "xanh", hc_silver: "bac"};
-  const style = id => STY[id] ? id : OLD_HAIR[id] || SAL.default.hair;
-  const dye = id => DYE[id] || DYE[OLD_COLOR[id]] || DYE[SAL.default.hairColor];
+  const OLD_HAIR = { hair_short: "short", hair_long: "long", hair_bun: "twinbun", hair_spiky: "spiky" };
+  const OLD_COLOR = { hc_brown: "naudam", hc_black: "den", hc_blonde: "vang", hc_pink: "hong", hc_blue: "xanh", hc_silver: "bac" };
+  const style = id => STY[id] ? id : OLD_HAIR[id] || (SAL.default && SAL.default.hair) || "short";
+  const dye = id => DYE[id] || DYE[OLD_COLOR[id]] || (SAL.default && DYE[SAL.default.hairColor]) || { hair: "#7a4a30", hl: "#a8704c" };
 
-  function tone(hex, amt) {                          // amt > 0: sáng hơn, < 0: tối hơn
-    const n = parseInt(String(hex).slice(1), 16); if (isNaN(n)) return hex;
+  // Bộ nhớ đệm màu giúp không phải tính toán chuỗi hex mỗi khung hình
+  const TONE_CACHE = new Map();
+  function tone(hex, amt) {
+    const key = `${hex}_${amt}`;
+    let res = TONE_CACHE.get(key);
+    if (res !== undefined) return res;
+    const n = parseInt(String(hex).slice(1), 16);
+    if (isNaN(n)) { TONE_CACHE.set(key, hex); return hex; }
     const f = v => Math.round(amt >= 0 ? v + (255 - v) * amt : v * (1 + amt));
-    return "#" + [n >> 16, (n >> 8) & 255, n & 255].map(v => f(v).toString(16).padStart(2, "0")).join("");
+    res = "#" + [n >> 16, (n >> 8) & 255, n & 255].map(v => f(v).toString(16).padStart(2, "0")).join("");
+    TONE_CACHE.set(key, res);
+    return res;
   }
+
+  // Thông số vẽ tóc
   function params(colorId, x, hy, hipY, male) {
     const d = dye(colorId);
-    return {x, hy, hipY, male, c: d.hair, hl: d.hl, line: tone(d.hair, -.45), sh: tone(d.hair, -.18), dark: tone(d.hair, -.1)};
+    return {
+      x, hy, hipY, male,
+      c: d.hair,
+      hl: d.hl,
+      line: "#6b4a3a",
+      dark: tone(d.hair, -0.12),
+      sh: tone(d.hair, -0.2)
+    };
   }
-  function ink(g, P, w = .85) { g.lineWidth = w; g.strokeStyle = P.line; g.lineJoin = "round"; g.lineCap = "round"; }
 
-  // ---------- Mảnh ghép dùng chung ----------
-  // Tóc gáy sau đầu (làm đầu tròn đầy hơn)
-  function nape(g, P) {
-    const {x, hy} = P; g.fillStyle = P.dark; ink(g, P, .8);
-    g.beginPath(); g.ellipse(x, hy + .5, 12, 10.6, 0, 0, Math.PI); g.fill(); g.stroke();
+  // Viền nâu ấm đều nét đặc trưng (#6b4a3a, nét 4, round)
+  function ink(g, w = 4) {
+    g.lineWidth = w;
+    g.strokeStyle = "#6b4a3a";
+    g.lineJoin = "round";
+    g.lineCap = "round";
   }
-  // Mảng tóc dài buông sau lưng tới hông. w = độ xoè hai bên, wave = gợn sóng ở đuôi
-  function longBack(g, P, w = 1, wave = 0) {
-    const {x, hy, hipY} = P; g.fillStyle = P.dark; ink(g, P, .8);
-    g.beginPath(); g.moveTo(x - 11 * w, hy - 3);
-    g.bezierCurveTo(x - 14.5 * w, hy + 9, x - 12.5 * w, hipY - 3, x - 8.5 * w, hipY);
-    if (wave) {                                       // đuôi tóc gợn sóng
-      for (let k = 0; k < 4; k++) { const a = x - 8.5 * w + (k + 1) * 17 * w / 4; g.quadraticCurveTo(a - 2 * w, hipY + (k % 2 ? -wave : wave), a, hipY); }
-    } else {
-      g.quadraticCurveTo(x - 4, hipY - 2.4, x, hipY - .6); g.quadraticCurveTo(x + 4, hipY - 2.4, x + 8.5 * w, hipY);
-    }
-    g.bezierCurveTo(x + 12.5 * w, hipY - 3, x + 14.5 * w, hy + 9, x + 11 * w, hy - 3); g.closePath(); g.fill(); g.stroke();
-  }
-  // Vòm tóc + 2 lọn mai + mái răng cưa. side = lọn mai dài xuống bao nhiêu, tips = mũi mái [x, y] từ phải sang trái
-  const TIPS_SOFT = [[6.6, -.8], [3.6, -.1], [.4, -1.4], [-2.8, -.2], [-6, -1], [-9.6, -2.2]];
-  const TIPS_MESSY = [[6.4, -1.4], [3.2, -.2], [0, -1.8], [-3.2, -.4], [-6.4, -1.6], [-9.6, -2.2]];
-  function dome(g, P, {side = 4, tips = TIPS_SOFT, depth = 5.6} = {}) {
-    const {x, hy} = P; g.fillStyle = P.c; ink(g, P);
-    g.beginPath(); g.moveTo(x - 11.8, hy + side);
-    g.bezierCurveTo(x - 13.6, hy - 8.8, x - 7.4, hy - 13.6, x, hy - 13.4);
-    g.bezierCurveTo(x + 7.4, hy - 13.6, x + 13.6, hy - 8.8, x + 11.8, hy + side);
-    g.quadraticCurveTo(x + 10.6, hy, x + 9.6, hy - 2.2);
-    let px = 9.6;
-    for (const [tx, ty] of tips) { g.quadraticCurveTo(x + (px + tx) / 2, hy - depth, x + tx, hy + ty); px = tx; }
-    g.quadraticCurveTo(x - 10.6, hy, x - 11.8, hy + side);
-    g.closePath(); g.fill(); g.stroke();
-    g.fillStyle = P.sh; g.globalAlpha = .55;                                       // bóng mềm bên phải
-    g.beginPath(); g.moveTo(x + 11.8, hy + side); g.quadraticCurveTo(x + 13, hy - 6, x + 6, hy - 12); g.quadraticCurveTo(x + 10, hy - 6, x + 9.6, hy - 2.2); g.closePath(); g.fill();
+
+  // Vệt sáng cong trên đỉnh tóc (đặc trưng từ mẫu SVG)
+  function shine(g, P, dy = 0) {
+    g.strokeStyle = P.hl;
+    g.lineWidth = 9;
+    g.lineCap = "round";
+    g.globalAlpha = 0.8;
+    g.beginPath();
+    g.moveTo(120, 112 + dy);
+    g.quadraticCurveTo(160, 88 + dy, 214, 96 + dy);
+    g.stroke();
     g.globalAlpha = 1;
   }
-  // Vòng sáng anime trên tóc (dùng màu hl của thuốc nhuộm)
-  function shine(g, P, r = 9.4, dy = -2.5) {
-    const {x, hy} = P;
-    g.strokeStyle = P.hl; g.lineWidth = 1.5; g.lineCap = "round";
-    g.beginPath(); g.arc(x, hy + dy, r, Math.PI * 1.16, Math.PI * 1.38); g.stroke();
-    g.beginPath(); g.arc(x, hy + dy, r, Math.PI * 1.5, Math.PI * 1.62); g.stroke();
-    g.fillStyle = "rgba(255,255,255,.7)"; g.beginPath(); g.arc(x - 6.3, hy - 9.6, .7, 0, 7); g.fill();
-  }
-  // Sợi tóc vểnh trên đỉnh
-  function strand(g, P) {
-    const {x, hy} = P; g.strokeStyle = P.c; g.lineWidth = 1.3;
-    g.beginPath(); g.moveTo(x + .5, hy - 13); g.quadraticCurveTo(x + 2, hy - 17.5, x + 5.2, hy - 15.6); g.stroke();
-  }
-  // Nhìn từ sau: cả đầu phủ tóc + đường rẽ tóc + vệt sáng
-  function viewBase(g, P) {
-    const {x, hy} = P; g.fillStyle = P.c; ink(g, P);
-    g.beginPath(); g.ellipse(x, hy - .6, 12, 11.4, 0, 0, 7); g.fill(); g.stroke();
-    g.strokeStyle = tone(P.c, -.2); g.lineWidth = .7;
-    for (const dx of [-4, 0, 4]) { g.beginPath(); g.moveTo(x + dx * .4, hy - 9); g.quadraticCurveTo(x + dx, hy, x + dx * 1.3, hy + 9); g.stroke(); }
-    g.strokeStyle = P.hl; g.lineWidth = 1.4; g.beginPath(); g.arc(x, hy - 1, 9.5, Math.PI * 1.2, Math.PI * 1.45); g.stroke();
-  }
-  function viewLong(g, P) {
-    const {x, hy, hipY} = P; g.fillStyle = P.c; ink(g, P);
-    g.beginPath(); g.moveTo(x - 11.5, hy); g.bezierCurveTo(x - 13.5, hy + 10, x - 11, hipY - 2, x - 7, hipY); g.lineTo(x + 7, hipY);
-    g.bezierCurveTo(x + 11, hipY - 2, x + 13.5, hy + 10, x + 11.5, hy); g.closePath(); g.fill(); g.stroke();
-  }
-  function buns(g, P, dx = 9.4, dy = -9.6, r = 4.4) {           // 2 búi tròn
-    const {x, hy} = P;
-    for (const s of [-1, 1]) {
-      g.fillStyle = P.c; ink(g, P); g.beginPath(); g.arc(x + s * dx, hy + dy, r, 0, 7); g.fill(); g.stroke();
-      g.fillStyle = P.hl; g.beginPath(); g.arc(x + s * dx - 1.3, hy + dy - 1.4, r * .27, 0, 7); g.fill();
-    }
-  }
-  function spikes(g, P, list) {                                 // các mũi tóc nhọn [dx, cao, rộng]
-    const {x, hy} = P; g.fillStyle = P.c; ink(g, P); g.beginPath();
-    for (const [dx, h, w] of list) {
-      g.moveTo(x + dx - w, hy - 10.4 + Math.abs(dx) * .2); g.lineTo(x + dx + .8, hy - 12 - h); g.lineTo(x + dx + w, hy - 10.4 + Math.abs(dx) * .2);
-    }
+
+  // Tóc gáy ngắn (An, Khôi)
+  function nape(g, P, dy) {
+    g.fillStyle = P.c; ink(g, 4);
+    g.beginPath();
+    g.moveTo(64, 222 + dy);
+    g.quadraticCurveTo(62, 66 + dy, 200, 62 + dy);
+    g.quadraticCurveTo(338, 66 + dy, 336, 222 + dy);
+    g.closePath();
     g.fill(); g.stroke();
   }
-  const TIPS_HIGH = [[6.6, -1.2], [3.6, -1.0], [.4, -1.5], [-2.8, -1.0], [-6, -1.2], [-9.6, -2.2]];
-  function wavyBack(g, P, fillCol) {
-    const {x, hy, hipY} = P; g.fillStyle = fillCol; ink(g, P, .8);
-    g.beginPath(); g.moveTo(x - 11, hy - 3);
-    g.bezierCurveTo(x - 15.5, hy + 4, x - 12, hy + 9, x - 15.5, hy + 14);
-    g.bezierCurveTo(x - 16.5, hy + 18, x - 12.5, hipY - 2, x - 9, hipY);
-    for (let k = 0; k < 4; k++) {
-      const a = x - 9 + (k + 1) * 18 / 4;
-      g.quadraticCurveTo(a - 2.2, hipY + (k % 2 ? -2.2 : 2.2), a, hipY);
-    }
-    g.bezierCurveTo(x + 12.5, hipY - 2, x + 16.5, hy + 18, x + 15.5, hy + 14);
-    g.bezierCurveTo(x + 12, hy + 9, x + 15.5, hy + 4, x + 11, hy - 3);
-    g.closePath(); g.fill(); g.stroke();
-  }
-  function topBun(g, P) {
-    const {x, hy} = P;
-    g.fillStyle = P.c; ink(g, P);
-    g.beginPath(); g.arc(x, hy - 14.8, 5.2, 0, 7); g.fill(); g.stroke();
-    g.strokeStyle = P.hl; g.lineWidth = 1.3; g.lineCap = "round";
-    g.beginPath(); g.arc(x, hy - 14.8, 3.2, Math.PI * 1.15, Math.PI * 1.6); g.stroke();
-    g.fillStyle = tone(P.c, -.35); ink(g, P, .7);
-    g.beginPath(); g.ellipse(x, hy - 11.2, 3.2, 1.4, 0, 0, 7); g.fill(); g.stroke();
-  }
-  function braidSide(g, P) {
-    const {x, hy} = P;
-    const nodes = [[-11.5, 5.5, 4.0], [-12.8, 11.2, 3.7], [-13.8, 16.5, 3.4]];
-    for (const [nx, ny, nr] of nodes) {
-      g.fillStyle = P.c; ink(g, P);
-      g.beginPath(); g.arc(x + nx, hy + ny, nr, 0, 7); g.fill(); g.stroke();
-      g.strokeStyle = tone(P.c, -.25); g.lineWidth = .7;
-      g.beginPath(); g.arc(x + nx, hy + ny, nr * .6, Math.PI * .8, Math.PI * 1.8); g.stroke();
-      g.fillStyle = P.hl; g.beginPath(); g.arc(x + nx - nr * .3, hy + ny - nr * .3, nr * .28, 0, 7); g.fill();
-    }
-    g.fillStyle = tone(P.c, -.35); ink(g, P, .7);
-    g.beginPath(); g.ellipse(x - 14, hy + 20.2, 1.6, 1, 0, 0, 7); g.fill(); g.stroke();
-    g.fillStyle = P.c; ink(g, P, .7);
-    g.beginPath(); g.moveTo(x - 14, hy + 21.2); g.lineTo(x - 15.2, hy + 23.8); g.lineTo(x - 12.8, hy + 23.8); g.closePath(); g.fill(); g.stroke();
-  }
-  const CURLYB_OUTER = [
-    [-11.5, 2, 3.4], [-11.8, -3.5, 3.5], [-9, -8.5, 3.6], [-4.5, -12.5, 3.6], [0, -13.2, 3.6],
-    [4.5, -12.5, 3.6], [9, -8.5, 3.6], [11.8, -3.5, 3.5], [11.5, 2, 3.4],
-  ];
-  const CURLYB_BANGS = [
-    [-7.2, -3.4, 2.2], [-3.6, -3.8, 2.3], [0, -4.0, 2.4], [3.6, -3.8, 2.3], [7.2, -3.4, 2.2],
-  ];
-  const CURLY_OUTER = [
-    [-13.5, 3.5, 4.4], [-15.2, -2, 4.8], [-14.5, -8, 5], [-10, -13, 5.2], [-4, -15.2, 5.2],
-    [4, -15.2, 5.2], [10, -13, 5.2], [14.5, -8, 5], [15.2, -2, 4.8], [13.5, 3.5, 4.4],
-  ];
-  const CURLY_BANGS = [
-    [-5.5, -4.5, 3.2], [0, -5.0, 3.4], [5.5, -4.5, 3.2],
-  ];
 
-  // ---------- 16 kiểu tóc ----------
-  // Mặc định của mọi kiểu (kiểu nào chưa khai báo lớp nào thì dùng lớp này)
-  const BASE = {
-    back: (g, P) => nape(g, P),
-    front: (g, P) => { dome(g, P, {side: P.male ? 1.8 : 4, tips: P.male ? TIPS_MESSY : TIPS_SOFT, depth: P.male ? 6.8 : 5.6}); shine(g, P); },
-    view: (g, P) => viewBase(g, P),
-  };
+  // Tóc dài buông sau lưng (Linh)
+  function longBack(g, P, dy) {
+    g.fillStyle = P.c; ink(g, 4);
+    g.beginPath();
+    g.moveTo(52, 222 + dy);
+    g.quadraticCurveTo(48, 60 + dy, 200, 56 + dy);
+    g.quadraticCurveTo(352, 60 + dy, 348, 222 + dy);
+    g.lineTo(362, 440 + dy);
+    g.quadraticCurveTo(330, 470 + dy, 300, 440 + dy);
+    g.lineTo(100, 440 + dy);
+    g.quadraticCurveTo(70, 470 + dy, 38, 440 + dy);
+    g.closePath();
+    g.fill(); g.stroke();
+  }
+
+  // Tóc bob sau lưng (Mia)
+  function bobBack(g, P, dy) {
+    g.fillStyle = P.c; ink(g, 4);
+    g.beginPath();
+    g.moveTo(56, 222 + dy);
+    g.quadraticCurveTo(52, 62 + dy, 200, 58 + dy);
+    g.quadraticCurveTo(348, 62 + dy, 344, 222 + dy);
+    g.lineTo(350, 320 + dy);
+    g.quadraticCurveTo(326, 340 + dy, 306, 316 + dy);
+    g.lineTo(94, 316 + dy);
+    g.quadraticCurveTo(74, 340 + dy, 50, 320 + dy);
+    g.closePath();
+    g.fill(); g.stroke();
+  }
+
+  // Mái lượn sóng phía trước của nữ (Mia / Linh)
+  function femaleBangs(g, P, dy) {
+    g.fillStyle = P.c; ink(g, 4);
+    g.beginPath();
+    g.moveTo(66, 214 + dy);
+    g.quadraticCurveTo(70, 78 + dy, 200, 74 + dy);
+    g.quadraticCurveTo(330, 78 + dy, 334, 214 + dy);
+    g.quadraticCurveTo(316, 170 + dy, 286, 150 + dy);
+    g.quadraticCurveTo(262, 190 + dy, 232, 156 + dy);
+    g.quadraticCurveTo(214, 196 + dy, 190, 154 + dy);
+    g.quadraticCurveTo(166, 192 + dy, 142, 152 + dy);
+    g.quadraticCurveTo(104, 166 + dy, 66, 214 + dy);
+    g.closePath();
+    g.fill(); g.stroke();
+    shine(g, P, dy);
+  }
+
+  // Mái tóc ngắn gọn của nam (An)
+  function maleBangs(g, P, dy) {
+    g.fillStyle = P.c; ink(g, 4);
+    g.beginPath();
+    g.moveTo(66, 214 + dy);
+    g.quadraticCurveTo(64, 80 + dy, 200, 76 + dy);
+    g.quadraticCurveTo(336, 80 + dy, 334, 214 + dy);
+    g.quadraticCurveTo(322, 160 + dy, 296, 142 + dy);
+    g.quadraticCurveTo(250, 172 + dy, 200, 140 + dy);
+    g.quadraticCurveTo(150, 168 + dy, 104, 146 + dy);
+    g.quadraticCurveTo(76, 168 + dy, 66, 214 + dy);
+    g.closePath();
+    g.fill(); g.stroke();
+    shine(g, P, dy);
+  }
+
+  // Mái tóc nhọn cá tính (Khôi)
+  function spikyBangs(g, P, dy) {
+    g.fillStyle = P.c; ink(g, 4);
+    g.beginPath();
+    g.moveTo(62, 214 + dy);
+    g.quadraticCurveTo(58, 120 + dy, 84, 98 + dy);
+    g.lineTo(92, 56 + dy);
+    g.lineTo(130, 88 + dy);
+    g.lineTo(160, 36 + dy);
+    g.lineTo(192, 84 + dy);
+    g.lineTo(232, 30 + dy);
+    g.lineTo(250, 86 + dy);
+    g.lineTo(296, 50 + dy);
+    g.lineTo(306, 100 + dy);
+    g.lineTo(334, 96 + dy);
+    g.quadraticCurveTo(344, 130 + dy, 338, 214 + dy);
+    g.quadraticCurveTo(322, 160 + dy, 296, 142 + dy);
+    g.quadraticCurveTo(250, 172 + dy, 200, 140 + dy);
+    g.quadraticCurveTo(150, 168 + dy, 104, 146 + dy);
+    g.quadraticCurveTo(76, 168 + dy, 62, 214 + dy);
+    g.closePath();
+    g.fill(); g.stroke();
+  }
+
+  // Khối nhìn từ sau lưng (nhân vật quay lưng)
+  function viewBase(g, P, dy) {
+    g.fillStyle = P.c; ink(g, 4);
+    g.beginPath();
+    g.moveTo(56, 222 + dy);
+    g.quadraticCurveTo(52, 60 + dy, 200, 56 + dy);
+    g.quadraticCurveTo(348, 60 + dy, 344, 222 + dy);
+    g.quadraticCurveTo(328, 320 + dy, 200, 324 + dy);
+    g.quadraticCurveTo(72, 320 + dy, 56, 222 + dy);
+    g.closePath();
+    g.fill(); g.stroke();
+    // Vệt sáng sau đầu
+    g.strokeStyle = P.hl; g.lineWidth = 8; g.lineCap = "round"; g.globalAlpha = 0.7;
+    g.beginPath();
+    g.moveTo(130, 108 + dy); g.quadraticCurveTo(170, 88 + dy, 220, 96 + dy);
+    g.stroke();
+    g.globalAlpha = 1;
+  }
+
+  // 16 kiểu tóc trong game
   const STYLES = {
-    short: {                                                     // Ngắn gọn (kiểu mặc định)
-      front: (g, P) => { BASE.front(g, P); strand(g, P); },
+    short: {
+      back: (g, P, dy) => nape(g, P, dy),
+      front: (g, P, dy) => (P.male ? maleBangs(g, P, dy) : femaleBangs(g, P, dy)),
+      view: (g, P, dy) => viewBase(g, P, dy)
     },
-    long: {                                                      // Dài thẳng
-      back: (g, P) => longBack(g, P),
-      front: (g, P) => { dome(g, P, {side: 8.5}); shine(g, P); strand(g, P); },
-      view: (g, P) => { viewLong(g, P); viewBase(g, P); },
+    bob: {
+      back: (g, P, dy) => bobBack(g, P, dy),
+      front: (g, P, dy) => femaleBangs(g, P, dy),
+      view: (g, P, dy) => { bobBack(g, P, dy); viewBase(g, P, dy); }
     },
-    twinbun: {                                                   // Hai búi
-      front: (g, P) => { buns(g, P); BASE.front(g, P); },
-      view: (g, P) => { buns(g, P); viewBase(g, P); },
-    },
-    spiky: {                                                     // Tóc nhọn
-      front: (g, P) => { spikes(g, P, [[-8, 4, 3.2], [-4, 6.5, 3.4], [.5, 7.5, 3.4], [5, 6, 3.2], [8.6, 3.5, 3]]); dome(g, P, {side: P.male ? 1.8 : 4, tips: TIPS_MESSY, depth: 6.8}); shine(g, P); },
-      view: (g, P) => { viewBase(g, P); spikes(g, P, [[-6, 5, 3], [-1, 6, 3.2], [4, 5, 3.2]]); },
-    },
-    bob: {                                                       // Bob (tóc ngang cằm ôm mặt)
-      back: (g, P) => {
-        nape(g, P);
-        const {x, hy} = P; g.fillStyle = P.dark; ink(g, P, .8);
-        g.beginPath(); g.moveTo(x - 12.5, hy);
-        g.bezierCurveTo(x - 14.5, hy + 4, x - 13.5, hy + 8.5, x - 9.5, hy + 9.5);
-        g.quadraticCurveTo(x, hy + 10.5, x + 9.5, hy + 9.5);
-        g.bezierCurveTo(x + 13.5, hy + 8.5, x + 14.5, hy + 4, x + 12.5, hy);
-        g.closePath(); g.fill(); g.stroke();
-      },
-      front: (g, P) => {
-        const {x, hy} = P; g.fillStyle = P.c; ink(g, P);
-        g.beginPath(); g.moveTo(x - 13.5, hy + 8.5);
-        g.bezierCurveTo(x - 14.2, hy - 4, x - 7.4, hy - 13.6, x, hy - 13.4);
-        g.bezierCurveTo(x + 7.4, hy - 13.6, x + 14.2, hy - 4, x + 13.5, hy + 8.5);
-        g.quadraticCurveTo(x + 11.5, hy + 8, x + 9.6, hy - 2.2);
-        let px = 9.6;
-        for (const [tx, ty] of TIPS_HIGH) { g.quadraticCurveTo(x + (px + tx) / 2, hy - 5.6, x + tx, hy + ty); px = tx; }
-        g.quadraticCurveTo(x - 11.5, hy + 8, x - 13.5, hy + 8.5);
-        g.closePath(); g.fill(); g.stroke();
-        shine(g, P);
-      },
-      view: (g, P) => {
-        const {x, hy} = P; g.fillStyle = P.c; ink(g, P);
-        g.beginPath(); g.moveTo(x - 13.5, hy + 8.5);
-        g.bezierCurveTo(x - 14.2, hy - 4, x - 7.4, hy - 13.6, x, hy - 13.4);
-        g.bezierCurveTo(x + 7.4, hy - 13.6, x + 14.2, hy - 4, x + 13.5, hy + 8.5);
-        g.quadraticCurveTo(x + 11.5, hy + 9.8, x + 8, hy + 10.2);
-        g.quadraticCurveTo(x, hy + 10.8, x - 8, hy + 10.2);
-        g.quadraticCurveTo(x - 11.5, hy + 9.8, x - 13.5, hy + 8.5);
-        g.closePath(); g.fill(); g.stroke();
-        g.strokeStyle = tone(P.c, -.2); g.lineWidth = .7;
-        for (const dx of [-4, 0, 4]) { g.beginPath(); g.moveTo(x + dx * .4, hy - 9); g.quadraticCurveTo(x + dx, hy, x + dx * 1.3, hy + 8.5); g.stroke(); }
-        shine(g, P);
-      },
-    },
-    side: {                                                      // Rẽ ngôi (mái rẽ lệch một bên)
-      front: (g, P) => {
-        const {x, hy} = P; g.fillStyle = P.c; ink(g, P);
-        g.beginPath(); g.moveTo(x - 11.8, hy + 2);
-        g.bezierCurveTo(x - 13.6, hy - 8.8, x - 7.4, hy - 13.6, x, hy - 13.4);
-        g.bezierCurveTo(x + 7.4, hy - 13.6, x + 13.6, hy - 8.8, x + 11.8, hy + 2);
-        g.quadraticCurveTo(x + 10.6, hy, x + 9.6, hy - 1.5);
-        g.quadraticCurveTo(x + 3.5, hy - 3.2, x - 3.5, hy - 6.5);
-        g.quadraticCurveTo(x - 7, hy - 3.2, x - 9.6, hy - 1.5);
-        g.quadraticCurveTo(x - 10.6, hy, x - 11.8, hy + 2);
-        g.closePath(); g.fill(); g.stroke();
-        g.strokeStyle = P.line; g.lineWidth = .7;
-        g.beginPath(); g.moveTo(x - 3.5, hy - 6.5); g.quadraticCurveTo(x - 2.5, hy - 10.5, x - 1.5, hy - 13.4); g.stroke();
-        shine(g, P);
-      },
-      view: (g, P) => {
-        const {x, hy} = P; viewBase(g, P);
-        g.strokeStyle = P.line; g.lineWidth = .75;
-        g.beginPath(); g.moveTo(x - 2, hy - 12); g.quadraticCurveTo(x - 3, hy - 4, x - 2, hy + 8); g.stroke();
-      },
-    },
-    pony: {                                                      // Đuôi ngựa (đuôi buộc sau lệch phải buông xuống)
-      back: (g, P) => {
-        nape(g, P);
-        const {x, hy} = P;
-        g.fillStyle = P.c; ink(g, P);
+    long: {
+      back: (g, P, dy) => longBack(g, P, dy),
+      front: (g, P, dy) => {
+        // Lọn tóc dài thả hai bên vai
+        g.fillStyle = P.c; ink(g, 4);
         g.beginPath();
-        g.moveTo(x + 6, hy - 4);
-        g.bezierCurveTo(x + 13, hy - 6, x + 18.8, hy - 1, x + 18.2, hy + 6);
-        g.bezierCurveTo(x + 17.5, hy + 10.5, x + 15.5, hy + 13.5, x + 12.5, hy + 15);
-        g.quadraticCurveTo(x + 11.5, hy + 9.5, x + 7, hy);
+        g.moveTo(66, 214 + dy); g.lineTo(54, 320 + dy); g.lineTo(76, 310 + dy); g.lineTo(82, 220 + dy);
+        g.moveTo(334, 214 + dy); g.lineTo(346, 320 + dy); g.lineTo(324, 310 + dy); g.lineTo(318, 220 + dy);
         g.closePath(); g.fill(); g.stroke();
-        g.strokeStyle = P.hl; g.lineWidth = 1.3; g.lineCap = "round";
-        g.beginPath(); g.moveTo(x + 10, hy - 4.5); g.quadraticCurveTo(x + 17.5, hy + 1, x + 14.5, hy + 10); g.stroke();
+        femaleBangs(g, P, dy);
       },
-      front: (g, P) => { dome(g, P, {tips: TIPS_HIGH}); shine(g, P); strand(g, P); },
-      view: (g, P) => {
-        const {x, hy} = P; viewBase(g, P);
-        g.fillStyle = P.c; ink(g, P);
+      view: (g, P, dy) => { longBack(g, P, dy); viewBase(g, P, dy); }
+    },
+    spiky: {
+      back: (g, P, dy) => nape(g, P, dy),
+      front: (g, P, dy) => spikyBangs(g, P, dy),
+      view: (g, P, dy) => { viewBase(g, P, dy); spikyBangs(g, P, dy); }
+    },
+    twinbun: {
+      back: (g, P, dy) => nape(g, P, dy),
+      front: (g, P, dy) => {
+        // Hai búi tóc tròn hai bên
+        g.fillStyle = P.c; ink(g, 4);
+        for (const bx of [100, 300]) {
+          g.beginPath(); g.arc(bx, 95 + dy, 40, 0, 6.2831853); g.fill(); g.stroke();
+          g.strokeStyle = P.hl; g.lineWidth = 5; g.beginPath();
+          g.arc(bx, 95 + dy, 26, 3.8, 5.8); g.stroke();
+        }
+        femaleBangs(g, P, dy);
+      },
+      view: (g, P, dy) => {
+        g.fillStyle = P.c; ink(g, 4);
+        for (const bx of [100, 300]) {
+          g.beginPath(); g.arc(bx, 95 + dy, 40, 0, 6.2831853); g.fill(); g.stroke();
+        }
+        viewBase(g, P, dy);
+      }
+    },
+    side: {
+      back: (g, P, dy) => nape(g, P, dy),
+      front: (g, P, dy) => {
+        // Mái rẽ ngôi lệch
+        g.fillStyle = P.c; ink(g, 4);
         g.beginPath();
-        g.moveTo(x + 6, hy - 4);
-        g.bezierCurveTo(x + 13, hy - 6, x + 18.8, hy - 1, x + 18.2, hy + 6);
-        g.bezierCurveTo(x + 17.5, hy + 10.5, x + 15.5, hy + 13.5, x + 12.5, hy + 15);
-        g.quadraticCurveTo(x + 11.5, hy + 9.5, x + 7, hy);
+        g.moveTo(66, 214 + dy);
+        g.quadraticCurveTo(70, 78 + dy, 200, 74 + dy);
+        g.quadraticCurveTo(330, 78 + dy, 334, 214 + dy);
+        g.quadraticCurveTo(320, 160 + dy, 296, 146 + dy);
+        g.quadraticCurveTo(230, 170 + dy, 160, 140 + dy);
+        g.quadraticCurveTo(110, 170 + dy, 66, 214 + dy);
+        g.closePath();
+        g.fill(); g.stroke();
+        shine(g, P, dy);
+      },
+      view: (g, P, dy) => viewBase(g, P, dy)
+    },
+    pony: {
+      back: (g, P, dy) => {
+        nape(g, P, dy);
+        // Đuôi ngựa buông bên phải
+        g.fillStyle = P.c; ink(g, 4);
+        g.beginPath();
+        g.moveTo(310, 150 + dy);
+        g.quadraticCurveTo(375, 140 + dy, 365, 250 + dy);
+        g.quadraticCurveTo(350, 320 + dy, 320, 340 + dy);
+        g.quadraticCurveTo(338, 250 + dy, 312, 190 + dy);
         g.closePath(); g.fill(); g.stroke();
-        g.fillStyle = tone(P.c, -.35); ink(g, P, .7);
-        g.beginPath(); g.ellipse(x + 6.5, hy - 3.5, 2, 2.8, 0.4, 0, 7); g.fill(); g.stroke();
-        g.strokeStyle = P.hl; g.lineWidth = 1.3; g.lineCap = "round";
-        g.beginPath(); g.moveTo(x + 10, hy - 4.5); g.quadraticCurveTo(x + 17.5, hy + 1, x + 14.5, hy + 10); g.stroke();
+        // Dây buộc tóc
+        g.fillStyle = P.dark; g.beginPath();
+        g.ellipse(312, 165 + dy, 14, 18, 0.4, 0, 6.2831853);
+        g.fill(); g.stroke();
       },
-    },
-    twin: {                                                      // Hai bím (2 chùm tóc buộc hai bên tai)
-      back: (g, P) => {
-        nape(g, P);
-        const {x, hy} = P;
-        for (const s of [-1, 1]) {
-          g.fillStyle = P.c; ink(g, P);
-          g.beginPath();
-          g.ellipse(x + s * 14.8, hy + 6.2, 4.8, 5.4, s * .2, 0, 7);
-          g.fill(); g.stroke();
-          g.fillStyle = P.hl; g.beginPath();
-          g.arc(x + s * 14.2, hy + 4.8, 1.5, 0, 7); g.fill();
-        }
-      },
-      front: (g, P) => {
-        dome(g, P, {tips: TIPS_HIGH}); shine(g, P);
-        const {x, hy} = P;
-        for (const s of [-1, 1]) {
-          g.fillStyle = tone(P.c, -.35); ink(g, P, .7);
-          g.beginPath(); g.ellipse(x + s * 12.2, hy + 2.5, 1.5, 2.2, s * .3, 0, 7); g.fill(); g.stroke();
-        }
-      },
-      view: (g, P) => {
-        const {x, hy} = P;
-        for (const s of [-1, 1]) {
-          g.fillStyle = P.c; ink(g, P);
-          g.beginPath();
-          g.ellipse(x + s * 14.8, hy + 6.2, 4.8, 5.4, s * .2, 0, 7);
-          g.fill(); g.stroke();
-          g.fillStyle = P.hl; g.beginPath();
-          g.arc(x + s * 14.2, hy + 4.8, 1.5, 0, 7); g.fill();
-        }
-        viewBase(g, P);
-        g.strokeStyle = tone(P.c, -.2); g.lineWidth = .7;
-        for (const s of [-1, 1]) {
-          g.beginPath(); g.moveTo(x + s * 3, hy - 6); g.quadraticCurveTo(x + s * 7, hy - 2, x + s * 12, hy + 2.5); g.stroke();
-          g.beginPath(); g.moveTo(x + s * 4, hy + 6); g.quadraticCurveTo(x + s * 8, hy + 4, x + s * 12, hy + 2.5); g.stroke();
-          g.fillStyle = tone(P.c, -.35); ink(g, P, .7);
-          g.beginPath(); g.ellipse(x + s * 12.2, hy + 2.5, 1.5, 2.2, s * .3, 0, 7); g.fill(); g.stroke();
-        }
-      },
-    },
-    wavy: {                                                      // Dài gợn sóng (dài tới hông, đuôi lượn sóng)
-      back: (g, P) => wavyBack(g, P, P.dark),
-      front: (g, P) => {
-        const {x, hy} = P;
-        for (const s of [-1, 1]) {
-          g.fillStyle = P.c; ink(g, P);
-          g.beginPath();
-          g.moveTo(x + s * 10, hy + 2);
-          g.bezierCurveTo(x + s * 14.5, hy + 6, x + s * 11, hy + 10, x + s * 14, hy + 14);
-          g.quadraticCurveTo(x + s * 12.5, hy + 17.5, x + s * 9.5, hy + 16.5);
-          g.bezierCurveTo(x + s * 8.5, hy + 12, x + s * 11.5, hy + 8, x + s * 8.2, hy + 3);
-          g.closePath(); g.fill(); g.stroke();
-        }
-        dome(g, P, {side: 6, tips: TIPS_HIGH}); shine(g, P); strand(g, P);
-      },
-      view: (g, P) => {
-        wavyBack(g, P, P.c); viewBase(g, P);
-        const {x, hy, hipY} = P;
-        g.strokeStyle = tone(P.c, -.18); g.lineWidth = .7;
-        for (const dx of [-4, 0, 4]) {
-          g.beginPath();
-          g.moveTo(x + dx * .6, hy + 6);
-          g.quadraticCurveTo(x + dx * 1.5, hy + 13, x + dx, hipY - 2);
-          g.stroke();
-        }
-      },
-    },
-    bun: {                                                       // Búi cao (1 búi tròn trên đỉnh)
-      front: (g, P) => { dome(g, P, {tips: TIPS_HIGH}); shine(g, P); topBun(g, P); },
-      view: (g, P) => {
-        viewBase(g, P);
-        const {x, hy} = P;
-        g.strokeStyle = tone(P.c, -.2); g.lineWidth = .7;
-        for (const dx of [-5, 0, 5]) {
-          g.beginPath(); g.moveTo(x + dx, hy + 6); g.quadraticCurveTo(x + dx * .5, hy - 4, x, hy - 11); g.stroke();
-        }
-        topBun(g, P);
-      },
-    },
-    mushroom: {                                                  // Tóc nấm (mái bằng tròn như cái nấm)
-      back: (g, P) => {
-        const {x, hy} = P; g.fillStyle = P.dark; ink(g, P, .8);
-        g.beginPath(); g.ellipse(x, hy + 1.2, 12.2, 8.5, 0, 0, Math.PI); g.fill(); g.stroke();
-      },
-      front: (g, P) => {
-        const {x, hy} = P; g.fillStyle = P.c; ink(g, P);
+      front: (g, P, dy) => femaleBangs(g, P, dy),
+      view: (g, P, dy) => {
+        viewBase(g, P, dy);
+        g.fillStyle = P.c; ink(g, 4);
         g.beginPath();
-        g.moveTo(x - 12.8, hy + 5);
-        g.bezierCurveTo(x - 14.2, hy - 8.8, x - 7.4, hy - 13.8, x, hy - 13.6);
-        g.bezierCurveTo(x + 7.4, hy - 13.8, x + 14.2, hy - 8.8, x + 12.8, hy + 5);
-        g.quadraticCurveTo(x + 11.5, hy + 2, x + 9, hy - 1.3);
-        g.quadraticCurveTo(x, hy - 1.8, x - 9, hy - 1.3);
-        g.quadraticCurveTo(x - 11.5, hy + 2, x - 12.8, hy + 5);
+        g.moveTo(310, 150 + dy);
+        g.quadraticCurveTo(375, 140 + dy, 365, 250 + dy);
+        g.quadraticCurveTo(350, 320 + dy, 320, 340 + dy);
+        g.quadraticCurveTo(338, 250 + dy, 312, 190 + dy);
         g.closePath(); g.fill(); g.stroke();
-        shine(g, P);
-      },
-      view: (g, P) => {
-        const {x, hy} = P; g.fillStyle = P.c; ink(g, P);
+      }
+    },
+    twin: {
+      back: (g, P, dy) => {
+        nape(g, P, dy);
+        // Hai chùm tóc hai bên
+        g.fillStyle = P.c; ink(g, 4);
         g.beginPath();
-        g.moveTo(x - 12.8, hy + 5);
-        g.bezierCurveTo(x - 14.2, hy - 8.8, x - 7.4, hy - 13.8, x, hy - 13.6);
-        g.bezierCurveTo(x + 7.4, hy - 13.8, x + 14.2, hy - 8.8, x + 12.8, hy + 5);
-        g.quadraticCurveTo(x, hy + 7.2, x - 12.8, hy + 5);
+        g.ellipse(60, 260 + dy, 32, 48, -0.2, 0, 6.2831853);
+        g.ellipse(340, 260 + dy, 32, 48, 0.2, 0, 6.2831853);
+        g.fill(); g.stroke();
+      },
+      front: (g, P, dy) => {
+        femaleBangs(g, P, dy);
+        // Nơ/dây buộc tóc hai bên
+        g.fillStyle = P.dark; ink(g, 3);
+        g.beginPath();
+        g.ellipse(74, 226 + dy, 12, 16, -0.3, 0, 6.2831853);
+        g.ellipse(326, 226 + dy, 12, 16, 0.3, 0, 6.2831853);
+        g.fill(); g.stroke();
+      },
+      view: (g, P, dy) => {
+        g.fillStyle = P.c; ink(g, 4);
+        g.beginPath();
+        g.ellipse(60, 260 + dy, 32, 48, -0.2, 0, 6.2831853);
+        g.ellipse(340, 260 + dy, 32, 48, 0.2, 0, 6.2831853);
+        g.fill(); g.stroke();
+        viewBase(g, P, dy);
+      }
+    },
+    wavy: {
+      back: (g, P, dy) => {
+        // Tóc gợn sóng buông dài
+        g.fillStyle = P.c; ink(g, 4);
+        g.beginPath();
+        g.moveTo(52, 222 + dy);
+        g.quadraticCurveTo(46, 60 + dy, 200, 56 + dy);
+        g.quadraticCurveTo(354, 60 + dy, 348, 222 + dy);
+        g.bezierCurveTo(365, 270 + dy, 340, 330 + dy, 360, 390 + dy);
+        g.lineTo(350, 446 + dy);
+        g.quadraticCurveTo(320, 470 + dy, 290, 446 + dy);
+        g.quadraticCurveTo(260, 470 + dy, 230, 446 + dy);
+        g.quadraticCurveTo(200, 470 + dy, 170, 446 + dy);
+        g.quadraticCurveTo(140, 470 + dy, 110, 446 + dy);
+        g.lineTo(50, 446 + dy);
+        g.bezierCurveTo(40, 390 + dy, 60, 330 + dy, 35, 270 + dy);
+        g.closePath();
+        g.fill(); g.stroke();
+      },
+      front: (g, P, dy) => {
+        // Lọn sóng xoăn thả hai bên ngực
+        g.fillStyle = P.c; ink(g, 4);
+        g.beginPath();
+        g.moveTo(66, 214 + dy); g.quadraticCurveTo(45, 270 + dy, 60, 320 + dy);
+        g.quadraticCurveTo(80, 310 + dy, 84, 220 + dy);
+        g.moveTo(334, 214 + dy); g.quadraticCurveTo(355, 270 + dy, 340, 320 + dy);
+        g.quadraticCurveTo(320, 310 + dy, 316, 220 + dy);
         g.closePath(); g.fill(); g.stroke();
-        g.strokeStyle = tone(P.c, -.2); g.lineWidth = .7;
-        for (const dx of [-4, 0, 4]) { g.beginPath(); g.moveTo(x + dx * .4, hy - 9); g.quadraticCurveTo(x + dx, hy - 1, x + dx * 1.2, hy + 4); g.stroke(); }
-        shine(g, P);
+        femaleBangs(g, P, dy);
       },
+      view: (g, P, dy) => {
+        STYLES.wavy.back(g, P, dy);
+        viewBase(g, P, dy);
+      }
     },
-    curlyb: {                                                    // Xoăn ngắn (vòm tóc gồm nhiều lọn tròn nhỏ)
-      front: (g, P) => {
-        const {x, hy} = P;
-        g.fillStyle = P.c; g.beginPath(); g.ellipse(x, hy - 3.5, 11.5, 10, 0, 0, 7); g.fill();
-        for (const [dx, dy, r] of CURLYB_OUTER) {
-          g.fillStyle = P.c; ink(g, P, .8);
-          g.beginPath(); g.arc(x + dx, hy + dy, r, 0, 7); g.fill(); g.stroke();
-          g.fillStyle = P.hl; g.beginPath(); g.arc(x + dx - r * .3, hy + dy - r * .3, r * .28, 0, 7); g.fill();
-        }
-        for (const [dx, dy, r] of CURLYB_BANGS) {
-          g.fillStyle = P.c; ink(g, P, .8);
-          g.beginPath(); g.arc(x + dx, hy + dy, r, 0, 7); g.fill(); g.stroke();
-          g.fillStyle = P.hl; g.beginPath(); g.arc(x + dx - r * .25, hy + dy - r * .25, r * .28, 0, 7); g.fill();
-        }
+    bun: {
+      back: (g, P, dy) => nape(g, P, dy),
+      front: (g, P, dy) => {
+        // Búi tóc cao trên đỉnh
+        g.fillStyle = P.c; ink(g, 4);
+        g.beginPath(); g.arc(200, 50 + dy, 46, 0, 6.2831853); g.fill(); g.stroke();
+        g.strokeStyle = P.hl; g.lineWidth = 5; g.beginPath();
+        g.arc(200, 50 + dy, 32, 3.7, 5.7); g.stroke();
+        g.fillStyle = P.dark; g.beginPath();
+        g.ellipse(200, 88 + dy, 24, 12, 0, 0, 6.2831853); g.fill(); g.stroke();
+        femaleBangs(g, P, dy);
       },
-      view: (g, P) => {
-        const {x, hy} = P; viewBase(g, P);
-        for (const [dx, dy, r] of CURLYB_OUTER) {
-          g.fillStyle = P.c; ink(g, P, .8);
-          g.beginPath(); g.arc(x + dx, hy + dy, r, 0, 7); g.fill(); g.stroke();
-          g.fillStyle = P.hl; g.beginPath(); g.arc(x + dx - r * .3, hy + dy - r * .3, r * .28, 0, 7); g.fill();
-        }
-        for (const [dx, dy] of [[-4, -6], [4, -6], [0, -2], [-5, 3], [0, 5], [5, 3]]) {
-          g.fillStyle = P.c; ink(g, P, .8);
-          g.beginPath(); g.arc(x + dx, hy + dy, 2.7, 0, 7); g.fill(); g.stroke();
-        }
-      },
+      view: (g, P, dy) => {
+        viewBase(g, P, dy);
+        g.fillStyle = P.c; ink(g, 4);
+        g.beginPath(); g.arc(200, 50 + dy, 46, 0, 6.2831853); g.fill(); g.stroke();
+      }
     },
-    braid: {                                                     // Tóc tết (bím tết thả một bên vai, các đốt tròn)
-      front: (g, P) => { dome(g, P, {tips: TIPS_HIGH}); shine(g, P); braidSide(g, P); },
-      view: (g, P) => {
-        viewBase(g, P);
-        const {x, hy} = P;
-        g.strokeStyle = tone(P.c, -.2); g.lineWidth = .7;
-        for (const dy of [-4, 0, 4]) {
-          g.beginPath(); g.moveTo(x + 4, hy + dy * .8); g.quadraticCurveTo(x - 4, hy + 2 + dy * .5, x - 11, hy + 5); g.stroke();
-        }
-        braidSide(g, P);
-      },
-    },
-    slick: {                                                     // Vuốt ngược (tóc vuốt ra sau, lộ trán, có chóp nhỏ phía sau)
-      front: (g, P) => {
-        const {x, hy} = P; g.fillStyle = P.c; ink(g, P);
+    mushroom: {
+      back: (g, P, dy) => {
+        g.fillStyle = P.c; ink(g, 4);
         g.beginPath();
-        g.moveTo(x - 11.2, hy + 1.5);
-        g.bezierCurveTo(x - 13.5, hy - 8.8, x - 7, hy - 13.6, x - 1.5, hy - 13.5);
-        g.lineTo(x + 1.5, hy - 16.8);
-        g.lineTo(x + 4, hy - 13.5);
-        g.bezierCurveTo(x + 7.5, hy - 13.6, x + 13.5, hy - 8.8, x + 11.2, hy + 1.5);
-        g.quadraticCurveTo(x + 10.5, hy, x + 9.5, hy - 1.2);
-        g.quadraticCurveTo(x, hy - 5.8, x - 9.5, hy - 1.2);
-        g.quadraticCurveTo(x - 10.5, hy, x - 11.2, hy + 1.5);
+        g.ellipse(200, 220 + dy, 134, 100, 0, 0, Math.PI);
+        g.fill(); g.stroke();
+      },
+      front: (g, P, dy) => {
+        // Tóc nấm vòm tròn mái bằng
+        g.fillStyle = P.c; ink(g, 4);
+        g.beginPath();
+        g.moveTo(64, 214 + dy);
+        g.quadraticCurveTo(68, 76 + dy, 200, 74 + dy);
+        g.quadraticCurveTo(332, 76 + dy, 336, 214 + dy);
+        g.quadraticCurveTo(320, 175 + dy, 280, 166 + dy);
+        g.quadraticCurveTo(200, 168 + dy, 120, 166 + dy);
+        g.quadraticCurveTo(80, 175 + dy, 64, 214 + dy);
+        g.closePath();
+        g.fill(); g.stroke();
+        shine(g, P, dy);
+      },
+      view: (g, P, dy) => {
+        g.fillStyle = P.c; ink(g, 4);
+        g.beginPath();
+        g.moveTo(64, 214 + dy);
+        g.quadraticCurveTo(68, 76 + dy, 200, 74 + dy);
+        g.quadraticCurveTo(332, 76 + dy, 336, 214 + dy);
+        g.quadraticCurveTo(200, 270 + dy, 64, 214 + dy);
+        g.closePath();
+        g.fill(); g.stroke();
+        shine(g, P, dy);
+      }
+    },
+    curlyb: {
+      back: (g, P, dy) => nape(g, P, dy),
+      front: (g, P, dy) => {
+        // Xoăn ngắn: các lọn tròn bo viền
+        g.fillStyle = P.c; ink(g, 4);
+        g.beginPath();
+        g.arc(80, 180 + dy, 30, 0, 6.2831853);
+        g.arc(110, 130 + dy, 32, 0, 6.2831853);
+        g.arc(160, 90 + dy, 34, 0, 6.2831853);
+        g.arc(210, 85 + dy, 35, 0, 6.2831853);
+        g.arc(260, 95 + dy, 34, 0, 6.2831853);
+        g.arc(300, 140 + dy, 32, 0, 6.2831853);
+        g.arc(320, 185 + dy, 30, 0, 6.2831853);
+        g.fill(); g.stroke();
+        femaleBangs(g, P, dy);
+      },
+      view: (g, P, dy) => {
+        g.fillStyle = P.c; ink(g, 4);
+        g.beginPath();
+        g.arc(80, 180 + dy, 30, 0, 6.2831853);
+        g.arc(110, 130 + dy, 32, 0, 6.2831853);
+        g.arc(160, 90 + dy, 34, 0, 6.2831853);
+        g.arc(210, 85 + dy, 35, 0, 6.2831853);
+        g.arc(260, 95 + dy, 34, 0, 6.2831853);
+        g.arc(300, 140 + dy, 32, 0, 6.2831853);
+        g.arc(320, 185 + dy, 30, 0, 6.2831853);
+        g.fill(); g.stroke();
+        viewBase(g, P, dy);
+      }
+    },
+    braid: {
+      back: (g, P, dy) => nape(g, P, dy),
+      front: (g, P, dy) => {
+        // Bím tết thả một bên vai
+        femaleBangs(g, P, dy);
+        g.fillStyle = P.c; ink(g, 4);
+        for (const [nx, ny, nr] of [[92, 250, 24], [86, 290, 22], [82, 330, 20]]) {
+          g.beginPath(); g.arc(nx, ny + dy, nr, 0, 6.2831853); g.fill(); g.stroke();
+        }
+        g.fillStyle = P.dark; g.beginPath();
+        g.ellipse(82, 360 + dy, 12, 8, 0, 0, 6.2831853); g.fill(); g.stroke();
+        g.fillStyle = P.c; g.beginPath();
+        g.moveTo(82, 365 + dy); g.lineTo(74, 390 + dy); g.lineTo(90, 390 + dy); g.closePath();
+        g.fill(); g.stroke();
+      },
+      view: (g, P, dy) => {
+        viewBase(g, P, dy);
+        g.fillStyle = P.c; ink(g, 4);
+        for (const [nx, ny, nr] of [[92, 250, 24], [86, 290, 22], [82, 330, 20]]) {
+          g.beginPath(); g.arc(nx, ny + dy, nr, 0, 6.2831853); g.fill(); g.stroke();
+        }
+      }
+    },
+    slick: {
+      back: (g, P, dy) => nape(g, P, dy),
+      front: (g, P, dy) => {
+        // Tóc vuốt ngược lộ trán
+        g.fillStyle = P.c; ink(g, 4);
+        g.beginPath();
+        g.moveTo(76, 214 + dy);
+        g.quadraticCurveTo(68, 80 + dy, 185, 50 + dy);
+        g.lineTo(200, 24 + dy);
+        g.lineTo(215, 50 + dy);
+        g.quadraticCurveTo(332, 80 + dy, 324, 214 + dy);
+        g.quadraticCurveTo(310, 160 + dy, 200, 150 + dy);
+        g.quadraticCurveTo(90, 160 + dy, 76, 214 + dy);
+        g.closePath();
+        g.fill(); g.stroke();
+        shine(g, P, dy - 20);
+      },
+      view: (g, P, dy) => {
+        viewBase(g, P, dy);
+        g.fillStyle = P.c; ink(g, 4);
+        g.beginPath();
+        g.moveTo(185, 52 + dy); g.lineTo(200, 24 + dy); g.lineTo(215, 52 + dy);
         g.closePath(); g.fill(); g.stroke();
-        g.strokeStyle = tone(P.c, -.2); g.lineWidth = .7;
-        for (const dx of [-5, -2, 2, 5]) {
-          g.beginPath(); g.moveTo(x + dx, hy - 5); g.quadraticCurveTo(x + dx * .8, hy - 9, x + dx * .5, hy - 13); g.stroke();
-        }
-        shine(g, P, 9, -4);
-      },
-      view: (g, P) => {
-        const {x, hy} = P; viewBase(g, P);
-        g.fillStyle = P.c; ink(g, P);
-        g.beginPath();
-        g.moveTo(x - 1.5, hy - 13.2); g.lineTo(x + 1.5, hy - 16.8); g.lineTo(x + 4, hy - 13.2);
-        g.closePath(); g.fill(); g.stroke();
-      },
+      }
     },
-    curly: {                                                     // Xoăn bồng (quả bông nhiều lọn tròn to phủ quanh đầu)
-      back: (g, P) => {
-        nape(g, P);
-        const {x, hy} = P;
-        for (const [dx, dy, r] of CURLY_OUTER) {
-          g.fillStyle = P.dark; ink(g, P, .8);
-          g.beginPath(); g.arc(x + dx, hy + dy, r, 0, 7); g.fill(); g.stroke();
-        }
-      },
-      front: (g, P) => {
-        const {x, hy} = P;
-        g.fillStyle = P.c; g.beginPath(); g.ellipse(x, hy - 3.5, 12, 10.5, 0, 0, 7); g.fill();
-        for (const [dx, dy, r] of CURLY_OUTER) {
-          g.fillStyle = P.c; ink(g, P, .8);
-          g.beginPath(); g.arc(x + dx, hy + dy, r, 0, 7); g.fill(); g.stroke();
-          g.fillStyle = P.hl; g.beginPath(); g.arc(x + dx - r * .3, hy + dy - r * .3, r * .28, 0, 7); g.fill();
-          g.strokeStyle = tone(P.c, -.2); g.lineWidth = .7;
-          g.beginPath(); g.arc(x + dx, hy + dy, r * .55, 0, Math.PI * 1.2); g.stroke();
-        }
-        for (const [dx, dy, r] of CURLY_BANGS) {
-          g.fillStyle = P.c; ink(g, P, .8);
-          g.beginPath(); g.arc(x + dx, hy + dy, r, 0, 7); g.fill(); g.stroke();
-          g.fillStyle = P.hl; g.beginPath(); g.arc(x + dx - r * .3, hy + dy - r * .3, r * .28, 0, 7); g.fill();
-          g.strokeStyle = tone(P.c, -.2); g.lineWidth = .7;
-          g.beginPath(); g.arc(x + dx, hy + dy, r * .55, 0, Math.PI * 1.2); g.stroke();
-        }
-      },
-      view: (g, P) => {
-        const {x, hy} = P; viewBase(g, P);
-        for (const [dx, dy, r] of CURLY_OUTER) {
-          g.fillStyle = P.c; ink(g, P, .8);
-          g.beginPath(); g.arc(x + dx, hy + dy, r, 0, 7); g.fill(); g.stroke();
-          g.fillStyle = P.hl; g.beginPath(); g.arc(x + dx - r * .3, hy + dy - r * .3, r * .28, 0, 7); g.fill();
-          g.strokeStyle = tone(P.c, -.2); g.lineWidth = .7;
-          g.beginPath(); g.arc(x + dx, hy + dy, r * .55, 0, Math.PI * 1.2); g.stroke();
-        }
-        for (const [dx, dy] of [[-4, -6], [4, -6], [0, 0]]) {
-          g.fillStyle = P.c; ink(g, P, .8);
-          g.beginPath(); g.arc(x + dx, hy + dy, 4.2, 0, 7); g.fill(); g.stroke();
-          g.strokeStyle = tone(P.c, -.2); g.lineWidth = .7;
-          g.beginPath(); g.arc(x + dx, hy + dy, 2.2, 0, Math.PI * 1.2); g.stroke();
-        }
-      },
-    },
-    mohawk: {                                                    // Mohican (một dải tóc dựng giữa đầu, hai bên cạo ngắn)
-      front: (g, P) => {
-        const {x, hy} = P;
-        g.fillStyle = P.sh; g.globalAlpha = .28;
+    curly: {
+      back: (g, P, dy) => {
+        // Quả bông xoăn lớn quanh đầu
+        g.fillStyle = P.c; ink(g, 4);
         g.beginPath();
-        g.ellipse(x - 7.5, hy - 2, 4, 6, -.2, 0, 7);
-        g.ellipse(x + 7.5, hy - 2, 4, 6, .2, 0, 7);
+        g.arc(70, 210 + dy, 48, 0, 6.2831853);
+        g.arc(80, 130 + dy, 52, 0, 6.2831853);
+        g.arc(140, 70 + dy, 56, 0, 6.2831853);
+        g.arc(200, 50 + dy, 58, 0, 6.2831853);
+        g.arc(260, 70 + dy, 56, 0, 6.2831853);
+        g.arc(320, 130 + dy, 52, 0, 6.2831853);
+        g.arc(330, 210 + dy, 48, 0, 6.2831853);
+        g.fill(); g.stroke();
+      },
+      front: (g, P, dy) => {
+        femaleBangs(g, P, dy);
+      },
+      view: (g, P, dy) => {
+        STYLES.curly.back(g, P, dy);
+        viewBase(g, P, dy);
+      }
+    },
+    mohawk: {
+      back: (g, P, dy) => nape(g, P, dy),
+      front: (g, P, dy) => {
+        // Hai bên cạo sát
+        g.fillStyle = P.sh; g.globalAlpha = 0.25;
+        g.beginPath();
+        g.ellipse(110, 190 + dy, 35, 55, -0.2, 0, 6.2831853);
+        g.ellipse(290, 190 + dy, 35, 55, 0.2, 0, 6.2831853);
         g.fill();
         g.globalAlpha = 1;
-        g.fillStyle = P.c; ink(g, P);
+        // Dải tóc dựng ở giữa đỉnh đầu
+        g.fillStyle = P.c; ink(g, 4);
         g.beginPath();
-        g.moveTo(x, hy - 4.5);
-        g.quadraticCurveTo(x - 3.8, hy - 8, x - 3.5, hy - 14);
-        g.lineTo(x - 2.5, hy - 16.5);
-        g.lineTo(x - 1, hy - 17.5);
-        g.lineTo(x, hy - 20);
-        g.lineTo(x + 1.2, hy - 17.5);
-        g.lineTo(x + 2.5, hy - 16.5);
-        g.lineTo(x + 3.5, hy - 14);
-        g.quadraticCurveTo(x + 3.8, hy - 8, x, hy - 4.5);
-        g.closePath(); g.fill(); g.stroke();
-        g.strokeStyle = P.hl; g.lineWidth = 1.3; g.lineCap = "round";
-        g.beginPath(); g.moveTo(x, hy - 6); g.lineTo(x, hy - 19); g.stroke();
+        g.moveTo(175, 180 + dy);
+        g.lineTo(170, 60 + dy);
+        g.lineTo(200, 18 + dy);
+        g.lineTo(230, 60 + dy);
+        g.lineTo(225, 180 + dy);
+        g.closePath();
+        g.fill(); g.stroke();
+        g.strokeStyle = P.hl; g.lineWidth = 5; g.beginPath();
+        g.moveTo(200, 30 + dy); g.lineTo(200, 160 + dy); g.stroke();
       },
-      view: (g, P) => {
-        const {x, hy} = P;
-        g.fillStyle = tone(P.c, .2); g.globalAlpha = .18;
-        g.beginPath(); g.ellipse(x, hy - .6, 12, 11.4, 0, 0, 7); g.fill();
-        g.globalAlpha = 1;
-        g.fillStyle = P.sh; g.globalAlpha = .28;
+      view: (g, P, dy) => {
+        viewBase(g, P, dy);
+        g.fillStyle = P.c; ink(g, 4);
         g.beginPath();
-        g.ellipse(x - 7.5, hy - 2, 4, 6, -.2, 0, 7);
-        g.ellipse(x + 7.5, hy - 2, 4, 6, .2, 0, 7);
-        g.fill();
-        g.globalAlpha = 1;
-        g.fillStyle = P.c; ink(g, P);
-        g.beginPath();
-        g.moveTo(x - 3.5, hy + 7);
-        g.lineTo(x - 3.5, hy - 14);
-        g.lineTo(x - 2.5, hy - 16.5);
-        g.lineTo(x - 1, hy - 17.5);
-        g.lineTo(x, hy - 20);
-        g.lineTo(x + 1.2, hy - 17.5);
-        g.lineTo(x + 2.5, hy - 16.5);
-        g.lineTo(x + 3.5, hy - 14);
-        g.lineTo(x + 3.5, hy + 7);
+        g.moveTo(180, 270 + dy); g.lineTo(180, 50 + dy);
+        g.lineTo(200, 18 + dy);
+        g.lineTo(220, 50 + dy); g.lineTo(220, 270 + dy);
         g.closePath(); g.fill(); g.stroke();
-        g.strokeStyle = P.hl; g.lineWidth = 1.3; g.lineCap = "round";
-        g.beginPath(); g.moveTo(x, hy + 6); g.lineTo(x, hy - 19); g.stroke();
-      },
-    },
+      }
+    }
   };
 
+  // Điều phối vẽ từng lớp tóc
   function draw(layer, g, id, colorId, x, hy, hipY, male) {
-    const s = STYLES[style(id)] || {}, f = s[layer] || BASE[layer];
-    g.save(); try { f(g, params(colorId, x, hy, hipY, male)); } finally { g.restore(); }
+    const s = STYLES[style(id)] || STYLES.short;
+    const f = s[layer] || STYLES.short[layer];
+    if (!f) return;
+    // Kiểm tra toạ độ chibi cũ hay hệ toạ độ SVG
+    const isChibi = Math.abs(hy) < 100;
+    if (isChibi) {
+      g.save();
+      g.translate(x, hy);
+      g.scale(11.2 / 130, 11.2 / 130);
+      g.translate(-200, -215);
+      f(g, params(colorId, 200, 215, 215 + (hipY - hy) * (130 / 11.2), male), 0);
+      g.restore();
+    } else {
+      const dy = hy - 215;
+      f(g, params(colorId, x, hy, hipY, male), dy);
+    }
   }
+
   return {
     STY, DYE, style, dye, tone,
     back: (g, id, col, x, hy, hipY, male) => draw("back", g, id, col, x, hy, hipY, male),
     front: (g, id, col, x, hy, hipY, male) => draw("front", g, id, col, x, hy, hipY, male),
-    view: (g, id, col, x, hy, hipY, male) => draw("view", g, id, col, x, hy, hipY, male),
+    view: (g, id, col, x, hy, hipY, male) => draw("view", g, id, col, x, hy, hipY, male)
   };
 })();

@@ -50,240 +50,622 @@ const Areas = (() => {
     home:    {icon: "🏠", sit: "😴<span>Nằm nghỉ</span>", full: "Hết nệm rồi! 😅", taken: "Nệm của", hello: "Nhà riêng 🏠 của bạn: bấm 🛋️ Bày đồ để đặt nội thất mua ở khu mua sắm.", share: "Chơi game cuộc sống ảo với mình nè 🏠"},
   };
 
-  // ---------- 2. Avatar CHIBI: đầu to (~1/2 chiều cao), mắt to long lanh, thân nhỏ gọn, viền mềm ----------
-  // Thứ tự lớp: cánh/lưng → tóc sau → chân + giày → áo → tay → phụ kiện cổ → đầu → mặt → tóc trước → kính → mũ
-  // Hình vẽ bằng code (hình tạm). Khi có ảnh thật: thay từng lớp bằng PNG cùng tên lớp, giữ nguyên toạ độ neo (vai, hông, tâm đầu).
+  // ---------- 2. Avatar NHÂN VẬT CHIBI CHUẨN MẪU SVG (400x600) ----------
+  // Phong cách: viền nâu ấm #6b4a3a đều nét, màu phẳng sáng sạch, đầu rất to tròn có 2 tai nhỏ hai bên,
+  // mắt to long lanh nâu ấm 2 chấm sáng, thân nhỏ gọn, bóng đổ elip đen mờ dưới chân.
+  // Tối ưu hiệu năng: không gradient, không clip, gom path giảm beginPath, cache màu.
   const outfitOf = p => ({...DEFAULT_OUTFIT, ...(p.outfit || {})});
-  const SKIN = "#ffe2cc", SKIN_SH = "#f4c3a3", INK = "#3a2219";
-  const LONG_SLEEVE = new Set(["shirt_hoodie", "shirt_suit", "shirt_yellow"]);
-  // Pha màu luôn trả về dạng #rrggbb (amt > 0: sáng hơn, < 0: tối hơn) để tô bóng nhiều lớp không bị hỏng màu
+  const INK = "#6b4a3a";
+  const SKIN_DEFAULT = "#ffe0c8";
+  const NECK_DEFAULT = "#f2b99b";
+  const EYE_DARK = "#3a2a2a";
+  const IRIS_BROWN = "#8a5a38";
+  const PUPIL_BLACK = "#2a1c1c";
+  const BLUSH_F = "rgba(255,143,163,0.55)";
+  const BLUSH_M = "rgba(255,143,163,0.35)";
+  const SHADOW_COLOR = "rgba(0,0,0,0.16)";
+  const PI2 = Math.PI * 2;
+  const SCALE_K = 46 / 500; // Tỉ lệ scale để nhân vật cao ~46 đơn vị từ chân lên đầu
+
+  // Bộ nhớ đệm màu giúp không phải tính toán chuỗi hex mỗi khung hình
+  const COLOR_CACHE = new Map();
   function tone(hex, amt) {
-    const n = parseInt(String(hex).slice(1), 16); if (isNaN(n)) return hex;
+    const key = `${hex}_${amt}`;
+    let res = COLOR_CACHE.get(key);
+    if (res !== undefined) return res;
+    const n = parseInt(String(hex).slice(1), 16);
+    if (isNaN(n)) { COLOR_CACHE.set(key, hex); return hex; }
     const f = v => Math.round(amt >= 0 ? v + (255 - v) * amt : v * (1 + amt));
-    return "#" + [n >> 16, (n >> 8) & 255, n & 255].map(v => f(v).toString(16).padStart(2, "0")).join("");
+    res = "#" + [n >> 16, (n >> 8) & 255, n & 255].map(v => f(v).toString(16).padStart(2, "0")).join("");
+    COLOR_CACHE.set(key, res);
+    return res;
   }
-  function drawBack(b, x, by, t, front) {
-    const c = b.color;
-    if (b.id === "back_bag") {
-      if (front) { ctx.strokeStyle = darken(c, .25); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 6, by + 1); ctx.lineTo(x - 6, by + 14); ctx.moveTo(x + 6, by + 1); ctx.lineTo(x + 6, by + 14); ctx.stroke(); return; }
-      ctx.fillStyle = c; rr(ctx, x - 12, by - 1, 24, 18, 5); ctx.fill();
-      ctx.fillStyle = darken(c, .18); rr(ctx, x - 9, by + 8, 18, 7, 3); ctx.fill();
-      return;
-    }
-    if (front) return;
-    if (b.id === "back_cape") {
-      ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(x - 9, by + 1); ctx.lineTo(x + 9, by + 1);
-      ctx.lineTo(x + 14 + Math.sin(t * 3) * 1.5, by + 30); ctx.lineTo(x - 14 + Math.sin(t * 3 + 1) * 1.5, by + 30); ctx.fill();
-      ctx.fillStyle = darken(c, .2); ctx.beginPath(); ctx.moveTo(x + 2, by + 1); ctx.lineTo(x + 9, by + 1); ctx.lineTo(x + 14 + Math.sin(t * 3) * 1.5, by + 30); ctx.lineTo(x + 5, by + 30); ctx.fill();
-      return;
-    }
-    const a = Math.sin(t * (b.id === "back_bat" ? 5 : 3)) * .22;
-    for (const s of [-1, 1]) {
-      ctx.save(); ctx.translate(x + s * 8, by + 5); ctx.rotate(s * (-.5 + a)); ctx.scale(s, 1);
-      if (b.id === "back_bat") {
-        ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(16, -8); ctx.lineTo(13, -1); ctx.lineTo(17, 3); ctx.lineTo(10, 3); ctx.lineTo(9, 8); ctx.closePath(); ctx.fill();
-      } else {
-        ctx.globalAlpha = b.id === "back_fairy" ? .75 : 1;
-        ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(10, -4, 11, 6, -.3, 0, 7); ctx.fill();
-        ctx.beginPath(); ctx.ellipse(8, 4, 7, 4, .4, 0, 7); ctx.fill();
-        ctx.strokeStyle = "rgba(0,0,0,.12)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(10, -4, 11, 6, -.3, 0, 7); ctx.stroke();
-        ctx.globalAlpha = 1;
+
+  // Vẽ hình chữ nhật bo tròn không làm ngắt beginPath của Canvas
+  function addRoundRect(c, x, y, w, h, r) {
+    if (c.roundRect) { c.roundRect(x, y, w, h, r); return; }
+    r = Math.min(r, w / 2, h / 2);
+    c.moveTo(x + r, y);
+    c.arcTo(x + w, y, x + w, y + h, r);
+    c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r);
+    c.arcTo(x, y, x + w, y, r);
+    c.closePath();
+  }
+
+  // Kính mắt theo chuẩn toạ độ mắt SVG (tâm mắt tại 146 và 254, y=238)
+  function drawGlasses(g, by) {
+    if (!g || g === "gl_none") return;
+    if (g === "gl_round") {
+      ctx.strokeStyle = "#3a2a2a"; ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.arc(146, 238 + by, 32, 0, PI2);
+      ctx.moveTo(286, 238 + by);
+      ctx.arc(254, 238 + by, 32, 0, PI2);
+      ctx.moveTo(178, 238 + by); ctx.lineTo(222, 238 + by);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.3)";
+      ctx.beginPath();
+      ctx.arc(138, 226 + by, 8, 0, PI2);
+      ctx.arc(246, 226 + by, 8, 0, PI2);
+      ctx.fill();
+    } else if (g === "gl_sun") {
+      ctx.fillStyle = "#22222e"; ctx.strokeStyle = INK; ctx.lineWidth = 4;
+      ctx.beginPath();
+      addRoundRect(ctx, 114, 212 + by, 64, 52, 14);
+      addRoundRect(ctx, 222, 212 + by, 64, 52, 14);
+      ctx.rect(178, 228 + by, 44, 10);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.45)";
+      ctx.fillRect(124, 220 + by, 18, 7);
+      ctx.fillRect(232, 220 + by, 18, 7);
+    } else if (g === "gl_heart") {
+      ctx.fillStyle = "rgba(255,77,141,0.9)"; ctx.strokeStyle = INK; ctx.lineWidth = 4;
+      for (const cx of [146, 254]) {
+        ctx.beginPath();
+        ctx.moveTo(cx, 260 + by);
+        ctx.bezierCurveTo(cx - 38, 230 + by, cx - 22, 205 + by, cx, 222 + by);
+        ctx.bezierCurveTo(cx + 22, 205 + by, cx + 38, 230 + by, cx, 260 + by);
+        ctx.fill(); ctx.stroke();
       }
-      ctx.restore();
+      ctx.beginPath(); ctx.moveTo(176, 230 + by); ctx.lineTo(224, 230 + by); ctx.stroke();
     }
   }
-  function drawHat(id, x, hy, body, up) {                // toạ độ theo đầu bán kính 10 (được thu nhỏ khi vẽ)
+  const glassesChibi = (g, by) => drawGlasses(g, by);
+
+  // Mũ đội đầu theo chuẩn toạ độ đầu SVG (tâm 200, 215, bán kính 130x114)
+  function drawHat(id, by, body, up) {
     const h = CL[id]; if (!h || id === "hat_none") return;
     const c = h.color;
+    ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.lineJoin = "round"; ctx.lineCap = "round";
     if (id === "hat_nightcap" || id === "hat_santa") {
-      ctx.fillStyle = id === "hat_santa" ? c : lighten(body, .15);
-      ctx.beginPath(); ctx.moveTo(x - 10, hy - 5); ctx.quadraticCurveTo(x, hy - 20, x + 13, hy - 14); ctx.lineTo(x + 10, hy - 5); ctx.fill();
-      ctx.fillStyle = id === "hat_santa" ? "#fff" : lighten(body, .35); rr(ctx, x - 11, hy - 8, 22, 4, 2); ctx.fill();
-      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x + 13, hy - 14, 2.6, 0, 7); ctx.fill();
+      const hatCol = id === "hat_santa" ? "#e63946" : (body || c || "#7b2cbf");
+      // 1. Thân chóp mũ mềm uốn lệch sang bên phải
+      ctx.fillStyle = hatCol;
+      ctx.beginPath();
+      ctx.moveTo(112, 142 + by);
+      ctx.bezierCurveTo(110, 45 + by, 220, 25 + by, 305, 145 + by);
+      ctx.quadraticCurveTo(270, 110 + by, 288, 142 + by);
+      ctx.quadraticCurveTo(200, 116 + by, 112, 142 + by);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+
+      // 2. Vành mũ trắng mềm ôm trên trán/tóc (nằm trên tóc, hoàn toàn không che mắt)
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.moveTo(106, 142 + by);
+      ctx.quadraticCurveTo(200, 116 + by, 294, 142 + by);
+      ctx.quadraticCurveTo(304, 154 + by, 292, 162 + by);
+      ctx.quadraticCurveTo(200, 138 + by, 108, 162 + by);
+      ctx.quadraticCurveTo(96, 154 + by, 106, 142 + by);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+
+      // 3. Quả bông tròn trắng mềm ở đỉnh chóp
+      ctx.beginPath();
+      ctx.arc(310, 152 + by, 18, 0, PI2);
+      ctx.fill(); ctx.stroke();
     } else if (id === "hat_beanie") {
-      ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, hy - 3, 11, Math.PI, 0); ctx.fill();
-      ctx.fillStyle = darken(c, .2); rr(ctx, x - 11.5, hy - 5, 23, 4.5, 2); ctx.fill();
-      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x, hy - 14, 3, 0, 7); ctx.fill();
+      ctx.fillStyle = c; ctx.beginPath();
+      ctx.arc(200, 128 + by, 124, Math.PI, 0); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = tone(c, -0.2); ctx.beginPath();
+      addRoundRect(ctx, 72, 110 + by, 256, 42, 18); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#ffffff"; ctx.beginPath();
+      ctx.arc(200, 2 + by, 26, 0, PI2); ctx.fill(); ctx.stroke();
     } else if (id === "hat_cap") {
-      ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, hy - 3, 10.8, Math.PI, 0); ctx.fill();
-      ctx.fillStyle = lighten(c, .25); ctx.beginPath(); ctx.arc(x - 3, hy - 9, 3, 0, 7); ctx.fill();
-      ctx.fillStyle = darken(c, .25); ctx.beginPath(); ctx.ellipse(up ? x - 4 : x + 6, hy - 3, 8, 2.4, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = c; ctx.beginPath();
+      ctx.arc(200, 135 + by, 120, Math.PI, 0); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = tone(c, -0.22); ctx.beginPath();
+      ctx.ellipse(up ? 130 : 270, 135 + by, 72, 22, up ? -0.15 : 0.15, 0, PI2);
+      ctx.fill(); ctx.stroke();
     } else if (id === "hat_bow") {
-      ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(x + 6, hy - 9); ctx.lineTo(x, hy - 15); ctx.lineTo(x, hy - 4); ctx.closePath();
-      ctx.moveTo(x + 6, hy - 9); ctx.lineTo(x + 12, hy - 15); ctx.lineTo(x + 12, hy - 4); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = darken(c, .2); ctx.beginPath(); ctx.arc(x + 6, hy - 9, 2, 0, 7); ctx.fill();
+      ctx.save(); ctx.translate(290, 118 + by);
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.moveTo(0, 0); ctx.lineTo(-34, -20); ctx.lineTo(-34, 22); ctx.closePath();
+      ctx.moveTo(0, 0); ctx.lineTo(34, -20); ctx.lineTo(34, 22); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = tone(c, -0.2); ctx.beginPath();
+      ctx.arc(0, 0, 9, 0, PI2); ctx.fill(); ctx.stroke();
+      ctx.restore();
     } else if (id === "hat_flower") {
-      ctx.fillStyle = c; for (let k = 0; k < 5; k++) { const a = k / 5 * 6.28; ctx.beginPath(); ctx.arc(x + 8 + Math.cos(a) * 3, hy - 7 + Math.sin(a) * 3, 2.4, 0, 7); ctx.fill(); }
-      ctx.fillStyle = "#ffd166"; ctx.beginPath(); ctx.arc(x + 8, hy - 7, 1.8, 0, 7); ctx.fill();
+      ctx.save(); ctx.translate(286, 120 + by);
+      ctx.fillStyle = c;
+      for (let k = 0; k < 5; k++) {
+        const a = k * 1.2566;
+        ctx.beginPath(); ctx.arc(Math.cos(a) * 20, Math.sin(a) * 20, 14, 0, PI2); ctx.fill(); ctx.stroke();
+      }
+      ctx.fillStyle = "#ffd54a"; ctx.beginPath(); ctx.arc(0, 0, 12, 0, PI2); ctx.fill(); ctx.stroke();
+      ctx.restore();
     } else if (id === "hat_crown") {
-      ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(x - 7, hy - 8); ctx.lineTo(x - 8, hy - 17); ctx.lineTo(x - 3.5, hy - 12); ctx.lineTo(x, hy - 19);
-      ctx.lineTo(x + 3.5, hy - 12); ctx.lineTo(x + 8, hy - 17); ctx.lineTo(x + 7, hy - 8); ctx.fill();
-      ctx.fillStyle = "#e63946"; ctx.beginPath(); ctx.arc(x, hy - 11, 1.6, 0, 7); ctx.fill();
+      ctx.fillStyle = c; ctx.beginPath();
+      ctx.moveTo(140, 100 + by); ctx.lineTo(130, 25 + by); ctx.lineTo(168, 65 + by);
+      ctx.lineTo(200, 10 + by); ctx.lineTo(232, 65 + by); ctx.lineTo(270, 25 + by);
+      ctx.lineTo(260, 100 + by); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#e63946"; ctx.beginPath(); ctx.arc(200, 68 + by, 10, 0, PI2); ctx.fill(); ctx.stroke();
     } else if (id === "hat_witch") {
-      ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x, hy - 7, 15, 3.5, 0, 0, 7); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(x - 8, hy - 8); ctx.lineTo(x + 4, hy - 30); ctx.lineTo(x + 8, hy - 8); ctx.fill();
-      ctx.fillStyle = "#ffd166"; ctx.fillRect(x - 7.5, hy - 11, 15.5, 2.5);
+      ctx.fillStyle = c; ctx.beginPath();
+      ctx.ellipse(200, 108 + by, 150, 34, 0, 0, PI2); ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(125, 104 + by); ctx.lineTo(245, -35 + by); ctx.lineTo(275, 104 + by);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#ffd54a"; ctx.fillRect(128, 88 + by, 144, 20); ctx.strokeRect(128, 88 + by, 144, 20);
     }
   }
-  function drawGlasses(g, x, hy) {                         // toạ độ theo đầu bán kính 10
-    if (g === "gl_round") { ctx.strokeStyle = "#222"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x - 3.5, hy + 2, 3.2, 0, 7); ctx.moveTo(x + 6.7, hy + 2); ctx.arc(x + 3.5, hy + 2, 3.2, 0, 7); ctx.moveTo(x - .3, hy + 2); ctx.lineTo(x + .3, hy + 2); ctx.stroke(); }
-    else if (g === "gl_sun") { ctx.fillStyle = "#111"; rr(ctx, x - 8, hy, 7, 4.5, 2); ctx.fill(); rr(ctx, x + 1, hy, 7, 4.5, 2); ctx.fill(); ctx.fillRect(x - 1, hy + 1, 2, 1); ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fillRect(x - 6.5, hy + .8, 2, 1); ctx.fillRect(x + 2.5, hy + .8, 2, 1); }
-    else if (g === "gl_heart") { ctx.fillStyle = "#ff4d8d"; ctx.font = "8px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("♥", x - 3.5, hy + 2.5); ctx.fillText("♥", x + 3.5, hy + 2.5); }
+
+  // Phụ kiện cổ (khăn, nơ, vòng ngọc)
+  function drawNeck(nk, by, up) {
+    if (!nk || nk.id === "neck_none") return;
+    const c = nk.color;
+    ctx.strokeStyle = INK; ctx.lineWidth = 4;
+    if (nk.id === "neck_scarf") {
+      ctx.fillStyle = c; ctx.beginPath();
+      addRoundRect(ctx, 146, 312 + by, 108, 38, 14); ctx.fill(); ctx.stroke();
+      if (!up) {
+        ctx.beginPath(); addRoundRect(ctx, 212, 345 + by, 32, 68, 10); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = tone(c, -0.2); ctx.fillRect(212, 395 + by, 32, 14);
+      }
+    } else if (nk.id === "neck_bowtie" && !up) {
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.moveTo(200, 332 + by); ctx.lineTo(175, 318 + by); ctx.lineTo(175, 346 + by); ctx.closePath();
+      ctx.moveTo(200, 332 + by); ctx.lineTo(225, 318 + by); ctx.lineTo(225, 346 + by); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(200, 332 + by, 6, 0, PI2); ctx.fill(); ctx.stroke();
+    } else if (nk.id === "neck_pearl" && !up) {
+      ctx.fillStyle = c;
+      for (let k = 0; k < 7; k++) {
+        const a = (k / 6) * Math.PI;
+        ctx.beginPath();
+        ctx.arc(160 + k * 13.3, 332 + Math.sin(a) * 16 + by, 6.5, 0, PI2);
+        ctx.fill(); ctx.stroke();
+      }
+    }
   }
-  function drawNeck(nk, x, by, up) {                       // phụ kiện cổ, toạ độ theo thân rộng 20
-    if (!nk) return;
-    if (nk.id === "neck_scarf") { ctx.fillStyle = nk.color; rr(ctx, x - 10, by - 1, 20, 5, 2); ctx.fill(); if (!up) { ctx.fillRect(x + 3, by + 3, 4, 9); ctx.fillStyle = darken(nk.color, .2); ctx.fillRect(x + 3, by + 10, 4, 2); } }
-    else if (nk.id === "neck_bowtie" && !up) { ctx.fillStyle = nk.color; ctx.beginPath(); ctx.moveTo(x, by + 2); ctx.lineTo(x - 5, by - 1); ctx.lineTo(x - 5, by + 5); ctx.closePath(); ctx.moveTo(x, by + 2); ctx.lineTo(x + 5, by - 1); ctx.lineTo(x + 5, by + 5); ctx.fill(); }
-    else if (nk.id === "neck_pearl" && !up) { ctx.fillStyle = nk.color; for (let k = 0; k < 7; k++) { ctx.beginPath(); ctx.arc(x - 6 + k * 2, by + 1 + Math.sin(k / 6 * Math.PI) * 3, 1.2, 0, 7); ctx.fill(); } }
-  }
-  // Kính theo mắt chibi (mắt to ở ±4.7, hy+2.6)
-  function glassesChibi(g, x, hy) {
-    const ey = hy + 2.6;
-    if (g === "gl_round") {
-      ctx.strokeStyle = "#3a2a2a"; ctx.lineWidth = .8;
-      ctx.beginPath(); ctx.arc(x - 4.7, ey, 3.5, 0, 7); ctx.moveTo(x + 8.2, ey); ctx.arc(x + 4.7, ey, 3.5, 0, 7);
-      ctx.moveTo(x - 1.2, ey - .6); ctx.quadraticCurveTo(x, ey - 1.6, x + 1.2, ey - .6); ctx.stroke();
-      ctx.fillStyle = "rgba(255,255,255,.25)"; ctx.beginPath(); ctx.arc(x - 5.8, ey - 1.4, .9, 0, 7); ctx.arc(x + 3.6, ey - 1.4, .9, 0, 7); ctx.fill();
-    } else if (g === "gl_sun") {
-      ctx.fillStyle = "rgba(20,20,28,.92)"; rr(ctx, x - 8.4, ey - 2.6, 7.2, 5, 2.2); ctx.fill(); rr(ctx, x + 1.2, ey - 2.6, 7.2, 5, 2.2); ctx.fill();
-      ctx.fillRect(x - 1.3, ey - 1.6, 2.6, .9);
-      ctx.fillStyle = "rgba(255,255,255,.45)"; ctx.fillRect(x - 7.4, ey - 1.8, 2.2, .9); ctx.fillRect(x + 2.2, ey - 1.8, 2.2, .9);
-    } else if (g === "gl_heart") {
+
+  // Phụ kiện lưng (ba lô, áo choàng, cánh)
+  function drawBack(b, by, t, front) {
+    if (!b || b.id === "back_none") return;
+    const c = b.color;
+    ctx.strokeStyle = INK; ctx.lineWidth = 4;
+    if (b.id === "back_bag") {
+      if (front) {
+        ctx.lineWidth = 7;
+        ctx.beginPath();
+        ctx.moveTo(164, 340 + by); ctx.lineTo(164, 430 + by);
+        ctx.moveTo(236, 340 + by); ctx.lineTo(236, 430 + by);
+        ctx.stroke();
+        return;
+      }
+      ctx.fillStyle = c; ctx.beginPath();
+      addRoundRect(ctx, 140, 340 + by, 120, 106, 22); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = tone(c, -0.16); ctx.beginPath();
+      addRoundRect(ctx, 155, 390 + by, 90, 48, 14); ctx.fill(); ctx.stroke();
+    } else if (b.id === "back_cape") {
+      if (front) return;
+      ctx.fillStyle = c; ctx.beginPath();
+      ctx.moveTo(156, 336 + by); ctx.lineTo(124, 495 + by);
+      ctx.quadraticCurveTo(200, 520 + by, 276, 495 + by);
+      ctx.lineTo(244, 336 + by); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    } else if (b.id === "back_angel" || b.id === "back_fairy" || b.id === "back_bat") {
+      const flap = Math.sin(t * (b.id === "back_bat" ? 5 : 3)) * 0.18;
       for (const s of [-1, 1]) {
-        const cx = x + s * 4.7; ctx.fillStyle = "rgba(255,77,141,.88)";
-        ctx.beginPath(); ctx.moveTo(cx, ey + 2.8); ctx.bezierCurveTo(cx - 4.6, ey - .4, cx - 2.4, ey - 4, cx, ey - 1.6);
-        ctx.bezierCurveTo(cx + 2.4, ey - 4, cx + 4.6, ey - .4, cx, ey + 2.8); ctx.fill();
-        ctx.fillStyle = "rgba(255,255,255,.5)"; ctx.beginPath(); ctx.arc(cx - 1.4, ey - 1.2, .7, 0, 7); ctx.fill();
+        ctx.save();
+        ctx.translate(200 + s * 36, 360 + by);
+        ctx.rotate(s * (-0.4 + flap));
+        ctx.scale(s, 1);
+        if (b.id === "back_bat") {
+          ctx.fillStyle = c; ctx.beginPath();
+          ctx.moveTo(0, 0); ctx.lineTo(60, -32); ctx.lineTo(48, -4); ctx.lineTo(64, 12);
+          ctx.lineTo(38, 12); ctx.lineTo(34, 32); ctx.closePath();
+          ctx.fill(); ctx.stroke();
+        } else {
+          ctx.globalAlpha = b.id === "back_fairy" ? 0.75 : 1;
+          ctx.fillStyle = c; ctx.beginPath();
+          ctx.ellipse(38, -16, 42, 22, -0.3, 0, PI2);
+          ctx.ellipse(30, 16, 26, 16, 0.4, 0, PI2);
+          ctx.fill(); ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+        ctx.restore();
       }
-      ctx.strokeStyle = "rgba(255,77,141,.88)"; ctx.lineWidth = .7; ctx.beginPath(); ctx.moveTo(x - 1, ey - 1); ctx.lineTo(x + 1, ey - 1); ctx.stroke();
     }
   }
-  // Tóc (kiểu + màu nhuộm) vẽ trong hair.js: Hair.back / Hair.front / Hair.view
-  // Mặt chibi: mắt to long lanh, miệng ω, má hồng; chớp mắt (cong như cười), thỉnh thoảng liếc
-  function drawFace(x, hy, t, seed, happy, male) {
-    const blink = happy || (t + seed) % 4.3 < .13;
-    const lk = Math.sin(t * .6 + seed), look = lk > .93 ? .5 : lk < -.93 ? -.5 : 0;
-    for (const s of [-1, 1]) {
-      const ex = x + s * 4.7 + look, ey = hy + 2.6;
-      if (blink) {
-        ctx.strokeStyle = INK; ctx.lineWidth = 1.05; ctx.lineCap = "round";
-        ctx.beginPath(); ctx.arc(ex, ey + 1.2, 2.2, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
-        continue;
-      }
-      const g = ctx.createLinearGradient(0, ey - 3, 0, ey + 3);
-      g.addColorStop(0, "#2e1b14"); g.addColorStop(.55, "#6b4128"); g.addColorStop(1, "#c08a55");
-      ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(ex, ey + (male ? .25 : 0), male ? 2.2 : 2.4, male ? 2.7 : 3.05, 0, 0, 7); ctx.fill();
-      ctx.fillStyle = "#1c100b"; ctx.beginPath(); ctx.ellipse(ex, ey + .2, 1.15, 1.6, 0, 0, 7); ctx.fill();
-      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ex - .85, ey - 1.3, 1, 0, 7); ctx.fill();   // đốm sáng lớn (góc trên trái)
-      ctx.globalAlpha = .85; ctx.beginPath(); ctx.arc(ex + .9, ey + 1.4, .45, 0, 7); ctx.fill(); ctx.globalAlpha = 1;     // đốm sáng nhỏ
-      ctx.strokeStyle = INK; ctx.lineWidth = male ? .95 : 1.15; ctx.lineCap = "round";                                  // mi trên
-      ctx.beginPath(); ctx.ellipse(ex, ey + .4, male ? 2.45 : 2.65, male ? 3 : 3.3, 0, Math.PI * (male ? 1.18 : 1.1), Math.PI * (male ? 1.82 : 1.9)); ctx.stroke();
-      if (!male) { ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(ex + s * 2.4, ey - 1.7); ctx.lineTo(ex + s * 3.4, ey - 2.6); ctx.stroke(); }   // đuôi mi cong (nữ)
+
+  // Khuôn mặt chuẩn SVG: mắt to tròn, tròng nâu ấm, 2 chấm sáng, lông mày, má hồng, miệng cười
+  function drawFace(x, hy, t, seed, happy, male, hairColor, powerSave) {
+    let by = 0;
+    if (typeof hy === "number" && hy >= 100 && hy < 500) {
+      // Khi gọi chuẩn (200, 215 + by, t, seed, happy, male, hairColor, powerSave)
+      by = hy - 215;
+    } else if (arguments.length <= 7 && typeof x === "number") {
+      // Tương thích khi gọi dạng (by, t, seed, happy, male, hairColor, powerSave)
+      powerSave = hairColor;
+      hairColor = male;
+      male = happy;
+      happy = seed;
+      seed = t;
+      t = hy;
+      by = x;
     }
-    if (male) {                                                                                                        // lông mày nam: đậm, thẳng
-      ctx.strokeStyle = "rgba(70,42,30,.8)"; ctx.lineWidth = 1;
-      for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x + s * 2.8, hy - 1.6); ctx.lineTo(x + s * 6.3, hy - 2.3); ctx.stroke(); }
+    happy = !!happy;
+    male = !!male;
+    t = typeof t === "number" ? t : 0;
+    seed = typeof seed === "number" ? seed : 0;
+
+    // Chỉ nhắm mắt khi p.happy hoặc khi đang chớp mắt thoáng qua (~0.14s mỗi 4.3s)
+    const blink = happy || ((t * 1.5 + seed * 3.7) % 4.3 < 0.14);
+    const lk = Math.sin(t * 0.6 + seed), look = lk > 0.93 ? 4 : lk < -0.93 ? -4 : 0;
+
+    // Má hồng phẳng nhẹ hai bên
+    ctx.fillStyle = male ? BLUSH_M : BLUSH_F;
+    ctx.beginPath();
+    ctx.ellipse(108, 276 + by, 21, 12, 0, 0, PI2);
+    ctx.moveTo(292 + 21, 276 + by);
+    ctx.ellipse(292, 276 + by, 21, 12, 0, 0, PI2);
+    ctx.fill();
+
+    if (blink) {
+      // Chớp mắt cười vòng cung nhẹ
+      ctx.strokeStyle = INK; ctx.lineWidth = male ? 6.5 : 5.5; ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.arc(146 + look, 244 + by, 20, 3.4, 6.0);
+      ctx.moveTo(254 + look + 20 * Math.cos(3.4), 244 + by + 20 * Math.sin(3.4));
+      ctx.arc(254 + look, 244 + by, 20, 3.4, 6.0);
+      ctx.stroke();
     } else {
-      ctx.strokeStyle = "rgba(90,55,40,.55)"; ctx.lineWidth = .6;                                                        // lông mày nữ: mảnh, cong
-      for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x + s * 3.4, hy - 2.1); ctx.quadraticCurveTo(x + s * 4.8, hy - 2.9, x + s * 6.2, hy - 2.3); ctx.stroke(); }
+      // Mắt mở to tròn (chuẩn mẫu nu_01_mia và nam_01_an)
+      // 1. Tròng mắt nền tối
+      ctx.fillStyle = EYE_DARK; ctx.strokeStyle = INK; ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(146 + look, 238 + by, 25, 32, 0, 0, PI2);
+      ctx.moveTo(254 + look + 25, 238 + by);
+      ctx.ellipse(254 + look, 238 + by, 25, 32, 0, 0, PI2);
+      ctx.fill(); ctx.stroke();
+
+      // 2. Tròng mắt nâu ấm (#8a5a38)
+      ctx.fillStyle = IRIS_BROWN;
+      ctx.beginPath();
+      ctx.ellipse(146 + look, 244 + by, 19, 22, 0, 0, PI2);
+      ctx.moveTo(254 + look + 19, 244 + by);
+      ctx.ellipse(254 + look, 244 + by, 19, 22, 0, 0, PI2);
+      ctx.fill();
+
+      // 3. Con ngươi tối (#2a1c1c)
+      ctx.fillStyle = PUPIL_BLACK;
+      ctx.beginPath();
+      ctx.ellipse(146 + look, 248 + by, 10, 12, 0, 0, PI2);
+      ctx.moveTo(254 + look + 10, 248 + by);
+      ctx.ellipse(254 + look, 248 + by, 10, 12, 0, 0, PI2);
+      ctx.fill();
+
+      // 4. 2 chấm sáng trắng tròn (1 to r=9 góc trên trái, 1 nhỏ r=4.5 góc dưới phải)
+      // Dùng moveTo trước mỗi arc để KHÔNG có đường nối ngang giữa 2 mắt
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(138 + look, 226 + by, 9, 0, PI2);
+      ctx.moveTo(246 + look + 9, 226 + by);
+      ctx.arc(246 + look, 226 + by, 9, 0, PI2);
+      if (!powerSave) {
+        ctx.moveTo(155 + look + 4.5, 252 + by);
+        ctx.arc(155 + look, 252 + by, 4.5, 0, PI2);
+        ctx.moveTo(263 + look + 4.5, 252 + by);
+        ctx.arc(263 + look, 252 + by, 4.5, 0, PI2);
+      }
+      ctx.fill();
+
+      // 5. Mi trên cong nét (nữ lineWidth 5, nam lineWidth 7 theo mẫu SVG)
+      ctx.strokeStyle = INK; ctx.lineWidth = male ? 7 : 5; ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(120 + look, 220 + by); ctx.quadraticCurveTo(146 + look, 202 + by, 172 + look, 220 + by);
+      ctx.moveTo(228 + look, 220 + by); ctx.quadraticCurveTo(254 + look, 202 + by, 280 + look, 220 + by);
+      ctx.stroke();
     }
-    ctx.fillStyle = "rgba(225,140,120,.65)"; ctx.beginPath(); ctx.arc(x, hy + 5, .45, 0, 7); ctx.fill();                  // mũi
-    ctx.strokeStyle = "#9c4a44"; ctx.lineWidth = .7; ctx.beginPath();
-    if (male) { ctx.moveTo(x - 1.5, hy + 6); ctx.quadraticCurveTo(x, hy + 7.1, x + 1.6, hy + 5.8); }                      // nam: cười mỉm
-    else { ctx.arc(x - .85, hy + 6.2, .85, .15, Math.PI - .15); ctx.moveTo(x + 1.7, hy + 6.2); ctx.arc(x + .85, hy + 6.2, .85, .15, Math.PI - .15); }   // nữ: miệng ω
+
+    // Lông mày mảnh cong (nữ) hoặc đậm thẳng (nam)
+    ctx.strokeStyle = hairColor || INK; ctx.lineWidth = male ? 8 : 6; ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(126, 196 + by); ctx.quadraticCurveTo(146, male ? 189 + by : 186 + by, 166, 194 + by);
+    ctx.moveTo(234, 194 + by); ctx.quadraticCurveTo(254, male ? 189 + by : 186 + by, 274, 196 + by);
     ctx.stroke();
-    ctx.fillStyle = male ? "rgba(255,120,145,.16)" : "rgba(255,120,145,.35)";                                            // má hồng
-    ctx.beginPath(); ctx.ellipse(x - 7.6, hy + 5.4, 2.1, 1.15, 0, 0, 7); ctx.ellipse(x + 7.6, hy + 5.4, 2.1, 1.15, 0, 0, 7); ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = .4;
-    if (!male) for (const s of [-1, 1]) for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.moveTo(x + s * 7.6 - 1.2 + k * .9, hy + 6); ctx.lineTo(x + s * 7.6 - .7 + k * .9, hy + 4.9); ctx.stroke(); }
+
+    // Mũi nhỏ xinh
+    ctx.strokeStyle = "rgba(107,74,58,0.7)"; ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(200, 262 + by); ctx.quadraticCurveTo(203, 267 + by, 198, 268 + by);
+    ctx.stroke();
+
+    // Miệng nhỏ cười hồng
+    ctx.strokeStyle = INK; ctx.lineWidth = 3;
+    ctx.fillStyle = male ? "#8a2f3f" : "#e8627c";
+    ctx.beginPath();
+    if (male) {
+      ctx.moveTo(180, 280 + by); ctx.quadraticCurveTo(200, 306 + by, 220, 280 + by); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      if (!powerSave) {
+        ctx.strokeStyle = "#ff8fa3"; ctx.lineWidth = 3.5; ctx.beginPath();
+        ctx.moveTo(188, 290 + by); ctx.quadraticCurveTo(200, 298 + by, 212, 290 + by); ctx.stroke();
+      }
+    } else {
+      ctx.moveTo(184, 280 + by); ctx.quadraticCurveTo(200, 298 + by, 216, 280 + by);
+      ctx.quadraticCurveTo(200, 284 + by, 184, 280 + by); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    }
   }
-  // p: {x, y (chân), color, outfit, walking, up (quay lưng), sit (ngồi), id/name}
+
+  // p: {x, y (chân), color, outfit, walking, up (quay lưng), sit (ngồi), happy, crouch, id/name}
   function drawAvatar(p, t) {
     const isMe = p.id === (typeof myId !== "undefined" ? myId : null);
     const hasActiveFarmAction = isMe && (typeof activeFarmActions !== "undefined" && Object.keys(activeFarmActions).length > 0);
     const o = outfitOf(p), up = hasActiveFarmAction || !!p.up, sit = !!p.sit, walk = !!p.walking && !sit;
-    const seed = ((p.id || p.name || "a").charCodeAt(0) % 17) * .7;
-    const ph = t * 10 + seed, sw = walk ? Math.sin(ph) : 0;
-    const bob = walk ? Math.abs(Math.sin(ph)) * 1.3 : Math.sin(t * 2 + seed) * .35;  // nhún nhảy khi đi / thở khi đứng
-    const x = p.x, y = p.y;
-    const crouch = (isMe && farmCrouchOffset) || p.crouch || 0;
-    const hipY = y - (sit ? 3.5 : 8.5) - bob + crouch, shY = hipY - 11.5, hy = shY - 9.2;
-    const shirt = CL[o.shirt], pj = !shirt, top = shirt ? shirt.color : p.color;
-    const pants = pj ? tone(p.color, .15) : shirt.id === "shirt_suit" ? "#2b2d42" : "#4a6fa5";
-    const shoe = pj ? tone(p.color, .5) : shirt.id === "shirt_suit" ? "#2a2a2a" : "#ffffff";
+    const seed = ((p.id || p.name || "a").charCodeAt(0) % 17) * 0.7;
+    const ph = t * 10 + seed;
+    const step = walk ? Math.sin(ph) : 0;
+    // Nhún khi đi bộ hoặc thở nhẹ khi đứng (tính theo hệ toạ độ SVG)
+    const bob = walk ? Math.abs(Math.sin(ph)) * 14 : Math.sin(t * 2 + seed) * 3.8;
+    const crouch = (isMe && typeof farmCrouchOffset !== "undefined" && farmCrouchOffset) || p.crouch || 0;
+    // Hạ thấp người khi ngồi ~5 đơn vị (khoảng 54 đơn vị SVG)
+    const sitDY = sit ? 54 : 0;
+    const by = sitDY - bob + (crouch / SCALE_K);
+
+    const shirt = CL[o.shirt], pj = !shirt, top = shirt ? shirt.color : (p.color || "#e63946");
+    const pants = pj ? tone(top, 0.15) : shirt.id === "shirt_suit" ? "#2b2d42" : "#4a6fa5";
+    const shoe = pj ? tone(top, 0.45) : shirt.id === "shirt_suit" ? "#2a2a2a" : "#ffffff";
     const back = CL[o.back], hasBack = back && back.id !== "back_none";
     const male = o.gender === "g_m";
-    ctx.lineJoin = "round"; ctx.lineCap = "round";
-    // bóng đổ
-    ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.beginPath(); ctx.ellipse(x, y, 8.5 - Math.abs(sw) * .6, 2.8, 0, 0, 7); ctx.fill();
-    // cánh / áo choàng / ba lô sau lưng
-    if (hasBack && !up) { ctx.save(); ctx.translate(x, shY + 1); ctx.scale(.7, .72); drawBack(back, 0, 0, t, false); ctx.restore(); }
-    if (!up) Hair.back(ctx, o.hair, o.hairColor, x, hy, hipY, male);
-    // chân ngắn + giày tròn
-    for (const s of [-1, 1]) {
-      const lx = x + s * 2.7;
-      let fx, fy;
-      if (sit) { fx = x + s * 3.3; fy = hipY + 4.4; }
-      else { fx = lx + sw * s * 1.2; fy = y - 1.7 - (walk ? Math.max(0, sw * s) * 1.6 : 0); }
-      ctx.strokeStyle = tone(pants, -.35); ctx.lineWidth = 5.4; ctx.beginPath(); ctx.moveTo(lx, hipY - 1); ctx.lineTo(fx, fy); ctx.stroke();
-      ctx.strokeStyle = pants; ctx.lineWidth = 3.9; ctx.beginPath(); ctx.moveTo(lx, hipY - 1); ctx.lineTo(fx, fy); ctx.stroke();
-      ctx.fillStyle = shoe; ctx.strokeStyle = tone(shoe, -.4); ctx.lineWidth = .75;
-      ctx.beginPath(); ctx.ellipse(fx + s * .4, fy + .3, 3.1, 2, 0, 0, 7); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.beginPath(); ctx.ellipse(fx + s * .4 - .9, fy - .4, 1, .5, 0, 0, 7); ctx.fill();
+    const powerSave = typeof Power !== "undefined" && Power.on && Power.on();
+
+    // Thiết lập hệ toạ độ scale: gốc (0,0) đặt tại giữa 2 chân ở p.x, p.y
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.scale(SCALE_K, SCALE_K);
+    ctx.translate(-200, -552);
+
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+
+    // 1. Bóng đổ elip đen mờ dưới chân
+    ctx.fillStyle = SHADOW_COLOR;
+    ctx.beginPath();
+    ctx.ellipse(200, 562, 95 - Math.abs(step) * 8, 16, 0, 0, PI2);
+    ctx.fill();
+
+    // 2. Phụ kiện lưng (cánh, ba lô) phía sau
+    if (hasBack && !up) drawBack(back, by, t, false);
+
+    // 3. Tóc sau
+    if (!up) Hair.back(ctx, o.hair, o.hairColor, 200, 215 + by, 432 + by, male);
+
+    // 4. Chân & Giày
+    const stepL = walk ? step * 16 : 0;
+    const stepR = walk ? -step * 16 : 0;
+    const liftL = walk ? Math.max(0, step) * 16 : 0;
+    const liftR = walk ? Math.max(0, -step) * 16 : 0;
+
+    // Hai ống chân màu da
+    ctx.fillStyle = SKIN_DEFAULT; ctx.strokeStyle = INK; ctx.lineWidth = 4;
+    ctx.beginPath();
+    if (sit) {
+      addRoundRect(ctx, 160, 470 + by, 34, 46, 13);
+      addRoundRect(ctx, 206, 470 + by, 34, 46, 13);
+    } else {
+      addRoundRect(ctx, 166 + stepL, 440 + by - liftL, 30, 86, 13);
+      addRoundRect(ctx, 204 + stepR, 440 + by - liftR, 30, 86, 13);
     }
-    // tay (sau thân khi nhìn từ sau thì vẫn vẽ trước thân cho dễ thấy)
-    const longS = pj || LONG_SLEEVE.has(o.shirt);
-    const arm = s => {
-      const sx = x + s * 5.6, sy = shY + 1.8, len = 7.4;
-      const a = s * (.32 + (walk ? sw * s * .3 : sit ? .05 : Math.sin(t * 2 + seed) * .03));
-      const hx2 = sx + Math.sin(a) * len, hy2 = sy + Math.cos(a) * len, mx = (sx + hx2) / 2, my = (sy + hy2) / 2;
-      ctx.strokeStyle = tone(top, -.35); ctx.lineWidth = 4.6; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(longS ? hx2 : mx, longS ? hy2 : my); ctx.stroke();
-      ctx.strokeStyle = top; ctx.lineWidth = 3.3; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(longS ? hx2 : mx, longS ? hy2 : my); ctx.stroke();
-      if (!longS) { ctx.strokeStyle = tone(SKIN, -.25); ctx.lineWidth = 3.4; ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(hx2, hy2); ctx.stroke(); ctx.strokeStyle = SKIN; ctx.lineWidth = 2.3; ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(hx2, hy2); ctx.stroke(); }
-      ctx.fillStyle = SKIN; ctx.strokeStyle = tone(SKIN, -.3); ctx.lineWidth = .7; ctx.beginPath(); ctx.arc(hx2, hy2 + .4, 2, 0, 7); ctx.fill(); ctx.stroke();   // bàn tay tròn
-    };
-    // thân áo dáng chữ A
-    const W1 = male ? 5.8 : 5.2, W2 = male ? 6.9 : 6.5, W3 = male ? 6.5 : 7.2;      // vai / ngực / gấu áo
-    const torso = () => {
-      ctx.beginPath(); ctx.moveTo(x - W1, shY); ctx.quadraticCurveTo(x - W2 - .1, shY + .2, x - W2, shY + 2.4);
-      ctx.lineTo(x - W3, hipY); ctx.quadraticCurveTo(x, hipY + 2.2, x + W3, hipY); ctx.lineTo(x + W2, shY + 2.4);
-      ctx.quadraticCurveTo(x + W2 + .1, shY + .2, x + W1, shY); ctx.closePath();
-    };
-    ctx.fillStyle = top; torso(); ctx.fill();
-    ctx.save(); torso(); ctx.clip();
-    if (shirt && shirt.stripe) { ctx.fillStyle = shirt.stripe; for (let k = 2.5; k < 14; k += 3.4) ctx.fillRect(x - 8, shY + k, 16, 1.4); }
-    if (pj) { ctx.fillStyle = tone(top, .45); for (const [dx, dy] of [[-3.6, 4], [3.4, 6], [-2.2, 9.5], [4, 10.5]]) { ctx.beginPath(); ctx.arc(x + dx, shY + dy, .75, 0, 7); ctx.fill(); } }
-    ctx.fillStyle = "rgba(0,0,0,.12)"; ctx.fillRect(x + 2.8, shY - 1, 6, 16);              // bóng mềm bên phải
-    ctx.fillStyle = "rgba(255,255,255,.25)"; ctx.fillRect(x - 7.4, shY + 1, 1.4, 13);       // viền sáng bên trái
-    ctx.restore();
-    ctx.strokeStyle = tone(top, -.38); ctx.lineWidth = .8; torso(); ctx.stroke();
-    if (!up) {                                                                               // chi tiết mặt trước áo
+    ctx.fill(); ctx.stroke();
+
+    // Tất trắng
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    if (sit) {
+      addRoundRect(ctx, 158, 498 + by, 38, 26, 10);
+      addRoundRect(ctx, 204, 498 + by, 38, 26, 10);
+    } else {
+      addRoundRect(ctx, 164 + stepL, 496 + by - liftL, 34, 34, 10);
+      addRoundRect(ctx, 202 + stepR, 496 + by - liftR, 34, 34, 10);
+    }
+    ctx.fill(); ctx.stroke();
+
+    // Giày tròn màu
+    ctx.fillStyle = shoe;
+    ctx.beginPath();
+    if (sit) {
+      ctx.moveTo(146, 540 + by); ctx.quadraticCurveTo(146, 520 + by, 172, 520 + by);
+      ctx.lineTo(196, 520 + by); ctx.quadraticCurveTo(204, 532 + by, 196, 544 + by);
+      ctx.lineTo(152, 544 + by); ctx.closePath();
+      ctx.moveTo(254, 540 + by); ctx.quadraticCurveTo(254, 520 + by, 228, 520 + by);
+      ctx.lineTo(204, 520 + by); ctx.quadraticCurveTo(196, 532 + by, 204, 544 + by);
+      ctx.lineTo(248, 544 + by); ctx.closePath();
+    } else {
+      ctx.moveTo(146 + stepL, 546 + by - liftL); ctx.quadraticCurveTo(146 + stepL, 522 + by - liftL, 172 + stepL, 522 + by - liftL);
+      ctx.lineTo(196 + stepL, 522 + by - liftL); ctx.quadraticCurveTo(204 + stepL, 538 + by - liftL, 196 + stepL, 552 + by - liftL);
+      ctx.lineTo(152 + stepL, 552 + by - liftL); ctx.closePath();
+      ctx.moveTo(254 + stepR, 546 + by - liftR); ctx.quadraticCurveTo(254 + stepR, 522 + by - liftR, 228 + stepR, 522 + by - liftR);
+      ctx.lineTo(204 + stepR, 522 + by - liftR); ctx.quadraticCurveTo(196 + stepR, 538 + by - liftR, 204 + stepR, 552 + by - liftR);
+      ctx.lineTo(248 + stepR, 552 + by - liftR); ctx.closePath();
+    }
+    ctx.fill(); ctx.stroke();
+
+    // 5. Quần / Váy ngắn
+    ctx.fillStyle = pants;
+    ctx.beginPath();
+    ctx.moveTo(154, 424 + by); ctx.quadraticCurveTo(200, 438 + by, 246, 424 + by);
+    ctx.lineTo(250, 472 + by); ctx.quadraticCurveTo(226, 484 + by, 202, 472 + by);
+    ctx.lineTo(198, 472 + by); ctx.quadraticCurveTo(174, 484 + by, 150, 472 + by);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(200, 436 + by); ctx.lineTo(200, 470 + by);
+    ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
+
+    // 6. Tay áo & Cánh tay tròn màu da
+    const longS = pj || (shirt && (shirt.id === "shirt_hoodie" || shirt.id === "shirt_suit" || shirt.id === "shirt_yellow"));
+    const armAngleL = walk ? step * 0.35 : (sit ? 0.12 : Math.sin(t * 2 + seed) * 0.04);
+    const armAngleR = walk ? -step * 0.35 : (sit ? 0.12 : -Math.sin(t * 2 + seed) * 0.04);
+
+    const len = 70;
+    const sxL = 160, syL = 350 + by;
+    const hxL = sxL + Math.sin(armAngleL) * len * 0.9 - 15;
+    const hyL = syL + Math.cos(armAngleL) * len;
+    const mxL = (sxL + hxL) / 2 - 10;
+    const myL = (syL + hyL) / 2;
+
+    const sxR = 240, syR = 350 + by;
+    const hxR = sxR + Math.sin(armAngleR) * len * 0.9 + 15;
+    const hyR = syR + Math.cos(armAngleR) * len;
+    const mxR = (sxR + hxR) / 2 + 10;
+    const myR = (syR + hyR) / 2;
+
+    // Viền nâu ngoài cả 2 tay gộp vào 1 path
+    ctx.strokeStyle = INK; ctx.lineWidth = 26; ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(sxL, syL); ctx.quadraticCurveTo(mxL, myL, hxL, hyL);
+    ctx.moveTo(sxR, syR); ctx.quadraticCurveTo(mxR, myR, hxR, hyR);
+    ctx.stroke();
+
+    // Nét da/áo trong cả 2 tay gộp vào 1 path
+    ctx.strokeStyle = longS ? top : SKIN_DEFAULT; ctx.lineWidth = 19;
+    ctx.beginPath();
+    ctx.moveTo(sxL, syL); ctx.quadraticCurveTo(mxL, myL, hxL, hyL);
+    ctx.moveTo(sxR, syR); ctx.quadraticCurveTo(mxR, myR, hxR, hyR);
+    ctx.stroke();
+
+    if (longS) {
+      ctx.fillStyle = SKIN_DEFAULT; ctx.strokeStyle = INK; ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.arc(hxL, hyL + 2, 11, 0, PI2);
+      ctx.moveTo(hxR + 11, hyR + 2);
+      ctx.arc(hxR, hyR + 2, 11, 0, PI2);
+      ctx.fill(); ctx.stroke();
+    }
+
+    // 7. Thân áo dáng chữ A + Tay áo
+    ctx.fillStyle = top; ctx.strokeStyle = INK; ctx.lineWidth = 4;
+    ctx.beginPath();
+    // Thân áo
+    ctx.moveTo(156, 336 + by); ctx.quadraticCurveTo(200, 322 + by, 244, 336 + by);
+    ctx.lineTo(252, 432 + by); ctx.quadraticCurveTo(200, 446 + by, 148, 432 + by);
+    ctx.closePath();
+    // Tay áo ngắn trái
+    ctx.moveTo(150, 340 + by); ctx.quadraticCurveTo(128, 352 + by, 132, 376 + by);
+    ctx.lineTo(158, 372 + by); ctx.lineTo(160, 344 + by); ctx.closePath();
+    // Tay áo ngắn phải
+    ctx.moveTo(250, 340 + by); ctx.quadraticCurveTo(272, 352 + by, 268, 376 + by);
+    ctx.lineTo(242, 372 + by); ctx.lineTo(240, 344 + by); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+
+    // Chi tiết mặt trước áo
+    if (!up) {
+      // Cổ áo
+      ctx.strokeStyle = INK; ctx.lineWidth = 3.5;
+      ctx.beginPath(); ctx.moveTo(184, 332 + by); ctx.quadraticCurveTo(200, 346 + by, 216, 332 + by); ctx.stroke();
+
       if (pj) {
-        ctx.fillStyle = tone(top, .35); ctx.beginPath(); ctx.moveTo(x - 4.2, shY - .3); ctx.lineTo(x, shY + 3.2); ctx.lineTo(x + 4.2, shY - .3); ctx.fill();
-        ctx.fillStyle = "#fff"; for (let k = 0; k < 2; k++) { ctx.beginPath(); ctx.arc(x, shY + 5.5 + k * 3.6, .6, 0, 7); ctx.fill(); }
-      } else if (shirt.id === "shirt_hoodie") {
-        ctx.fillStyle = tone(top, -.12); rr(ctx, x - 3.6, hipY - 4.6, 7.2, 3.4, 1.6); ctx.fill();
-        ctx.strokeStyle = "#f5f5f5"; ctx.lineWidth = .55; ctx.beginPath(); ctx.moveTo(x - 1.2, shY + .4); ctx.lineTo(x - 1.4, shY + 4); ctx.moveTo(x + 1.2, shY + .4); ctx.lineTo(x + 1.4, shY + 4); ctx.stroke();
-      } else if (shirt.id === "shirt_suit") {
-        ctx.fillStyle = "#f8f9fa"; ctx.beginPath(); ctx.moveTo(x - 2.6, shY - .2); ctx.lineTo(x, shY + 5.6); ctx.lineTo(x + 2.6, shY - .2); ctx.fill();
-        ctx.fillStyle = shirt.tie; ctx.beginPath(); ctx.moveTo(x - .8, shY + .4); ctx.lineTo(x + .8, shY + .4); ctx.lineTo(x + 1.1, shY + 4.8); ctx.lineTo(x, shY + 6); ctx.lineTo(x - 1.1, shY + 4.8); ctx.fill();
+        // Áo pyjama: 2 cúc áo tròn
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(200, 372 + by, 4.5, 0, PI2);
+        ctx.arc(200, 402 + by, 4.5, 0, PI2);
+        ctx.fill(); ctx.stroke();
+      } else if (shirt && shirt.id === "shirt_hoodie") {
+        // Túi áo hoodie
+        ctx.beginPath();
+        ctx.moveTo(168, 410 + by); ctx.lineTo(232, 410 + by);
+        ctx.lineTo(240, 436 + by); ctx.lineTo(160, 436 + by);
+        ctx.closePath(); ctx.stroke();
+        // Dây mũ hoodie
+        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(188, 346 + by); ctx.lineTo(186, 376 + by);
+        ctx.moveTo(212, 346 + by); ctx.lineTo(214, 376 + by);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(184, 338 + by); ctx.quadraticCurveTo(200, 358 + by, 216, 338 + by); ctx.stroke();
+      } else if (shirt && shirt.id === "shirt_suit") {
+        // Áo vest + cà vạt đỏ
+        ctx.fillStyle = "#f8f9fa"; ctx.beginPath();
+        ctx.moveTo(186, 334 + by); ctx.lineTo(200, 392 + by); ctx.lineTo(214, 334 + by); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = shirt.tie || "#e63946"; ctx.beginPath();
+        ctx.moveTo(196, 340 + by); ctx.lineTo(204, 340 + by);
+        ctx.lineTo(206, 384 + by); ctx.lineTo(200, 396 + by); ctx.lineTo(194, 384 + by);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+      } else if (shirt && shirt.stripe) {
+        // Áo kẻ ngang
+        ctx.fillStyle = shirt.stripe;
+        ctx.fillRect(152, 368 + by, 96, 12);
+        ctx.fillRect(150, 396 + by, 100, 12);
       } else {
-        ctx.fillStyle = SKIN; ctx.beginPath(); ctx.moveTo(x - 2.4, shY - .2); ctx.quadraticCurveTo(x, shY + 2, x + 2.4, shY - .2); ctx.fill();
-        if (!shirt.stripe) { ctx.fillStyle = tone(top, .5); ctx.font = "5px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("★", x - 2.2, shY + 6); }
+        // Họa tiết trái tim nhỏ xinh trước ngực
+        ctx.fillStyle = "#ff7a9c"; ctx.strokeStyle = INK; ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(200, 392 + by);
+        ctx.bezierCurveTo(190, 380 + by, 176, 388 + by, 186, 400 + by);
+        ctx.lineTo(200, 414 + by);
+        ctx.lineTo(214, 400 + by);
+        ctx.bezierCurveTo(224, 388 + by, 210, 380 + by, 200, 392 + by);
+        ctx.fill(); ctx.stroke();
       }
     }
-    if (shirt && shirt.id === "shirt_hoodie") { ctx.fillStyle = tone(top, -.18); ctx.beginPath(); ctx.ellipse(x, shY - .2, 5.4, 1.9, 0, Math.PI, 0); ctx.fill(); }
-    arm(-1); arm(1);
-    if (hasBack) { ctx.save(); ctx.translate(x, shY + 1); ctx.scale(.7, .72); drawBack(back, 0, 0, t, true); if (up) drawBack(back, 0, 0, t, false); ctx.restore(); }
-    ctx.save(); ctx.translate(x, shY + .1); ctx.scale(.64, .7); drawNeck(CL[o.neck], 0, 0, up); ctx.restore();
-    // đầu to tròn, da sáng mịn
-    const hg = ctx.createRadialGradient(x - 3, hy - 3.5, 1, x, hy, 12);
-    hg.addColorStop(0, "#fff1e4"); hg.addColorStop(1, SKIN);
-    ctx.fillStyle = hg; ctx.strokeStyle = tone(SKIN, -.32); ctx.lineWidth = .9;
-    ctx.beginPath(); ctx.ellipse(x, hy, 11.2, 10.3, 0, 0, 7); ctx.fill(); ctx.stroke();
-    if (up) Hair.view(ctx, o.hair, o.hairColor, x, hy, hipY, male);
-    else { drawFace(x, hy, t, seed, p.happy, male); Hair.front(ctx, o.hair, o.hairColor, x, hy, hipY, male); glassesChibi(o.glasses, x, hy); }
-    ctx.save(); ctx.translate(x, hy - 2.4); ctx.scale(1.04, 1.04); drawHat(o.hat, 0, 0, top, up); ctx.restore();   // mũ: đồ cũ vẽ theo đầu bán kính 10
+
+    // 8. Cổ áo / Phụ kiện cổ
+    if (hasBack) drawBack(back, by, t, true);
+    drawNeck(CL[o.neck], by, up);
+
+    // Cổ nhân vật
+    ctx.fillStyle = NECK_DEFAULT; ctx.strokeStyle = INK; ctx.lineWidth = 4;
+    ctx.beginPath();
+    addRoundRect(ctx, 184, 312 + by, 32, 30, 10);
+    ctx.fill(); ctx.stroke();
+
+    // 9. Hai tai tròn nhỏ hai bên đầu
+    ctx.fillStyle = SKIN_DEFAULT;
+    ctx.beginPath();
+    ctx.ellipse(70, 228 + by, 15, 19, 0, 0, PI2);
+    ctx.moveTo(330 + 15, 228 + by);
+    ctx.ellipse(330, 228 + by, 15, 19, 0, 0, PI2);
+    ctx.fill(); ctx.stroke();
+
+    // 10. Đầu rất to và tròn, rộng hơn vai nhiều
+    ctx.beginPath();
+    ctx.ellipse(200, 215 + by, 130, 114, 0, 0, PI2);
+    ctx.fill(); ctx.stroke();
+
+    // 11. Khuôn mặt / Tóc trước / Mũ / Kính
+    const dyeObj = Hair.dye(o.hairColor);
+    const hairCol = dyeObj ? dyeObj.hair : INK;
+    if (up) {
+      Hair.view(ctx, o.hair, o.hairColor, 200, 215 + by, 432 + by, male);
+    } else {
+      drawFace(200, 215 + by, t, seed, !!p.happy, !!male, hairCol, powerSave);
+      Hair.front(ctx, o.hair, o.hairColor, 200, 215 + by, 432 + by, male);
+      drawGlasses(o.glasses, by);
+    }
+
+    drawHat(o.hat, by, top, up);
+
+    ctx.restore();
   }
 
   // ---------- 3. NPC: đi theo đường cố định, vị trí theo giờ server nên ai cũng thấy giống nhau ----------
