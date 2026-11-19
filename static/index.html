@@ -903,6 +903,9 @@
   #joyZone{position:fixed;left:0;bottom:0;width:40vw;height:80vh;z-index:3;touch-action:none;display:none}
   body.touch #joyZone{display:block}
   body.lefty #joyZone{left:auto;right:0}
+  /* Kiểu cần điều khiển (⚙️ Cài đặt): cố định = chỉ chạm đúng vào cần (vùng trống vẫn bấm đồ vật được), ẩn = chạm đâu đi đó */
+  body.joy-fixed #joyZone,body.joy-off #joyZone{display:none!important}
+  body.joy-off #joy{display:none!important}
   /* Cần điều khiển ảo (chỉ hiện trên máy cảm ứng) */
   #joy{position:fixed;left:calc(18px + var(--sl));bottom:calc(16px + var(--sb));width:118px;height:118px;border-radius:50%;z-index:6;touch-action:none;
     background:radial-gradient(circle at center,rgba(38,30,68,.45) 0%,rgba(20,16,40,.65) 65%,rgba(14,11,28,.8) 100%);
@@ -2367,12 +2370,22 @@ function openPeople() {
                    : `<div class="vol" style="margin:0">Chưa có ai ở đây. Bấm 🔗 Mời bạn để rủ bạn bè vào cùng kênh nhé!</div>`}`);
 }
 // ⚙️ Cài đặt (lưu trên máy này)
+// Kiểu cần điều khiển: "fixed" (mặc định) | "float" | "off" — lưu trong nc_joy
+function joyMode() { try { const m = localStorage.getItem("nc_joy"); return ["fixed", "float", "off"].includes(m) ? m : "fixed"; } catch { return "fixed"; } }
+function setJoyMode(m) {
+  for (const k of ["fixed", "float", "off"]) document.body.classList.toggle("joy-" + k, k === m);
+  try { localStorage.setItem("nc_joy", m); } catch {}
+}
 function openSettings() {
   const lefty = document.body.classList.contains("lefty"), auto = localStorage.getItem("nc_qauto") === "1";
   const chk = (id, on, label, sub) => `<label class="setrow"><input type="checkbox" id="${id}" ${on ? "checked" : ""}><span>${label}<small>${sub}</small></span></label>`;
   openSheet("⚙️ Cài đặt",
     `<div class="vol" style="margin:0 0 8px">🔈 <input type="range" min="0" max="1" step="0.05" value="${Sound.vol}" id="vol"> 🔊 <b id="volP" style="color:var(--accent)">${Math.round(Sound.vol * 100)}%</b></div>
-     ${chk("sLefty", lefty, "🫲 Chơi tay trái", "Cần ảo sang phải; nút E và thanh nhanh sang trái")}
+     <div class="sec">🕹️ Cần điều khiển trên điện thoại</div>
+     <div class="timers" style="grid-template-columns:repeat(3,1fr)">${[["fixed", "Cố định"], ["float", "Nổi"], ["off", "Ẩn (chạm để đi)"]]
+       .map(([k, n]) => `<button data-joy="${k}" class="${joyMode() === k ? "cur" : ""}">${n}</button>`).join("")}</div>
+     <div class="vol" style="margin:4px 0 8px;font-size:11.5px">Cố định: chỉ chạm vào cần mới điều khiển · Nổi: chạm vùng bên cạnh là cần nhảy tới · Ẩn: chạm vào đâu nhân vật đi tới đó</div>
+     ${chk("sLefty", lefty, "🫲 Chơi tay trái (cần bên phải)", "Cần điều khiển sang phải; nút E và thanh nhanh sang trái")}
      ${chk("sAuto", auto, "⏱️ Tự thu gọn thanh nhanh", "Sau 6 giây không chạm thì tự thu vào mép màn hình")}
      ${chk("sFast", fastTravel(), "🚌 Bỏ hiệu ứng chuyển khu", "Đi thẳng tới khu mới, không mờ dần")}
      <div class="sec">🔍 Độ gần camera (nhân vật to / thấy nhiều cảnh) · phím <b>+</b> <b>−</b></div>
@@ -2397,6 +2410,9 @@ function openSettings() {
       el.querySelector("#sLefty").onchange = e => {
         document.body.classList.toggle("lefty", e.target.checked); localStorage.setItem("nc_lefty", e.target.checked ? "1" : "0"); Quick.render();
       };
+      el.querySelectorAll("[data-joy]").forEach(b => b.onclick = () => {
+        setJoyMode(b.dataset.joy); el.querySelectorAll("[data-joy]").forEach(x => x.classList.toggle("cur", x === b));
+      });
       el.querySelector("#sAuto").onchange = e => localStorage.setItem("nc_qauto", e.target.checked ? "1" : "0");
       el.querySelector("#sFast").onchange = e => localStorage.setItem(FAST_KEY, e.target.checked ? "1" : "0");
       el.querySelectorAll("[data-zoom]").forEach(b => b.onclick = () => { setZoom(b.dataset.zoom); el.querySelectorAll("[data-zoom]").forEach(x => x.classList.toggle("cur", x === b)); });
@@ -3309,7 +3325,8 @@ window.addEventListener("blur", () => keys.clear());
 const isTouch = () => matchMedia("(pointer:coarse)").matches;
 document.body.classList.toggle("touch", isTouch());
 window.addEventListener("touchstart", () => document.body.classList.add("touch"), {once: true, passive: true});
-document.body.classList.toggle("lefty", localStorage.getItem("nc_lefty") === "1");   // đổi tay trái/phải
+document.body.classList.toggle("lefty", localStorage.getItem("nc_lefty") === "1");
+setJoyMode(joyMode());                                               // kiểu cần điều khiển đã lưu (mặc định: cố định)
 
 // Toàn màn hình + khóa xoay ngang (nếu trình duyệt cho phép)
 (function fullscreen() {
