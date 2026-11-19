@@ -5040,7 +5040,7 @@ const Areas = (() => {
         // ma-nơ-canh tóc mẫu bên phải
         const mx = s.x + s.w - 36, my = gy + 42;
         ctx.fillStyle = "#ffb703"; ctx.beginPath(); ctx.arc(mx, my - 14, 8, 0, 7); ctx.fill(); // tóc vàng
-        ctx.fillStyle = SKIN; ctx.beginPath(); ctx.arc(mx, my - 12, 6.5, 0, 7); ctx.fill();
+        ctx.fillStyle = SKIN_DEFAULT; ctx.beginPath(); ctx.arc(mx, my - 12, 6.5, 0, 7); ctx.fill();
         ctx.fillStyle = "#6d6875"; rr(ctx, mx - 6, my - 5, 12, 16, 3); ctx.fill();
         // biển gợi ý
         ctx.fillStyle = "#4361ee"; ctx.font = "800 7px system-ui"; ctx.fillText("💈 SALON RIÊNG V6", s.x + s.w / 2, gy + gh - 8);
