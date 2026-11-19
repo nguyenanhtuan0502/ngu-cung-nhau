@@ -1125,36 +1125,6 @@
    "group": "Mèo"
   },
   {
-   "id": "cat_siamese",
-   "e": "🐱",
-   "name": "Nhận nuôi mèo Xiêm",
-   "label": "Mèo Xiêm",
-   "def": "Xiêm",
-   "price": 90,
-   "color": "#f1e3cf",
-   "group": "Mèo"
-  },
-  {
-   "id": "cat_calico",
-   "e": "🐱",
-   "name": "Nhận nuôi mèo tam thể",
-   "label": "Mèo tam thể",
-   "def": "Tam",
-   "price": 80,
-   "color": "#ffffff",
-   "group": "Mèo"
-  },
-  {
-   "id": "cat_persian",
-   "e": "🐱",
-   "name": "Nhận nuôi mèo Ba Tư",
-   "label": "Mèo Ba Tư",
-   "def": "Bông Tuyết",
-   "price": 120,
-   "color": "#fdf6ec",
-   "group": "Mèo"
-  },
-  {
    "id": "dog",
    "e": "🐶",
    "name": "Nhận nuôi cún vàng",
@@ -1164,26 +1134,6 @@
    "color": "#c68b59",
    "group": "Chó",
    "free": true
-  },
-  {
-   "id": "dog_shiba",
-   "e": "🐕",
-   "name": "Nhận nuôi chó Shiba",
-   "label": "Chó Shiba",
-   "def": "Shiba",
-   "price": 100,
-   "color": "#e0954f",
-   "group": "Chó"
-  },
-  {
-   "id": "dog_corgi",
-   "e": "🐕",
-   "name": "Nhận nuôi chó Corgi",
-   "label": "Chó Corgi",
-   "def": "Corgi",
-   "price": 110,
-   "color": "#e8a35c",
-   "group": "Chó"
   },
   {
    "id": "dog_poodle",
@@ -1196,26 +1146,6 @@
    "group": "Chó"
   },
   {
-   "id": "dog_husky",
-   "e": "🐺",
-   "name": "Nhận nuôi chó Husky",
-   "label": "Chó Husky",
-   "def": "Husky",
-   "price": 130,
-   "color": "#9aa5b1",
-   "group": "Chó"
-  },
-  {
-   "id": "dog_dalmatian",
-   "e": "🐕",
-   "name": "Nhận nuôi chó đốm",
-   "label": "Chó đốm",
-   "def": "Đốm",
-   "price": 100,
-   "color": "#ffffff",
-   "group": "Chó"
-  },
-  {
    "id": "bunny",
    "e": "🐰",
    "name": "Nhận nuôi thỏ trắng",
@@ -1225,16 +1155,6 @@
    "color": "#f3f0ea",
    "group": "Thỏ & gặm nhấm",
    "free": true
-  },
-  {
-   "id": "bunny_lop",
-   "e": "🐰",
-   "name": "Nhận nuôi thỏ tai cụp",
-   "label": "Thỏ tai cụp",
-   "def": "Mochi",
-   "price": 80,
-   "color": "#c9a27e",
-   "group": "Thỏ & gặm nhấm"
   },
   {
    "id": "hamster",
