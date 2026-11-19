@@ -466,9 +466,10 @@ const Areas = (() => {
     // Hai ống chân màu da
     ctx.fillStyle = SKIN_DEFAULT; ctx.strokeStyle = INK; ctx.lineWidth = 4;
     ctx.beginPath();
+    const swL = sit ? Math.sin(t * 2.2 + seed) * 4 : 0, swR = sit ? Math.sin(t * 2.2 + seed + 1.3) * 4 : 0;   // chân đung đưa khi ngồi
     if (sit) {
-      addRoundRect(ctx, 160, 470 + by, 34, 46, 13);
-      addRoundRect(ctx, 206, 470 + by, 34, 46, 13);
+      addRoundRect(ctx, 156 + swL, 486 + by, 32, 44, 13);
+      addRoundRect(ctx, 212 + swR, 486 + by, 32, 44, 13);
     } else {
       addRoundRect(ctx, 166 + stepL, 440 + by - liftL, 30, 86, 13);
       addRoundRect(ctx, 204 + stepR, 440 + by - liftR, 30, 86, 13);
@@ -479,8 +480,8 @@ const Areas = (() => {
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
     if (sit) {
-      addRoundRect(ctx, 158, 498 + by, 38, 26, 10);
-      addRoundRect(ctx, 204, 498 + by, 38, 26, 10);
+      addRoundRect(ctx, 154 + swL, 512 + by, 36, 22, 10);
+      addRoundRect(ctx, 210 + swR, 512 + by, 36, 22, 10);
     } else {
       addRoundRect(ctx, 164 + stepL, 496 + by - liftL, 34, 34, 10);
       addRoundRect(ctx, 202 + stepR, 496 + by - liftR, 34, 34, 10);
@@ -491,12 +492,10 @@ const Areas = (() => {
     ctx.fillStyle = shoe;
     ctx.beginPath();
     if (sit) {
-      ctx.moveTo(146, 540 + by); ctx.quadraticCurveTo(146, 520 + by, 172, 520 + by);
-      ctx.lineTo(196, 520 + by); ctx.quadraticCurveTo(204, 532 + by, 196, 544 + by);
-      ctx.lineTo(152, 544 + by); ctx.closePath();
-      ctx.moveTo(254, 540 + by); ctx.quadraticCurveTo(254, 520 + by, 228, 520 + by);
-      ctx.lineTo(204, 520 + by); ctx.quadraticCurveTo(196, 532 + by, 204, 544 + by);
-      ctx.lineTo(248, 544 + by); ctx.closePath();
+      // giày nhìn từ trước (mũi giày hướng ra người xem), đung đưa theo cẳng chân
+      ctx.ellipse(172 + swL, 538 + by, 24, 15, 0, 0, PI2);
+      ctx.moveTo(252 + swR, 538 + by);
+      ctx.ellipse(228 + swR, 538 + by, 24, 15, 0, 0, PI2);
     } else {
       ctx.moveTo(146 + stepL, 546 + by - liftL); ctx.quadraticCurveTo(146 + stepL, 522 + by - liftL, 172 + stepL, 522 + by - liftL);
       ctx.lineTo(196 + stepL, 522 + by - liftL); ctx.quadraticCurveTo(204 + stepL, 538 + by - liftL, 196 + stepL, 552 + by - liftL);
@@ -518,6 +517,13 @@ const Areas = (() => {
     ctx.beginPath();
     ctx.moveTo(200, 436 + by); ctx.lineTo(200, 470 + by);
     ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
+    if (sit) {                                       // đùi hướng ra phía trước: 2 đầu gối tròn màu quần, hơi tách nhau
+      ctx.fillStyle = pants; ctx.strokeStyle = INK; ctx.lineWidth = 4;
+      ctx.beginPath();
+      addRoundRect(ctx, 146, 456 + by, 52, 40, 18);
+      addRoundRect(ctx, 202, 456 + by, 52, 40, 18);
+      ctx.fill(); ctx.stroke();
+    }
 
     // 6. Tay áo & Cánh tay tròn màu da
     const longS = pj || (shirt && (shirt.id === "shirt_hoodie" || shirt.id === "shirt_suit" || shirt.id === "shirt_yellow"));
