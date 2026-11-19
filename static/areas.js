@@ -5447,9 +5447,11 @@ const Areas = (() => {
         storePvLoop();
       });
   }
+  // giống chưa có ảnh đẹp (static/pet_sprites.js) thì chưa bán, hiện "Sắp có"
+  const soon = id => typeof Pets !== "undefined" && Pets.hasSprite && !Pets.hasSprite(id);
   function openPetShop() {
     openSheet("🐾 Tiệm thú cưng",
-      `${Life.coinLine()}${[...new Set(PET_SHOP.map(p => p.group || "Khác"))].map(g => `<div class="sec">${g}</div><div class="grid petgrid">${PET_SHOP.filter(p => (p.group || "Khác") === g).map(p => `<button class="opt petopt ${myPet.type === p.id ? "active" : ""}" data-p="${p.id}"><canvas class="peticon" data-icon="${p.id}" width="96" height="80"></canvas><b>${p.label || p.name}</b><small>${myPet.type === p.id ? "đang nuôi" : p.price + " 💰"}</small></button>`).join("")}</div>`).join("")}
+      `${Life.coinLine()}${[...new Set(PET_SHOP.map(p => p.group || "Khác"))].map(g => `<div class="sec">${g}</div><div class="grid petgrid">${PET_SHOP.filter(p => (p.group || "Khác") === g).map(p => `<button class="opt petopt ${myPet.type === p.id ? "active" : ""}" data-p="${p.id}" ${soon(p.id) && myPet.type !== p.id ? "disabled" : ""}><canvas class="peticon" data-icon="${p.id}" width="96" height="80"></canvas><b>${p.label || p.name}</b><small>${myPet.type === p.id ? "đang nuôi" : soon(p.id) ? "🎨 Sắp có" : p.price + " 💰"}</small></button>`).join("")}</div>`).join("")}
        <div class="grid" style="margin-top:8px">
        <button class="opt" id="treat">${PET_TREAT.e} ${PET_TREAT.name}<small>${PET_TREAT.price} 💰 · 😊+${PET_TREAT.fun}</small></button></div>
        <div class="vol" style="font-size:12px">Nhận nuôi bé mới thì bé cũ về nhà nghỉ nhé 🏡</div>`,

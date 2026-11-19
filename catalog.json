@@ -1315,6 +1315,66 @@
    "price": 200,
    "color": "#ffffff",
    "group": "Đặc biệt"
+  },
+  {
+   "id": "pig",
+   "e": "🐷",
+   "name": "Nhận nuôi heo con",
+   "label": "Heo con",
+   "def": "Ủn Ỉn",
+   "price": 70,
+   "color": "#ffb3c6",
+   "group": "Đặc biệt"
+  },
+  {
+   "id": "tiger",
+   "e": "🐯",
+   "name": "Nhận nuôi hổ con",
+   "label": "Hổ con",
+   "def": "Vằn Vằn",
+   "price": 180,
+   "color": "#f4a261",
+   "group": "Đặc biệt"
+  },
+  {
+   "id": "penguin",
+   "e": "🐧",
+   "name": "Nhận nuôi chim cánh cụt",
+   "label": "Chim cánh cụt",
+   "def": "Lạch Bạch",
+   "price": 150,
+   "color": "#2b2d42",
+   "group": "Đặc biệt"
+  },
+  {
+   "id": "parrot",
+   "e": "🦜",
+   "name": "Nhận nuôi vẹt",
+   "label": "Vẹt",
+   "def": "Líu Lo",
+   "price": 130,
+   "color": "#e63946",
+   "group": "Đặc biệt"
+  },
+  {
+   "id": "skunk",
+   "e": "🦨",
+   "name": "Nhận nuôi chồn hôi",
+   "label": "Chồn hôi",
+   "def": "Thơm Thơm",
+   "price": 90,
+   "color": "#3a3a46",
+   "group": "Đặc biệt"
+  },
+  {
+   "id": "dragon",
+   "e": "🐉",
+   "name": "Nhận nuôi rồng con",
+   "label": "Rồng con",
+   "def": "Rồng Xanh",
+   "price": 300,
+   "color": "#2a9d8f",
+   "group": "Đặc biệt"
   }
  ],
  "PET_TREAT": {

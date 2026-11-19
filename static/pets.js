@@ -1,15 +1,29 @@
 // ============================================================================
 // HỆ THỐNG VẼ 21 GIỐNG THÚ CƯNG - THÀNH PHỐ MỘNG MƠ (static/pets.js)
-// Đồng bộ phong cách chibi: màu phẳng sáng, viền nâu ấm #6b4a3a (mảnh, bo tròn).
-// Tối ưu tốc độ cao: gộp path cùng màu, không gradient, không filter.
-// Hỗ trợ Power.on() (tiết kiệm pin): lược bỏ chi tiết nhỏ (chấm sáng mắt, hoa văn).
+// Thiết kế Chibi sinh động: Thân dài thon tỉ lệ 1.7:1 (có ngực, eo, mông, lưng cong),
+// cổ ngắn nâng đầu to ở trước-trên, mõm nhô rõ theo giống, 4 chân thuôn bước so le.
+// Tối ưu tốc độ cực cao: Dùng hằng số màu cố định, gộp path cùng màu để fill/stroke
+// 1 lần cho cả khối, đảm bảo < 5ms cho 25 bé cùng lúc trên điện thoại.
 // ============================================================================
 
 "use strict";
 
 const Pets = (() => {
-  // Màu viền nâu ấm chuẩn đồng bộ toàn bộ đồ hoạ game
+  // --------------------------------------------------------------------------
+  // HẰNG SỐ MÀU SẮC CỐ ĐỊNH (Không tạo chuỗi mới mỗi khung hình để đạt tốc độ tối đa)
+  // --------------------------------------------------------------------------
   const OUTLINE = "#6b4a3a";
+  const SHADOW_COL = "rgba(0,0,0,0.22)";
+  const BLUSH_COL = "rgba(255,130,150,0.45)";
+  const EYE_BLACK = "#241812";
+  const NOSE_BLACK = "#1a1a1a";
+  const WHITE = "#ffffff";
+  const PINK_INNER = "#ffb8b8";
+  const PINK_NOSE = "#ff8fa3";
+  const TONGUE_RED = "#ff4757";
+  const EYE_BLUE = "#38bdf8";
+  const EYE_ROOM = "#ffd23f";
+  const EYE_AMBER = "#fcd34d";
 
   // Danh sách 21 giống thú cưng chuẩn
   const PET_IDS = [
@@ -21,10 +35,10 @@ const Pets = (() => {
   const PET_SET = new Set(PET_IDS);
 
   // --------------------------------------------------------------------------
-  // CÁC HÀM TIỆN ÍCH DÙNG CHUNG (TỐI ƯU HIỆU NĂNG)
+  // CÁC HÀM TRỢ GIÚP DÙNG CHUNG (TỐI ƯU HIỆU NĂNG)
   // --------------------------------------------------------------------------
 
-  // Vẽ mắt (chế độ mở hoặc nhắm khi ngủ / chớp mắt; chân dung icon luôn mở long lanh)
+  // Vẽ mắt: mở to tròn hoặc nhắm khi ngủ / chớp mắt; chân dung tiệm luôn mở long lanh
   function drawEyes(c, ex1, ey1, r1, ex2, ey2, r2, isSleeping, blink, eyeCol, lowPower, isIcon) {
     if (isIcon) {
       isSleeping = false;
@@ -40,15 +54,15 @@ const Pets = (() => {
       return;
     }
     // Mắt mở to tròn
-    c.fillStyle = eyeCol || "#241812";
+    c.fillStyle = eyeCol || EYE_BLACK;
     c.beginPath();
     c.arc(ex1, ey1, r1, 0, Math.PI * 2);
     if (ex2 != null) c.arc(ex2, ey2, r2, 0, Math.PI * 2);
     c.fill();
 
-    // Điểm sáng mắt (luôn có trong chân dung icon để lấp lánh dễ thương)
+    // Điểm sáng mắt (luôn có trong chân dung tiệm để long lanh dễ thương)
     if (!lowPower || isIcon) {
-      c.fillStyle = "#ffffff";
+      c.fillStyle = WHITE;
       c.beginPath();
       c.arc(ex1 + r1 * 0.35, ey1 - r1 * 0.35, Math.max(0.6, r1 * 0.36), 0, Math.PI * 2);
       if (ex2 != null) c.arc(ex2 + r2 * 0.35, ey2 - r2 * 0.35, Math.max(0.5, r2 * 0.36), 0, Math.PI * 2);
@@ -58,11 +72,21 @@ const Pets = (() => {
 
   // Vẽ má hồng xinh xắn
   function drawCheeks(c, x1, y1, x2, y2, rx, ry) {
-    c.fillStyle = "rgba(255,130,150,0.45)";
+    c.fillStyle = BLUSH_COL;
     c.beginPath();
     c.ellipse(x1, y1, rx || 2.2, ry || 1.3, 0, 0, Math.PI * 2);
     if (x2 != null) c.ellipse(x2, y2, (rx || 2.2) * 0.85, (ry || 1.3) * 0.85, 0, 0, Math.PI * 2);
     c.fill();
+  }
+
+  // Đường dẫn chân thuôn có bàn chân tròn nhỏ (thay thế ô vuông cũ)
+  function pathTaperedLeg(c, topX, topY, footX, footY, wTop, wBottom) {
+    c.moveTo(topX - wTop * 0.5, topY);
+    c.lineTo(footX - wBottom * 0.5, footY - 1.2);
+    c.quadraticCurveTo(footX - wBottom * 0.5, footY, footX, footY);
+    c.quadraticCurveTo(footX + wBottom * 0.5, footY, footX + wBottom * 0.5, footY - 1.2);
+    c.lineTo(topX + wTop * 0.5, topY);
+    c.closePath();
   }
 
   // --------------------------------------------------------------------------
@@ -71,293 +95,273 @@ const Pets = (() => {
   function drawCatFamily(c, id, ctx) {
     const { t, seed, isSleeping, isWalking, lowPower, isRoom, isIcon } = ctx;
 
-    // Màu sắc theo giống
     let mainCol = "#f4a261"; // Mèo mướp cam
-    let bellyCol = "#fff1e0";
-    let eyeCol = "#241812";
-    let innerEarCol = "#ffb8b8";
-    let noseCol = "#f08080";
+    let bellyCol = "#fff0dd";
+    let eyeCol = EYE_BLACK;
+    let innerEarCol = PINK_INNER;
+    let noseCol = PINK_NOSE;
 
     if (id === "cat_black") {
       mainCol = "#2b2b35";
       bellyCol = "#24242e";
       innerEarCol = "#454050";
       noseCol = "#4a4254";
-      eyeCol = isRoom ? "#ffd23f" : "#fcd34d"; // Mèo Mun phòng ngủ mắt vàng #ffd23f
+      eyeCol = isRoom ? EYE_ROOM : EYE_AMBER;
     } else if (id === "cat_siamese") {
-      mainCol = "#f5ebe0"; // Lông kem
+      mainCol = "#f5ebe0";
       bellyCol = "#faf4ed";
       innerEarCol = "#422b1d";
       noseCol = "#2c1b11";
-      eyeCol = "#38bdf8"; // Mắt xanh biển biếc
+      eyeCol = EYE_BLUE;
     } else if (id === "cat_calico") {
-      mainCol = "#ffffff"; // Trắng tinh
-      bellyCol = "#ffffff";
+      mainCol = WHITE;
+      bellyCol = WHITE;
     } else if (id === "cat_persian") {
-      mainCol = "#fdfbf7"; // Trắng tuyết bông xù
-      bellyCol = "#ffffff";
+      mainCol = "#fdfbf7";
+      bellyCol = WHITE;
       innerEarCol = "#ffebee";
     }
 
-    const bob = isWalking ? Math.abs(Math.sin(t * 14 + seed)) * 1.2 : 0;
-    const leg = isWalking ? Math.sin(t * 14 + seed) * 3 : 0;
+    const bob = isWalking ? Math.abs(Math.sin(t * 14 + seed)) * 1.1 : 0;
+    const leg = isWalking ? Math.sin(t * 12 + seed) * 3 : 0;
     const tailWag = Math.sin(t * (isWalking ? 8 : 3.5) + seed);
-    // Chân dung icon không chớp mắt (luôn mở to)
     const blink = !isSleeping && !isIcon && (((t * 1.5 + seed * 2.7 + 1.0) % 3.8) < 0.14);
-    const brSleep = isSleeping ? Math.sin(t * 2.0 + seed) * 0.5 : 0;
+    const brSleep = isSleeping ? Math.sin(t * 2.0 + seed) * 0.4 : 0;
 
-    // 1. KHI NGỦ (cuộn tròn bình yên)
+    // 1. KHI NGỦ (nằm cuộn mềm mại nhận rõ đầu, tai, thân, đuôi)
     if (isSleeping) {
-      // Đuôi cuộn tròn trước thân
+      // Đuôi quấn ôm sát thân
       c.strokeStyle = id === "cat_siamese" ? "#422b1d" : mainCol;
-      c.lineWidth = id === "cat_persian" ? 4.5 : 2.8;
+      c.lineWidth = id === "cat_persian" ? 4.5 : 2.5;
       c.beginPath();
-      c.arc(0, -4.5, 9.5, 0.3, 2.3);
+      c.moveTo(-7.5, -4.5);
+      c.quadraticCurveTo(-1.0, -1.0, 5.0, -3.0);
       c.stroke();
-
-      // Viền ngoài đuôi
       c.strokeStyle = OUTLINE;
       c.lineWidth = 1.1;
-      c.beginPath();
-      c.arc(0, -4.5, 9.5, 0.3, 2.3);
       c.stroke();
 
-      // Thân cuộn tròn
+      // Thân mèo nằm duỗi cong mềm
       c.fillStyle = mainCol;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 1.3;
       c.beginPath();
-      c.ellipse(0, -5.5, 10.5, 6 + brSleep * 0.5, 0, 0, Math.PI * 2);
+      c.moveTo(5.0, -5.0 + brSleep);
+      c.quadraticCurveTo(1.0, -8.5 + brSleep, -5.0, -8.0 + brSleep); // Sống lưng cong
+      c.quadraticCurveTo(-9.0, -7.5 + brSleep, -8.5, -3.5); // Mông
+      c.quadraticCurveTo(-3.0, -2.5, 3.5, -2.5); // Bụng áp đất
+      c.closePath();
       c.fill();
       c.stroke();
 
-      // Mảng tam thể hoặc lông xù Ba Tư khi ngủ
-      if (id === "cat_calico" && !lowPower) {
-        c.fillStyle = "#e76f51";
-        c.beginPath();
-        c.ellipse(-3, -7.5, 4.5, 3, 0.2, 0, Math.PI * 2);
-        c.fill();
-        c.fillStyle = "#2b2b35";
-        c.beginPath();
-        c.ellipse(3, -5, 3.5, 2.5, -0.2, 0, Math.PI * 2);
-        c.fill();
-      } else if (id === "cat_persian") {
-        // Mèo Ba Tư cuộn thành cục bông tuyết xù mềm mại (tô đầy, không viền rỗng)
-        c.fillStyle = mainCol;
-        c.beginPath();
-        c.arc(-5.5, -7.5, 3.5, 0, Math.PI * 2);
-        c.arc(5.5, -7.5, 3.5, 0, Math.PI * 2);
-        c.arc(0, -9.0, 3.8, 0, Math.PI * 2);
-        c.fill();
-      }
-
-      // Đầu gối thấp
-      c.fillStyle = mainCol;
+      // Đầu gối nghiêng ngủ
       c.beginPath();
-      c.arc(6.5, -6, 5.5, 0, Math.PI * 2);
+      c.ellipse(6.5, -5.8, 5.2, 4.2, 0.1, 0, Math.PI * 2);
       c.fill();
       c.stroke();
 
-      // Mặt nạ mèo Xiêm khi ngủ
-      if (id === "cat_siamese") {
-        c.fillStyle = "#422b1d";
-        c.beginPath();
-        c.ellipse(8, -5.5, 3.2, 2.8, 0, 0, Math.PI * 2);
-        c.fill();
-      }
-
-      // Tai gấp nhẹ
-      c.fillStyle = (id === "cat_siamese" || (id === "cat_calico" && !lowPower)) ? (id === "cat_calico" ? "#e76f51" : "#422b1d") : mainCol;
+      // Tai nằm xuôi
+      c.fillStyle = (id === "cat_siamese" || id === "cat_calico") ? (id === "cat_calico" ? "#e76f51" : "#422b1d") : mainCol;
       c.beginPath();
-      c.moveTo(4, -9.5); c.lineTo(4.5, -13); c.lineTo(7, -10.5);
-      c.moveTo(7.5, -10.5); c.lineTo(10, -13); c.lineTo(10.5, -8.5);
+      c.moveTo(4.5, -8.5); c.lineTo(5.0, -12.0); c.lineTo(7.5, -9.5);
+      c.moveTo(7.8, -9.5); c.lineTo(10.2, -12.2); c.lineTo(10.5, -8.0);
       c.fill();
       c.stroke();
 
-      // Mắt nhắm ngủ
-      drawEyes(c, 8, -6.5, 1.5, 5, -6.5, 1.3, true, false, eyeCol, lowPower, isIcon);
-      drawCheeks(c, 7, -4.5, 4.5, -4.5, 1.8, 1);
+      drawEyes(c, 8.2, -6.0, 1.4, 5.2, -6.0, 1.2, true, false, eyeCol, lowPower, isIcon);
+      drawCheeks(c, 7.5, -4.2, 4.8, -4.2, 1.6, 0.9);
       return;
     }
 
-    // 2. KHI ĐỨNG HOẶC ĐI (chibi 3/4 nhìn sang phải)
+    // 2. KHI ĐỨNG HOẶC ĐI (Chibi thanh thoát: Thân uốn lượn có ngực/eo/mông, cổ ngắn, chân thuôn)
 
-    // Chân xa (phía trong)
+    // Chân xa (phía trong) - Gộp chung 1 path
     const legFarCol = id === "cat_siamese" ? "#422b1d" : (id === "cat_black" ? "#22222a" : mainCol);
     c.fillStyle = legFarCol;
-    c.fillRect(-8.5 - leg, -4, 2.8, 4.2);
-    c.fillRect(3.5 - leg, -4, 2.8, 4.2);
     c.strokeStyle = OUTLINE;
     c.lineWidth = 1.1;
-    c.strokeRect(-8.5 - leg, -4, 2.8, 4.2);
-    c.strokeRect(3.5 - leg, -4, 2.8, 4.2);
+    c.beginPath();
+    pathTaperedLeg(c, 3.5, -6.5 - bob, 3.8 - leg, 0, 2.6, 1.8); // Chân trước xa
+    pathTaperedLeg(c, -6.5, -6.5 - bob, -7.2 + leg, 0, 2.8, 1.8); // Chân sau xa
+    c.fill();
+    c.stroke();
 
     // Đuôi mèo
     const tailCol = id === "cat_siamese" ? "#422b1d" : mainCol;
     if (id === "cat_persian") {
-      // Đuôi xù bồng bềnh hình chùm mây của mèo Ba Tư: khối bông tô đầy màu lông trắng, viền ngoài nét nâu, liền khối không viền trong
+      // Đuôi xù mây Ba Tư: khối bông liền mạch tô đầy, viền nét mép ngoài
       c.fillStyle = mainCol;
       c.strokeStyle = OUTLINE;
       c.lineWidth = 1.3;
       c.beginPath();
       const tw = tailWag * 1.5;
-      c.moveTo(-7.5, -8.5 - bob);
-      c.quadraticCurveTo(-12.5, -8.5 - bob, -13.0, -11.5 - bob); // Múi dưới
-      c.quadraticCurveTo(-17.5 + tw, -12.5 - bob, -17.0 + tw, -16.5 - bob); // Múi ngoài giữa
-      c.quadraticCurveTo(-16.0 + tw, -22.5 - bob, -10.5 + tw, -22.5 - bob); // Múi đỉnh chóp
-      c.quadraticCurveTo(-5.5 + tw, -21.5 - bob, -6.0, -16.5 - bob); // Múi trên trong
-      c.quadraticCurveTo(-5.0, -12.5 - bob, -7.5, -8.5 - bob); // Nối về mông
+      c.moveTo(-7.5, -9.0 - bob);
+      c.quadraticCurveTo(-12.5, -9.0 - bob, -13.0, -12.0 - bob);
+      c.quadraticCurveTo(-17.5 + tw, -13.0 - bob, -17.0 + tw, -16.5 - bob);
+      c.quadraticCurveTo(-16.0 + tw, -22.5 - bob, -10.5 + tw, -22.5 - bob);
+      c.quadraticCurveTo(-5.5 + tw, -21.5 - bob, -6.0, -16.5 - bob);
+      c.quadraticCurveTo(-5.0, -12.5 - bob, -7.5, -9.0 - bob);
       c.closePath();
       c.fill();
       c.stroke();
     } else {
-      // Đuôi dài cong mềm mại
+      // Đuôi dài cong duyên dáng
       c.strokeStyle = tailCol;
       c.lineWidth = 2.6;
       c.beginPath();
-      c.moveTo(-9, -8 - bob);
-      c.quadraticCurveTo(-15, -11 - bob, -13 + tailWag * 2, -19 - bob);
+      c.moveTo(-8.0, -9.5 - bob);
+      c.bezierCurveTo(-14.5, -11.0 - bob, -11.0, -17.5 - bob, -13.0 + tailWag * 2, -21.0 - bob);
       c.stroke();
-      // Viền nét đuôi
       c.strokeStyle = OUTLINE;
       c.lineWidth = 1.2;
       c.stroke();
 
-      // Sọc đuôi mèo mướp / tam thể
       if (id === "cat" && !lowPower) {
         c.strokeStyle = "#c55a11";
         c.lineWidth = 2.4;
         c.beginPath();
-        c.moveTo(-11.5, -12 - bob); c.lineTo(-12.5, -14 - bob);
-        c.moveTo(-12.8, -16 - bob); c.lineTo(-13 + tailWag * 1.5, -18 - bob);
+        c.moveTo(-11.5, -13.0 - bob); c.lineTo(-12.5, -15.0 - bob);
+        c.moveTo(-12.2, -17.0 - bob); c.lineTo(-13.0 + tailWag * 1.5, -19.5 - bob);
         c.stroke();
       }
     }
 
-    // Thân mèo
+    // THÂN MÈO: Thân dài hơn cao (tỉ lệ ~1.7:1), ngực nhô, eo thắt, mông cong, lưng uốn lượn
     c.fillStyle = mainCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.3;
     c.beginPath();
-    c.ellipse(-1, -8 - bob, 9.2, 6.2, 0, 0, Math.PI * 2);
+    c.moveTo(6.5, -8.5 - bob); // Ức ngực
+    c.quadraticCurveTo(5.2, -6.0 - bob, 3.5, -6.0 - bob); // Ngực dưới
+    c.quadraticCurveTo(0, -7.2 - bob, -4.5, -6.5 - bob); // Eo thắt nhẹ
+    c.quadraticCurveTo(-8.0, -6.5 - bob, -8.5, -9.5 - bob); // Dưới hông
+    c.quadraticCurveTo(-9.2, -12.5 - bob, -6.5, -12.2 - bob); // Mông cong tròn
+    c.quadraticCurveTo(-1.0, -11.5 - bob, 3.5, -12.5 - bob); // Lưng uốn cong
+    c.quadraticCurveTo(5.5, -13.5 - bob, 7.5, -13.0 - bob); // Cổ vươn đỡ đầu
+    c.quadraticCurveTo(7.5, -10.5 - bob, 6.5, -8.5 - bob); // Nối về ngực
+    c.closePath();
     c.fill();
     c.stroke();
 
-    // Bụng trắng (mèo mướp / mèo Xiêm)
+    // Mảng bụng / hoa văn
     if (id === "cat") {
       c.fillStyle = bellyCol;
       c.beginPath();
-      c.ellipse(1, -6 - bob, 6, 3.5, 0, 0, Math.PI * 2);
+      c.ellipse(1.5, -7.0 - bob, 4.5, 2.5, 0.1, 0, Math.PI * 2);
       c.fill();
-
-      // Sọc vằn cam đậm trên lưng mèo mướp
       if (!lowPower) {
         c.strokeStyle = "#c55a11";
         c.lineWidth = 1.3;
         c.beginPath();
-        c.moveTo(-4, -13 - bob); c.lineTo(-3, -8 - bob);
-        c.moveTo(0, -13.5 - bob); c.lineTo(1, -9 - bob);
+        c.moveTo(-3.5, -12.2 - bob); c.lineTo(-2.5, -8.5 - bob);
+        c.moveTo(0.5, -12.0 - bob); c.lineTo(1.5, -8.8 - bob);
         c.stroke();
       }
     } else if (id === "cat_calico") {
-      // Mảng loang cam + đen đặc trưng mèo tam thể
       c.fillStyle = "#e76f51"; // Cam
       c.beginPath();
-      c.ellipse(-1, -12 - bob, 4.5, 2.5, 0.1, 0, Math.PI * 2);
+      c.ellipse(-0.5, -11.5 - bob, 4.0, 2.2, 0.1, 0, Math.PI * 2);
       c.fill();
       c.fillStyle = "#2b2b35"; // Đen
       c.beginPath();
-      c.ellipse(-6, -9 - bob, 4.0, 3.2, -0.2, 0, Math.PI * 2);
+      c.ellipse(-6.0, -10.0 - bob, 3.5, 2.8, -0.2, 0, Math.PI * 2);
       c.fill();
     } else if (id === "cat_persian") {
-      // Bờm lông cổ xù bông to tròn xung quanh ngực: khối bông liền mạch tô đầy màu lông, viền ngoài nét nâu, không viền trong
+      // Bờm lông cổ xù Ba Tư: liền khối mềm mại, không viền trong
       c.fillStyle = mainCol;
       c.strokeStyle = OUTLINE;
       c.lineWidth = 1.3;
       c.beginPath();
-      c.moveTo(2.0, -11.5 - bob);
-      c.quadraticCurveTo(6.5, -12.0 - bob, 6.8, -8.5 - bob); // Múi ngực trên
-      c.quadraticCurveTo(8.0, -5.0 - bob, 5.5, -3.8 - bob); // Múi ngực dưới
-      c.quadraticCurveTo(3.0, -2.0 - bob, 1.5, -3.8 - bob); // Múi đáy ngực
-      c.quadraticCurveTo(-0.5, -2.5 - bob, -0.5, -5.5 - bob); // Múi sau ngực
-      c.quadraticCurveTo(-1.0, -9.5 - bob, 2.0, -11.5 - bob); // Khép kín
+      c.moveTo(2.5, -12.0 - bob);
+      c.quadraticCurveTo(7.0, -12.5 - bob, 7.2, -9.0 - bob);
+      c.quadraticCurveTo(8.2, -5.5 - bob, 5.8, -4.2 - bob);
+      c.quadraticCurveTo(3.2, -2.5 - bob, 1.8, -4.2 - bob);
+      c.quadraticCurveTo(-0.2, -3.0 - bob, -0.2, -6.0 - bob);
+      c.quadraticCurveTo(-0.5, -10.0 - bob, 2.5, -12.0 - bob);
       c.closePath();
       c.fill();
       c.stroke();
     }
 
-    // Chân gần (phía ngoài)
+    // Chân gần (phía ngoài) - Thuôn dài có bàn chân tròn nhỏ
     const legNearCol = id === "cat_siamese" ? "#422b1d" : (id === "cat_black" ? "#2b2b35" : mainCol);
     c.fillStyle = legNearCol;
-    c.fillRect(-6.5 + leg, -4, 2.8, 4.2);
-    c.fillRect(5.2 + leg, -4, 2.8, 4.2);
     c.strokeStyle = OUTLINE;
     c.lineWidth = 1.1;
-    c.strokeRect(-6.5 + leg, -4, 2.8, 4.2);
-    c.strokeRect(5.2 + leg, -4, 2.8, 4.2);
+    c.beginPath();
+    pathTaperedLeg(c, 5.0, -6.2 - bob, 5.5 + leg, 0, 2.8, 2.0); // Chân trước gần
+    pathTaperedLeg(c, -5.0, -6.2 - bob, -5.8 - leg, 0, 3.0, 2.0); // Chân sau gần
+    c.fill();
+    c.stroke();
 
-    // ĐẦU MÈO
-    const hx = 6.8, hy = -15 - bob * 0.7;
-    const hrx = id === "cat_persian" ? 7.8 : 7.2;
-    const hry = id === "cat_persian" ? 7.0 : 6.5;
+    // ĐẦU MÈO: To chibi (~40-45% chiều cao), cổ ngắn nâng ở trước-trên thân, đầu hơi rộng ngang, má bầu
+    const hx = 7.5, hy = -16.5 - bob * 0.7;
 
     // Tai mèo
     const ear1Col = id === "cat_siamese" ? "#422b1d" : (id === "cat_calico" ? "#e76f51" : mainCol);
     const ear2Col = id === "cat_siamese" ? "#422b1d" : (id === "cat_calico" ? "#2b2b35" : mainCol);
 
-    // Tai xa
+    // Gộp 2 tai vào 1 path
     c.fillStyle = ear2Col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.2;
     c.beginPath();
-    c.moveTo(hx - 4.5, hy - 4.5); c.lineTo(hx - 3, hy - (id === "cat_persian" ? 9.5 : 11.2)); c.lineTo(hx, hy - 5.5);
+    c.moveTo(hx - 4.5, hy - 3.5); c.lineTo(hx - 3.0, hy - 10.2); c.lineTo(hx - 0.5, hy - 4.5); // Tai xa
     c.fill();
     c.stroke();
 
-    // Tai gần
     c.fillStyle = ear1Col;
     c.beginPath();
-    c.moveTo(hx + 1.5, hy - 5.5); c.lineTo(hx + 4.5, hy - (id === "cat_persian" ? 9.8 : 11.8)); c.lineTo(hx + 7.5, hy - 4.5);
+    c.moveTo(hx + 1.2, hy - 4.5); c.lineTo(hx + 4.5, hy - 10.8); c.lineTo(hx + 6.8, hy - 3.2); // Tai gần
     c.fill();
     c.stroke();
 
     // Lòng tai hồng
     c.fillStyle = innerEarCol;
     c.beginPath();
-    c.moveTo(hx + 2.8, hy - 5.8); c.lineTo(hx + 4.5, hy - 10.0); c.lineTo(hx + 6.2, hy - 5.2);
+    c.moveTo(hx + 2.5, hy - 4.5); c.lineTo(hx + 4.5, hy - 9.0); c.lineTo(hx + 5.8, hy - 3.8);
     c.fill();
 
-    // Khối đầu tròn
+    // Khối đầu mèo: hơi rộng ngang, má bầu phúng phính (không phải tròn vo)
     c.fillStyle = mainCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.3;
     c.beginPath();
-    c.ellipse(hx, hy, hrx, hry, 0, 0, Math.PI * 2);
+    c.moveTo(hx - 4.5, hy - 3.5);
+    c.quadraticCurveTo(hx, hy - 5.5, hx + 4.5, hy - 3.5); // Đỉnh đầu
+    c.quadraticCurveTo(hx + 7.5, hy - 0.5, hx + 6.5, hy + 3.0); // Má phải phúng phính
+    c.quadraticCurveTo(hx + 4.0, hy + 5.5, hx, hy + 5.0); // Cằm
+    c.quadraticCurveTo(hx - 5.5, hy + 5.2, hx - 6.5, hy + 2.5); // Má trái
+    c.quadraticCurveTo(hx - 7.5, hy - 0.5, hx - 4.5, hy - 3.5);
+    c.closePath();
     c.fill();
     c.stroke();
 
-    // Chi tiết khuôn mặt riêng
+    // Mặt nạ mèo Xiêm / Sọc trán mèo mướp
     if (id === "cat_siamese") {
-      // Mặt nạ nâu sẫm ở giữa mặt mèo Xiêm
       c.fillStyle = "#422b1d";
       c.beginPath();
-      c.ellipse(hx + 3, hy + 0.8, 4.2, 3.4, 0, 0, Math.PI * 2);
+      c.ellipse(hx + 3.0, hy + 1.2, 4.0, 3.2, 0, 0, Math.PI * 2);
       c.fill();
     } else if (id === "cat" && !lowPower) {
-      // Sọc trán chữ M mèo mướp
       c.strokeStyle = "#c55a11";
       c.lineWidth = 1.1;
       c.beginPath();
-      c.moveTo(hx + 2, hy - 5); c.lineTo(hx + 3.5, hy - 2.5); c.lineTo(hx + 5, hy - 4.8);
+      c.moveTo(hx + 1.8, hy - 4.5); c.lineTo(hx + 3.2, hy - 2.0); c.lineTo(hx + 4.8, hy - 4.2);
       c.stroke();
     }
 
     // Mắt mở to tròn
-    drawEyes(c, hx + 4.2, hy - 0.8, 1.8, hx + 0.2, hy - 0.8, 1.5, isSleeping, blink, eyeCol, lowPower, isIcon);
+    drawEyes(c, hx + 3.8, hy - 0.8, 1.8, hx - 0.2, hy - 0.8, 1.5, isSleeping, blink, eyeCol, lowPower, isIcon);
+    drawCheeks(c, hx + 3.2, hy + 2.2, hx - 1.5, hy + 2.2, 2.0, 1.2);
 
-    // Má hồng
-    drawCheeks(c, hx + 3.2, hy + 2.2, hx - 1.2, hy + 2.2, 2.0, 1.2);
-
-    // Mũi & nụ cười vui vẻ
+    // Mũi & Nụ cười vui vẻ
     c.fillStyle = noseCol;
     c.beginPath();
-    const noseY = id === "cat_persian" ? hy - 0.2 : hy + 1.2; // Mèo Ba Tư mặt tẹt mũi cao sát mắt
-    c.arc(hx + 6.2, noseY, 0.9, 0, Math.PI * 2);
+    const noseY = id === "cat_persian" ? hy - 0.2 : hy + 1.2;
+    c.arc(hx + 5.8, noseY, 0.9, 0, Math.PI * 2);
     c.fill();
 
-    // Nụ cười vui vẻ khi chụp chân dung tiệm thú cưng
     if (isIcon) {
       c.strokeStyle = OUTLINE;
       c.lineWidth = 1.0;
@@ -366,13 +370,12 @@ const Pets = (() => {
       c.stroke();
     }
 
-    // Ria mép mảnh
     if (!lowPower) {
       c.strokeStyle = id === "cat_black" ? "#555566" : OUTLINE;
       c.lineWidth = 0.9;
       c.beginPath();
-      c.moveTo(hx + 7.5, hy + 1); c.lineTo(hx + 12, hy - 0.5);
-      c.moveTo(hx + 7.5, hy + 2.5); c.lineTo(hx + 11.5, hy + 3.5);
+      c.moveTo(hx + 6.8, hy + 1.0); c.lineTo(hx + 11.5, hy - 0.5);
+      c.moveTo(hx + 6.8, hy + 2.5); c.lineTo(hx + 11.0, hy + 3.5);
       c.stroke();
     }
   }
@@ -383,43 +386,46 @@ const Pets = (() => {
   function drawDogFamily(c, id, ctx) {
     const { t, seed, isSleeping, isWalking, lowPower, isIcon } = ctx;
 
-    const bob = isWalking ? Math.abs(Math.sin(t * 14 + seed)) * 1.3 : 0;
-    const leg = isWalking ? Math.sin(t * 14 + seed) * 3 : 0;
+    const bob = isWalking ? Math.abs(Math.sin(t * 14 + seed)) * 1.2 : 0;
+    const leg = isWalking ? Math.sin(t * 12 + seed) * 3 : 0;
     const tailWag = Math.sin(t * (isWalking ? 16 : 8) + seed);
-    // Chân dung icon không chớp mắt (luôn mở to)
     const blink = !isSleeping && !isIcon && (((t * 1.5 + seed * 2.7 + 1.0) % 3.8) < 0.14);
-    const brSleep = isSleeping ? Math.sin(t * 2.0 + seed) * 0.5 : 0;
+    const brSleep = isSleeping ? Math.sin(t * 2.0 + seed) * 0.4 : 0;
 
-    // Màu nền từng bé
-    let mainCol = "#c68b59"; // Cún vàng
+    let mainCol = "#c68b59";
     let snoutCol = "#faeedd";
-    let eyeCol = "#241812";
+    let eyeCol = EYE_BLACK;
 
     if (id === "dog_shiba") {
-      mainCol = "#e0954f"; // Cam đỏ Shiba
+      mainCol = "#e0954f";
     } else if (id === "dog_corgi") {
-      mainCol = "#e8a35c"; // Vàng cam Corgi
+      mainCol = "#e8a35c";
     } else if (id === "dog_poodle") {
-      mainCol = "#fff5ee"; // Kem xù Poodle
+      mainCol = "#fff5ee";
       snoutCol = "#fff5ee";
     } else if (id === "dog_husky") {
-      mainCol = "#9aa5b1"; // Xám tro Husky
-      snoutCol = "#ffffff";
-      eyeCol = "#38bdf8";  // Mắt xanh băng giá
+      mainCol = "#9aa5b1";
+      snoutCol = WHITE;
+      eyeCol = EYE_BLUE;
     } else if (id === "dog_dalmatian") {
-      mainCol = "#ffffff"; // Trắng tinh
-      snoutCol = "#ffffff";
+      mainCol = WHITE;
+      snoutCol = WHITE;
     }
 
-    // 1. KHI NGỦ
+    // 1. KHI NGỦ (nằm duỗi mềm mại nhận rõ đầu, tai, thân, đuôi)
     if (isSleeping) {
       c.fillStyle = mainCol;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 1.3;
       c.beginPath();
-      c.ellipse(0, -5.5, 11, 6 + brSleep * 0.5, 0, 0, Math.PI * 2);
+      c.moveTo(5.0, -5.0 + brSleep);
+      c.quadraticCurveTo(1.0, -8.5 + brSleep, -5.5, -8.0 + brSleep); // Lưng
+      c.quadraticCurveTo(-9.5, -7.5 + brSleep, -8.8, -3.5); // Mông
+      c.quadraticCurveTo(-3.0, -2.5, 3.5, -2.5); // Bụng
+      c.closePath();
       c.fill();
       c.stroke();
 
-      // Đốm Dalmatian khi ngủ
       if (id === "dog_dalmatian" && !lowPower) {
         c.fillStyle = "#2b2b35";
         c.beginPath();
@@ -431,7 +437,7 @@ const Pets = (() => {
       // Đầu cún ngủ gối thấp
       c.fillStyle = mainCol;
       c.beginPath();
-      c.arc(6.8, -6, 5.8, 0, Math.PI * 2);
+      c.ellipse(6.8, -5.8, 5.5, 4.5, 0.1, 0, Math.PI * 2);
       c.fill();
       c.stroke();
 
@@ -441,211 +447,232 @@ const Pets = (() => {
       c.ellipse(9.2, -5.2, 3.2, 2.4, 0, 0, Math.PI * 2);
       c.fill();
 
-      // Mũi đen
-      c.fillStyle = "#1a1a1a";
+      c.fillStyle = NOSE_BLACK;
       c.beginPath();
       c.arc(11.2, -5.8, 1.2, 0, Math.PI * 2);
       c.fill();
 
-      // Mắt nhắm
       drawEyes(c, 8, -6.8, 1.6, 5, -6.8, 1.3, true, false, eyeCol, lowPower, isIcon);
       drawCheeks(c, 7.5, -4.5, null, null, 2.0, 1.2);
       return;
     }
 
-    // 2. KHI ĐỨNG HOẶC ĐI
+    // 2. KHI ĐỨNG HOẶC ĐI: Dáng khỏe khoắn, ngực nhô, eo thon, chân thuôn bước so le
 
-    // Chân xa
-    const legH = id === "dog_corgi" ? 2.5 : 4.5; // Chân Corgi SIÊU NGẮN!
+    // Chân xa (phía trong)
+    const legH = id === "dog_corgi" ? 3.0 : 6.0; // Corgi chân ngắn đặc trưng
     c.fillStyle = mainCol;
-    c.fillRect(-8.5 - leg, -legH, 3.0, legH);
-    c.fillRect(3.5 - leg, -legH, 3.0, legH);
     c.strokeStyle = OUTLINE;
     c.lineWidth = 1.1;
-    c.strokeRect(-8.5 - leg, -legH, 3.0, legH);
-    c.strokeRect(3.5 - leg, -legH, 3.0, legH);
+    c.beginPath();
+    pathTaperedLeg(c, 3.5, -legH - bob, 3.8 - leg, 0, 2.8, 2.0); // Chân trước xa
+    pathTaperedLeg(c, -6.5, -legH - bob, -7.2 + leg, 0, 3.0, 2.0); // Chân sau xa
+    c.fill();
+    c.stroke();
 
-    // Đuôi chó theo từng giống
+    // Đuôi chó theo giống
     if (id === "dog_shiba") {
-      // Đuôi Shiba cuộn tròn xoắn ốc trên lưng!
-      c.fillStyle = mainCol;
-      c.beginPath();
-      c.arc(-8, -13 - bob, 4.2, 0, Math.PI * 2);
-      c.fill();
-      c.stroke();
-      c.fillStyle = "#ffffff";
-      c.beginPath();
-      c.arc(-8, -13 - bob, 1.8, 0, Math.PI * 2);
-      c.fill();
-    } else if (id === "dog_corgi") {
-      // Đuôi cụt Corgi ngắn ngủn nhấp nhô
-      c.fillStyle = "#ffffff";
-      c.beginPath();
-      c.arc(-11, -9 - bob, 2.2, 0, Math.PI * 2);
-      c.fill();
-      c.stroke();
-    } else if (id === "dog_poodle") {
-      // Đuôi Poodle: cuống đuôi mảnh nối vào cục bông tròn xù ở chóp (tô đầy màu kem, viền ngoài nét nâu)
-      c.strokeStyle = OUTLINE;
-      c.lineWidth = 1.4;
-      c.beginPath();
-      c.moveTo(-7.5, -8.5 - bob);
-      c.lineTo(-12 + tailWag * 2, -15 - bob);
-      c.stroke();
-
-      // Cục bông chóp đuôi: tô đầy màu kem, viền ngoài, che đầu cuống
+      // Đuôi Shiba cuộn tròn xoắn trên lưng
       c.fillStyle = mainCol;
       c.strokeStyle = OUTLINE;
       c.lineWidth = 1.3;
       c.beginPath();
-      c.arc(-12.5 + tailWag * 2, -15.5 - bob, 3.8, 0, Math.PI * 2);
+      c.arc(-8, -13.5 - bob, 4.2, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+      c.fillStyle = WHITE;
+      c.beginPath();
+      c.arc(-8, -13.5 - bob, 1.8, 0, Math.PI * 2);
+      c.fill();
+    } else if (id === "dog_corgi") {
+      // Đuôi ngắn củn nhấp nhô
+      c.fillStyle = WHITE;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 1.2;
+      c.beginPath();
+      c.arc(-10.5, -9.5 - bob, 2.2, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+    } else if (id === "dog_poodle") {
+      // Đuôi Poodle: cuống mảnh nối cục bông tròn chóp
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 1.4;
+      c.beginPath();
+      c.moveTo(-7.5, -9.0 - bob); c.lineTo(-12 + tailWag * 2, -15.5 - bob);
+      c.stroke();
+      c.fillStyle = mainCol;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 1.3;
+      c.beginPath();
+      c.arc(-12.5 + tailWag * 2, -16.0 - bob, 3.8, 0, Math.PI * 2);
       c.fill();
       c.stroke();
     } else {
-      // Đuôi vẫy tít mù của cún vàng / Husky / chó đốm
+      // Đuôi vẫy tít mù
       c.strokeStyle = mainCol;
       c.lineWidth = id === "dog_husky" ? 4.2 : 2.8;
       c.beginPath();
-      c.moveTo(-8, -9 - bob);
-      c.lineTo(-13 + tailWag * 3, -15 - bob + tailWag * 1.5);
+      c.moveTo(-8, -9.5 - bob);
+      c.lineTo(-13 + tailWag * 3, -15.5 - bob + tailWag * 1.5);
       c.stroke();
       c.strokeStyle = OUTLINE;
       c.lineWidth = 1.1;
       c.stroke();
     }
 
-    // Thân chó
-    const bodyW = id === "dog_corgi" ? 11.5 : 9.5;
-    const bodyH = id === "dog_corgi" ? 6.8 : 6.5;
+    // THÂN CHÓ: Thân dài hơn cao (tỉ lệ ~1.7:1; Corgi ~1.9:1), ngực nở, eo thon, mông tròn
+    const rearX = id === "dog_corgi" ? -10.5 : -8.5;
     c.fillStyle = mainCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.3;
     c.beginPath();
-    c.ellipse(-1, -8 - bob, bodyW, bodyH, 0, 0, Math.PI * 2);
+    c.moveTo(6.8, -8.5 - bob); // Ngực nở
+    c.quadraticCurveTo(5.5, -legH - bob, 3.5, -legH - bob);
+    c.quadraticCurveTo(0, -legH - 1.2 - bob, -4.5, -legH - 0.5 - bob); // Eo thon
+    c.quadraticCurveTo(rearX, -legH - 0.5 - bob, rearX - 0.5, -9.5 - bob); // Hông mông
+    c.quadraticCurveTo(rearX - 0.5, -12.5 - bob, -6.5, -12.2 - bob); // Mông tròn
+    c.quadraticCurveTo(-1.0, -11.5 - bob, 3.5, -12.5 - bob); // Sống lưng cong
+    c.quadraticCurveTo(5.8, -13.5 - bob, 7.8, -13.0 - bob); // Cổ vươn lên
+    c.quadraticCurveTo(7.8, -10.5 - bob, 6.8, -8.5 - bob);
+    c.closePath();
     c.fill();
     c.stroke();
 
-    // Mông tròn Corgi hình trái tim trắng phía sau
+    // Mông tròn Corgi hình trái tim trắng
     if (id === "dog_corgi") {
-      c.fillStyle = "#ffffff";
+      c.fillStyle = WHITE;
       c.beginPath();
-      c.ellipse(-9.5, -7.5 - bob, 4.0, 4.2, 0.2, 0, Math.PI * 2);
+      c.ellipse(-9.5, -8.5 - bob, 3.8, 4.0, 0.2, 0, Math.PI * 2);
       c.fill();
     }
 
-    // Đốm đen trên thân chó Dalmatian
+    // Đốm Dalmatian
     if (id === "dog_dalmatian" && !lowPower) {
       c.fillStyle = "#2b2b35";
       c.beginPath();
       c.arc(-4, -10 - bob, 1.8, 0, Math.PI * 2);
-      c.arc(0, -7 - bob, 1.5, 0, Math.PI * 2);
-      c.arc(-6, -6 - bob, 1.4, 0, Math.PI * 2);
+      c.arc(0, -7.5 - bob, 1.5, 0, Math.PI * 2);
+      c.arc(-6, -6.5 - bob, 1.4, 0, Math.PI * 2);
       c.arc(3, -9 - bob, 1.2, 0, Math.PI * 2);
       c.fill();
     }
 
-    // Ngực trắng (Shiba, Corgi, Husky) & Bờm ngực bông xù Poodle
+    // Ngực trắng / Bờm ngực Poodle
     if (id === "dog_shiba" || id === "dog_corgi" || id === "dog_husky") {
-      c.fillStyle = "#ffffff";
+      c.fillStyle = WHITE;
       c.beginPath();
-      c.ellipse(3, -7 - bob, 4.5, 4.0, 0, 0, Math.PI * 2);
+      c.ellipse(3.8, -7.5 - bob, 4.5, 3.8, 0, 0, Math.PI * 2);
       c.fill();
     } else if (id === "dog_poodle") {
-      // Bờm ngực xù tròn của Poodle (tô đầy màu kem, viền ngoài nét nâu, liền khối không viền trong)
+      // Bờm ngực xù Poodle tô đầy màu kem, viền ngoài nét nâu
       c.fillStyle = mainCol;
       c.strokeStyle = OUTLINE;
       c.lineWidth = 1.3;
       c.beginPath();
-      c.moveTo(1.5, -11.0 - bob);
-      c.quadraticCurveTo(6.2, -11.5 - bob, 6.5, -7.5 - bob);
-      c.quadraticCurveTo(7.5, -4.5 - bob, 5.0, -3.5 - bob);
-      c.quadraticCurveTo(2.2, -2.5 - bob, 0.5, -4.5 - bob);
-      c.quadraticCurveTo(-0.5, -8.0 - bob, 1.5, -11.0 - bob);
+      c.moveTo(1.5, -11.5 - bob);
+      c.quadraticCurveTo(6.5, -12.0 - bob, 6.8, -8.0 - bob);
+      c.quadraticCurveTo(7.8, -5.0 - bob, 5.2, -4.0 - bob);
+      c.quadraticCurveTo(2.5, -3.0 - bob, 0.8, -5.0 - bob);
+      c.quadraticCurveTo(-0.2, -8.5 - bob, 1.5, -11.5 - bob);
       c.closePath();
       c.fill();
       c.stroke();
     }
 
-    // Chân gần
-    c.fillStyle = id === "dog_corgi" ? "#ffffff" : mainCol; // Corgi tất chân trắng
-    c.fillRect(-6.5 + leg, -legH, 3.0, legH);
-    c.fillRect(5.2 + leg, -legH, 3.0, legH);
+    // Chân gần (phía ngoài)
+    c.fillStyle = id === "dog_corgi" ? WHITE : mainCol;
     c.strokeStyle = OUTLINE;
     c.lineWidth = 1.1;
-    c.strokeRect(-6.5 + leg, -legH, 3.0, legH);
-    c.strokeRect(5.2 + leg, -legH, 3.0, legH);
+    c.beginPath();
+    pathTaperedLeg(c, 5.2, -legH - bob, 5.5 + leg, 0, 3.0, 2.2); // Chân trước gần
+    pathTaperedLeg(c, -4.8, -legH - bob, -5.5 - leg, 0, 3.2, 2.2); // Chân sau gần
+    c.fill();
+    c.stroke();
 
-    // ĐẦU CHÓ
-    const hx = 6.8, hy = -15 - bob * 0.7;
+    // ĐẦU CHÓ: To chibi (~40-45% chiều cao), cổ ngắn nâng ở trước-trên thân, MÕM NHÔ RÕ RỆT
+    const hx = 7.5, hy = -16.5 - bob * 0.7;
 
     // Tai chó theo giống
     if (id === "dog_shiba" || id === "dog_husky") {
-      // Tai tam giác dựng thẳng đứng
+      // Tai tam giác nhọn dựng thẳng đứng
       c.fillStyle = mainCol;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 1.2;
       c.beginPath();
-      c.moveTo(hx - 3.5, hy - 4.5); c.lineTo(hx - 2, hy - 11.5); c.lineTo(hx + 0.5, hy - 5.5);
-      c.moveTo(hx + 1.8, hy - 5.5); c.lineTo(hx + 4.8, hy - 12.0); c.lineTo(hx + 7.2, hy - 4.5);
+      c.moveTo(hx - 4.5, hy - 3.5); c.lineTo(hx - 3.0, hy - 10.5); c.lineTo(hx - 0.5, hy - 4.5);
+      c.moveTo(hx + 1.2, hy - 4.5); c.lineTo(hx + 4.5, hy - 11.2); c.lineTo(hx + 6.8, hy - 3.2);
       c.fill();
       c.stroke();
-      // Lòng tai hồng
-      c.fillStyle = "#ffcdd2";
+      c.fillStyle = PINK_INNER;
       c.beginPath();
-      c.moveTo(hx + 3, hy - 5.8); c.lineTo(hx + 4.8, hy - 10.2); c.lineTo(hx + 6.2, hy - 5.2);
+      c.moveTo(hx + 2.5, hy - 4.5); c.lineTo(hx + 4.5, hy - 9.5); c.lineTo(hx + 5.8, hy - 3.8);
       c.fill();
     } else if (id === "dog_corgi") {
-      // Tai Corgi: TO, RỘNG, HÌNH TAM GIÁC DỰNG, NGẮN HƠN (bằng ~2/3 trước), ĐẦU TAI HƠI TRÒN
+      // Tai Corgi: TO, RỘNG, TAM GIÁC DỰNG ĐỨNG, NGẮN HƠN (~2/3 bunny), ĐẦU TAI HƠI TRÒN
       c.fillStyle = mainCol;
       c.strokeStyle = OUTLINE;
       c.lineWidth = 1.3;
-
-      // Tai xa: tam giác dựng rộng
       c.beginPath();
-      c.moveTo(hx - 4.2, hy - 4.5);
-      c.lineTo(hx - 2.8, hy - 10.2);
-      c.quadraticCurveTo(hx - 2.0, hy - 11.2, hx - 1.2, hy - 10.2);
-      c.lineTo(hx + 0.6, hy - 5.5);
+      c.moveTo(hx - 4.2, hy - 4.0);
+      c.lineTo(hx - 2.8, hy - 9.8);
+      c.quadraticCurveTo(hx - 2.0, hy - 10.6, hx - 1.2, hy - 9.8);
+      c.lineTo(hx + 0.6, hy - 5.0);
       c.closePath();
       c.fill();
       c.stroke();
 
-      // Tai gần: to, rộng, hình tam giác dựng, đầu tai hơi tròn
       c.beginPath();
-      c.moveTo(hx + 1.2, hy - 5.5);
-      c.lineTo(hx + 3.8, hy - 10.8);
-      c.quadraticCurveTo(hx + 4.6, hy - 11.8, hx + 5.4, hy - 10.8);
-      c.lineTo(hx + 8.0, hy - 4.2);
+      c.moveTo(hx + 1.2, hy - 5.0);
+      c.lineTo(hx + 3.8, hy - 10.2);
+      c.quadraticCurveTo(hx + 4.6, hy - 11.2, hx + 5.4, hy - 10.2);
+      c.lineTo(hx + 8.0, hy - 3.8);
       c.closePath();
       c.fill();
       c.stroke();
 
-      // Lòng tai hồng rộng hình tam giác bo góc
-      c.fillStyle = "#ffb8b8";
+      c.fillStyle = PINK_INNER;
       c.beginPath();
-      c.moveTo(hx + 2.5, hy - 5.2);
-      c.lineTo(hx + 4.3, hy - 9.5);
-      c.quadraticCurveTo(hx + 4.6, hy - 10.2, hx + 5.0, hy - 9.5);
-      c.lineTo(hx + 6.8, hy - 4.5);
+      c.moveTo(hx + 2.5, hy - 4.8);
+      c.lineTo(hx + 4.3, hy - 9.0);
+      c.quadraticCurveTo(hx + 4.6, hy - 9.6, hx + 5.0, hy - 9.0);
+      c.lineTo(hx + 6.8, hy - 4.0);
       c.closePath();
       c.fill();
     } else if (id === "dog_poodle") {
-      // Tai Poodle vẽ cùng với đầu bên dưới
+      // Poodle vẽ tai và topknot bên dưới
     } else {
       // Tai cụp mềm của cún vàng / chó đốm
       c.fillStyle = id === "dog_dalmatian" ? "#2b2b35" : mainCol;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 1.2;
       c.beginPath();
       c.ellipse(hx - 2.5, hy - 1.5, 2.6, 5.2, -0.25, 0, Math.PI * 2);
       c.fill();
       c.stroke();
     }
 
-    // Khối đầu
+    // Khối đầu chó & MÕM NHÔ RA PHÍA TRƯỚC
+    const isSnoutPointy = id === "dog_shiba" || id === "dog_husky";
+    const snoutReach = isSnoutPointy ? 8.2 : (id === "dog_poodle" ? 7.2 : 7.6);
+    const snoutDrop = isSnoutPointy ? 1.0 : 1.4;
+
     c.fillStyle = mainCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.3;
     c.beginPath();
-    c.ellipse(hx, hy, 7.4, 6.8, 0, 0, Math.PI * 2);
+    c.moveTo(hx - 4.5, hy - 3.5);
+    c.quadraticCurveTo(hx, hy - 5.8, hx + 4.2, hy - 3.5); // Sọ đầu
+    c.quadraticCurveTo(hx + 5.5, hy - 1.0, hx + snoutReach, hy + snoutDrop); // Sống mũi dốc ra trước
+    c.quadraticCurveTo(hx + snoutReach + 0.8, hy + snoutDrop + 2.2, hx + 5.5, hy + 3.8); // Mõm dưới
+    c.quadraticCurveTo(hx + 3.0, hy + 5.5, hx, hy + 5.0); // Cằm
+    c.quadraticCurveTo(hx - 5.5, hy + 5.2, hx - 6.5, hy + 2.5); // Má sau
+    c.quadraticCurveTo(hx - 7.5, hy - 0.5, hx - 4.5, hy - 3.5);
+    c.closePath();
     c.fill();
     c.stroke();
 
-    // Chi tiết Poodle: Topknot và Tai cục bông hợp nhất liền khối
+    // Chi tiết Poodle: Topknot và Tai cục bông hợp nhất mềm mại
     if (id === "dog_poodle") {
-      // Cục bông đỉnh đầu (topknot): vòm bông tròn xù tô đầy, hợp nhất với đầu không thấy viền cắt trán
       c.fillStyle = mainCol;
       c.strokeStyle = OUTLINE;
       c.lineWidth = 1.3;
@@ -654,12 +681,10 @@ const Pets = (() => {
       c.closePath();
       c.fill();
       c.stroke();
-      // Xoá viền đầu bên dưới cục bông để hợp nhất thành 1 khối bông mềm mại
       c.beginPath();
       c.ellipse(hx, hy - 5.5, 3.8, 2.5, 0, 0, Math.PI * 2);
       c.fill();
 
-      // Hai tai cục bông rủ hai bên má (khối bông dài bồng bềnh, tô đầy màu kem, liền khối mềm mại)
       c.beginPath();
       const earX = hx - 3.2, earY = hy - 1.5;
       c.moveTo(earX, earY - 4.5);
@@ -672,27 +697,24 @@ const Pets = (() => {
       c.stroke();
     }
 
-    // Vệt mặt nạ Husky đặc trưng
+    // Hoa văn mặt nạ Husky / Urajiro Shiba / Vệt trắng Corgi
     if (id === "dog_husky") {
-      c.fillStyle = "#ffffff";
+      c.fillStyle = WHITE;
       c.beginPath();
-      c.ellipse(hx + 2.5, hy + 0.5, 4.8, 5.0, 0, 0, Math.PI * 2);
+      c.ellipse(hx + 3.2, hy + 1.0, 4.8, 4.2, 0, 0, Math.PI * 2);
       c.fill();
-      // Vệt trán Husky
       if (!lowPower) {
         c.fillStyle = mainCol;
         c.beginPath();
-        c.moveTo(hx + 1.5, hy - 6.5); c.lineTo(hx + 2.8, hy - 2); c.lineTo(hx + 4.2, hy - 6.5);
+        c.moveTo(hx + 1.5, hy - 5.5); c.lineTo(hx + 3.0, hy - 1.5); c.lineTo(hx + 4.5, hy - 5.5);
         c.fill();
       }
     } else if (id === "dog_shiba") {
-      // Má phồng trắng Shiba Urajiro
-      c.fillStyle = "#ffffff";
+      c.fillStyle = WHITE;
       c.beginPath();
-      c.ellipse(hx + 2.5, hy + 2.2, 3.6, 2.8, 0, 0, Math.PI * 2);
-      c.ellipse(hx - 1.5, hy + 2.2, 3.0, 2.5, 0, 0, Math.PI * 2);
+      c.ellipse(hx + 3.0, hy + 2.2, 3.8, 2.6, 0, 0, Math.PI * 2);
+      c.ellipse(hx - 1.5, hy + 2.2, 3.0, 2.2, 0, 0, Math.PI * 2);
       c.fill();
-      // 2 chấm lông mày trắng Shiba
       if (!lowPower) {
         c.beginPath();
         c.arc(hx + 2.5, hy - 4.2, 0.9, 0, Math.PI * 2);
@@ -700,35 +722,34 @@ const Pets = (() => {
         c.fill();
       }
     } else if (id === "dog_corgi") {
-      // Vệt trắng giữa trán Corgi
-      c.fillStyle = "#ffffff";
+      c.fillStyle = WHITE;
       c.beginPath();
-      c.ellipse(hx + 3, hy + 0.5, 2.2, 5.0, 0, 0, Math.PI * 2);
+      c.ellipse(hx + 3.5, hy + 0.8, 2.2, 4.8, 0, 0, Math.PI * 2);
       c.fill();
     }
 
-    // Mõm cún
-    c.fillStyle = snoutCol;
-    c.beginPath();
-    c.ellipse(hx + 4.8, hy + 1.2, 3.8, 2.8, 0, 0, Math.PI * 2);
-    c.fill();
-    c.stroke();
+    // Mõm cún phía trước
+    if (snoutCol !== mainCol) {
+      c.fillStyle = snoutCol;
+      c.beginPath();
+      c.ellipse(hx + 5.0, hy + 1.8, 3.6, 2.6, 0, 0, Math.PI * 2);
+      c.fill();
+    }
 
-    // Mũi to tròn màu đen
-    c.fillStyle = "#1a1a1a";
+    // Mũi to tròn đen bóng ở chóp mõm
+    c.fillStyle = NOSE_BLACK;
     c.beginPath();
-    c.arc(hx + 7.6, hy + 0.2, 1.4, 0, Math.PI * 2);
+    c.arc(hx + snoutReach, hy + snoutDrop, 1.3, 0, Math.PI * 2);
     c.fill();
 
     // Lưỡi hồng thè nhẹ khi đi
     if (isWalking) {
-      c.fillStyle = "#ff6b81";
+      c.fillStyle = TONGUE_RED;
       c.beginPath();
-      c.arc(hx + 5.8, hy + 3.8, 1.3, 0, Math.PI);
+      c.arc(hx + 5.8, hy + 4.2, 1.3, 0, Math.PI);
       c.fill();
     }
 
-    // Nụ cười vui vẻ khi chụp chân dung tiệm thú cưng
     if (isIcon) {
       c.strokeStyle = OUTLINE;
       c.lineWidth = 1.0;
@@ -751,122 +772,142 @@ const Pets = (() => {
     const { t, seed, isSleeping, isWalking, lowPower, isIcon } = ctx;
     const isLop = id === "bunny_lop";
     const mainCol = isLop ? "#c9a27e" : "#f5f2eb";
-    const bellyCol = isLop ? "#f7ede2" : "#ffffff";
+    const bellyCol = isLop ? "#f7ede2" : WHITE;
 
     const bob = isWalking ? Math.abs(Math.sin(t * 14 + seed)) * 1.5 : 0;
-    const leg = isWalking ? Math.sin(t * 14 + seed) * 3 : 0;
-    // Chân dung icon không chớp mắt (luôn mở to)
+    const leg = isWalking ? Math.sin(t * 12 + seed) * 3 : 0;
     const blink = !isSleeping && !isIcon && (((t * 1.5 + seed * 2.7 + 1.0) % 3.8) < 0.14);
-    const brSleep = isSleeping ? Math.sin(t * 2.0 + seed) * 0.5 : 0;
+    const brSleep = isSleeping ? Math.sin(t * 2.0 + seed) * 0.4 : 0;
 
-    // Khi ngủ: tròn xoe như viên mochi tuyết
     if (isSleeping) {
-      // Đuôi tròn nhỏ
-      c.fillStyle = "#ffffff";
+      c.fillStyle = WHITE;
       c.beginPath();
       c.arc(-8.5, -4, 2.5, 0, Math.PI * 2);
       c.fill();
       c.stroke();
 
-      // Thân ép sát đất
       c.fillStyle = mainCol;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 1.3;
       c.beginPath();
-      c.ellipse(0, -5, 10, 5.5 + brSleep * 0.4, 0, 0, Math.PI * 2);
+      c.moveTo(5.0, -4.5 + brSleep);
+      c.quadraticCurveTo(1.0, -8.0 + brSleep, -5.5, -7.5 + brSleep);
+      c.quadraticCurveTo(-9.0, -7.0 + brSleep, -8.5, -3.0);
+      c.quadraticCurveTo(-3.0, -2.0, 3.5, -2.0);
+      c.closePath();
       c.fill();
       c.stroke();
 
-      // Tai cụp / xuôi ra sau lưng
       c.beginPath();
-      c.ellipse(-1, -9, 6.5, 2.2, -0.2, 0, Math.PI * 2);
+      c.ellipse(-1, -8.5, 6.5, 2.2, -0.2, 0, Math.PI * 2);
       c.fill();
       c.stroke();
 
-      // Đầu tròn gối ngủ
       c.beginPath();
-      c.arc(5.8, -5.5, 5.2, 0, Math.PI * 2);
+      c.arc(5.8, -5.5, 5.0, 0, Math.PI * 2);
       c.fill();
       c.stroke();
 
-      drawEyes(c, 7, -5.8, 1.5, 4, -5.8, 1.3, true, false, "#241812", lowPower, isIcon);
+      drawEyes(c, 7, -5.8, 1.5, 4, -5.8, 1.3, true, false, EYE_BLACK, lowPower, isIcon);
       drawCheeks(c, 6.5, -4.0, null, null, 1.8, 1.0);
       return;
     }
 
-    // Khi đứng / nhảy
-    // Chân sau gập
+    // Dáng ngồi thỏ đặc trưng: Mông to cong cao, lưng uốn cong mềm mại, chân sau gập dài
     c.fillStyle = mainCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.1;
     c.beginPath();
-    c.ellipse(-4 - leg * 0.5, -4, 4.2, 3.2, 0.2, 0, Math.PI * 2);
+    pathTaperedLeg(c, 3.2, -5.5 - bob, 3.5 - leg, 0, 2.4, 1.8); // Chân trước
     c.fill();
     c.stroke();
 
-    // Chân trước
-    c.fillRect(3.2 + leg, -3.5, 2.6, 3.5);
-    c.strokeRect(3.2 + leg, -3.5, 2.6, 3.5);
-
-    // Đuôi bông tròn nhỏ sau mông
-    c.fillStyle = "#ffffff";
+    // Đuôi cục bông tròn nhỏ sau mông
+    c.fillStyle = WHITE;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.2;
     c.beginPath();
-    c.arc(-9.5, -7 - bob, 2.8, 0, Math.PI * 2);
+    c.arc(-9.5, -8.5 - bob, 2.8, 0, Math.PI * 2);
     c.fill();
     c.stroke();
 
-    // Thân thỏ
+    // Thân thỏ: ngực thon, lưng uốn cong, mông to cong cao
     c.fillStyle = mainCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.3;
     c.beginPath();
-    c.ellipse(-1, -7.5 - bob, 8.8, 6.5, 0, 0, Math.PI * 2);
+    c.moveTo(5.5, -8.0 - bob);
+    c.quadraticCurveTo(4.2, -5.5 - bob, 2.5, -5.5 - bob);
+    c.quadraticCurveTo(-1.0, -6.5 - bob, -5.0, -5.8 - bob);
+    c.quadraticCurveTo(-8.5, -5.8 - bob, -9.0, -9.5 - bob); // Mông cao
+    c.quadraticCurveTo(-9.2, -13.0 - bob, -6.0, -12.5 - bob);
+    c.quadraticCurveTo(-1.0, -11.0 - bob, 3.0, -12.0 - bob); // Lưng thỏ cong
+    c.quadraticCurveTo(4.8, -13.0 - bob, 6.5, -12.5 - bob); // Cổ
+    c.quadraticCurveTo(6.8, -10.0 - bob, 5.5, -8.0 - bob);
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // Chân sau thỏ gập áp sát hông
+    c.beginPath();
+    c.ellipse(-4.5, -4.5, 4.2, 2.8, 0.2, 0, Math.PI * 2);
     c.fill();
     c.stroke();
 
     // Bụng kem
     c.fillStyle = bellyCol;
     c.beginPath();
-    c.ellipse(1, -6 - bob, 5.5, 4.0, 0, 0, Math.PI * 2);
+    c.ellipse(1.5, -6.5 - bob, 4.5, 3.0, 0, 0, Math.PI * 2);
     c.fill();
 
     // ĐẦU THỎ
-    const hx = 5.5, hy = -14.5 - bob * 0.7;
+    const hx = 6.2, hy = -15.5 - bob * 0.7;
 
     // TAI THỎ
     if (isLop) {
       // Thỏ tai cụp: TAI DÀI RỦ CỤP HẲN XUỐNG HAI BÊN MÁ
       const lopSway = isWalking ? Math.sin(t * 12 + seed) * 0.2 : 0;
       c.fillStyle = mainCol;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 1.2;
       c.beginPath();
       c.ellipse(hx - 2, hy + 2, 2.6, 6.5, 0.1 + lopSway, 0, Math.PI * 2);
       c.ellipse(hx + 2.5, hy + 2, 2.6, 6.5, -0.1 + lopSway, 0, Math.PI * 2);
       c.fill();
       c.stroke();
     } else {
-      // Thỏ trắng: ĐÔI TAI DÀI DỰNG THẲNG ĐỨNG LÊN CAO (cao ~11 đơn vị)
+      // Thỏ trắng: ĐÔI TAI DÀI DỰNG THẲNG ĐỨNG LÊN CAO
       const earTwitch = isWalking ? Math.sin(t * 14 + seed) * 0.12 : 0;
       c.fillStyle = mainCol;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 1.2;
       c.beginPath();
       c.ellipse(hx - 1.5, hy - 7.5, 2.0, 5.8, -0.15 + earTwitch, 0, Math.PI * 2);
       c.ellipse(hx + 2.2, hy - 8.0, 2.0, 5.8, 0.1 + earTwitch, 0, Math.PI * 2);
       c.fill();
       c.stroke();
-      // Lòng tai hồng
-      c.fillStyle = "#ffb7b2";
+
+      c.fillStyle = PINK_INNER;
       c.beginPath();
       c.ellipse(hx + 2.2, hy - 7.5, 1.1, 4.2, 0.1 + earTwitch, 0, Math.PI * 2);
       c.fill();
     }
 
-    // Đầu tròn
+    // Đầu thỏ
     c.fillStyle = mainCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.3;
     c.beginPath();
-    c.ellipse(hx, hy, 6.8, 6.2, 0, 0, Math.PI * 2);
+    c.ellipse(hx, hy, 6.5, 5.8, 0, 0, Math.PI * 2);
     c.fill();
     c.stroke();
 
-    // Mũi chữ Y nhỏ xíu
-    c.fillStyle = "#ff8fa3";
+    // Mũi chữ Y nhỏ xinh
+    c.fillStyle = PINK_NOSE;
     c.beginPath();
-    c.arc(hx + 5.5, hy + 1.2, 0.9, 0, Math.PI * 2);
+    c.arc(hx + 5.2, hy + 1.2, 0.9, 0, Math.PI * 2);
     c.fill();
 
-    // Nụ cười vui vẻ
     if (isIcon) {
       c.strokeStyle = OUTLINE;
       c.lineWidth = 1.0;
@@ -875,204 +916,255 @@ const Pets = (() => {
       c.stroke();
     }
 
-    // Mắt & má
-    drawEyes(c, hx + 3.2, hy - 0.8, 1.8, hx - 0.5, hy - 0.8, 1.5, isSleeping, blink, "#241812", lowPower, isIcon);
+    drawEyes(c, hx + 3.2, hy - 0.8, 1.8, hx - 0.5, hy - 0.8, 1.5, isSleeping, blink, EYE_BLACK, lowPower, isIcon);
     drawCheeks(c, hx + 2.5, hy + 2.2, hx - 1.8, hy + 2.2, 2.2, 1.3);
   }
 
-  // Chuột Hamster (hamster)
+  // Chuột Hamster (hamster): Thân hơi dài thuôn có dáng, thấy rõ 4 chân bước, má phồng 2 bên
   function drawHamster(c, ctx) {
     const { t, seed, isSleeping, isWalking, lowPower, isIcon } = ctx;
-    const mainCol = "#f2c48d"; // Cam mật ong
+    const mainCol = "#f2c48d";
     const bob = isWalking ? Math.abs(Math.sin(t * 14 + seed)) * 1.0 : 0;
-    // Chân dung icon không chớp mắt (luôn mở to)
+    const leg = isWalking ? Math.sin(t * 12 + seed) * 2 : 0;
     const blink = !isSleeping && !isIcon && (((t * 1.5 + seed * 2.7 + 1.0) % 3.8) < 0.14);
     const brSleep = isSleeping ? Math.sin(t * 2.0 + seed) * 0.4 : 0;
 
-    // Hamster nhỏ hơn: cao ~15, dài ~18, TRÒN ỦM NHƯ BÁNH BAO
     if (isSleeping) {
       c.fillStyle = mainCol;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 1.3;
       c.beginPath();
-      c.ellipse(0, -5, 8.5, 5.5 + brSleep * 0.4, 0, 0, Math.PI * 2);
+      c.moveTo(4.5, -4.5 + brSleep);
+      c.quadraticCurveTo(0, -7.5 + brSleep, -5.0, -7.0 + brSleep);
+      c.quadraticCurveTo(-8.0, -6.5 + brSleep, -7.5, -2.5);
+      c.quadraticCurveTo(-2.0, -1.8, 3.5, -1.8);
+      c.closePath();
       c.fill();
       c.stroke();
-      // Tai tròn nhỏ
-      c.arc(5.5, -8.5, 1.8, 0, Math.PI * 2);
+
+      c.beginPath();
+      c.arc(5.0, -7.5, 1.8, 0, Math.PI * 2);
       c.fill();
       c.stroke();
-      drawEyes(c, 5.5, -5, 1.4, 2.5, -5, 1.2, true, false, "#241812", lowPower, isIcon);
+
+      drawEyes(c, 5.5, -5, 1.4, 2.5, -5, 1.2, true, false, EYE_BLACK, lowPower, isIcon);
       drawCheeks(c, 5.0, -3.5, null, null, 2.0, 1.0);
       return;
     }
 
-    // Chân & tay tí hon
+    // 4 chân tí hon đang bước
     c.fillStyle = "#ffcdd2";
-    c.fillRect(-4, -1.8, 2.2, 1.8);
-    c.fillRect(3, -1.8, 2.2, 1.8);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.0;
+    c.beginPath();
+    pathTaperedLeg(c, 3.5, -3.5 - bob, 4.0 - leg, 0, 2.0, 1.5);
+    pathTaperedLeg(c, -4.5, -3.5 - bob, -5.0 + leg, 0, 2.2, 1.5);
+    c.fill();
+    c.stroke();
 
     // Đuôi cụt chấm nhỏ
     c.fillStyle = mainCol;
     c.beginPath();
-    c.arc(-8.2, -5.5 - bob, 1.4, 0, Math.PI * 2);
+    c.arc(-8.5, -5.5 - bob, 1.4, 0, Math.PI * 2);
     c.fill();
     c.stroke();
 
-    // Thân tròn ủm như chiếc bánh bao
+    // Thân hamster thuôn dài mềm mại (tỉ lệ ~1.6:1, không phải quả bóng tròn)
     c.fillStyle = mainCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.3;
     c.beginPath();
-    c.ellipse(0, -7.5 - bob, 8.5, 7.0, 0, 0, Math.PI * 2);
+    c.moveTo(5.5, -6.5 - bob);
+    c.quadraticCurveTo(4.0, -3.8 - bob, 2.5, -3.8 - bob);
+    c.quadraticCurveTo(0, -4.5 - bob, -4.5, -4.0 - bob);
+    c.quadraticCurveTo(-8.0, -4.0 - bob, -8.2, -7.0 - bob);
+    c.quadraticCurveTo(-8.5, -10.5 - bob, -5.5, -10.2 - bob);
+    c.quadraticCurveTo(-1.0, -9.5 - bob, 3.0, -10.5 - bob);
+    c.quadraticCurveTo(5.2, -11.5 - bob, 6.8, -10.8 - bob);
+    c.quadraticCurveTo(6.8, -8.5 - bob, 5.5, -6.5 - bob);
+    c.closePath();
     c.fill();
     c.stroke();
 
     // Bụng trắng
-    c.fillStyle = "#ffffff";
+    c.fillStyle = WHITE;
     c.beginPath();
-    c.ellipse(1.5, -6.5 - bob, 5.0, 4.5, 0, 0, Math.PI * 2);
+    c.ellipse(1.5, -5.5 - bob, 4.5, 2.8, 0, 0, Math.PI * 2);
     c.fill();
 
-    // HAI MÁ PHỒNG TO TRÒN VO CHỨA ĐỒ ĂN
-    c.fillStyle = mainCol;
+    // Chân gần tí hon
+    c.fillStyle = "#ffcdd2";
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.0;
     c.beginPath();
-    c.arc(5.5, -8 - bob, 3.8, 0, Math.PI * 2);
-    c.arc(8.5, -7.5 - bob, 3.2, 0, Math.PI * 2);
+    pathTaperedLeg(c, 4.5, -3.5 - bob, 5.0 + leg, 0, 2.0, 1.5);
+    pathTaperedLeg(c, -3.5, -3.5 - bob, -4.0 - leg, 0, 2.2, 1.5);
     c.fill();
     c.stroke();
 
-    // Hai tai tròn nhỏ xíu trên đỉnh đầu
+    // ĐẦU & HAI MÁ PHỒNG TO PHÚNG PHÍNH
+    const hx = 6.5, hy = -12.5 - bob * 0.7;
+
+    // Hai tai tròn nhỏ trên đỉnh đầu
     c.fillStyle = mainCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.1;
     c.beginPath();
-    c.arc(2.0, -14.0 - bob, 2.2, 0, Math.PI * 2);
-    c.arc(6.0, -14.0 - bob, 2.0, 0, Math.PI * 2);
+    c.arc(hx - 3.5, hy - 4.5, 2.0, 0, Math.PI * 2);
+    c.arc(hx + 0.5, hy - 5.0, 1.8, 0, Math.PI * 2);
     c.fill();
     c.stroke();
-    c.fillStyle = "#ffb7b2";
+
+    // Đầu & 2 má phồng to chứa đồ ăn
+    c.fillStyle = mainCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.3;
     c.beginPath();
-    c.arc(2.0, -14.0 - bob, 1.2, 0, Math.PI * 2);
-    c.arc(6.0, -14.0 - bob, 1.1, 0, Math.PI * 2);
+    c.ellipse(hx, hy, 5.5, 4.8, 0, 0, Math.PI * 2);
     c.fill();
+    c.stroke();
+
+    // Má phồng to hai bên
+    c.beginPath();
+    c.arc(hx + 3.0, hy + 1.5, 2.8, 0, Math.PI * 2);
+    c.arc(hx - 2.5, hy + 1.5, 2.4, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
 
     // Hai tay nhỏ tí hon ôm trước ngực
     c.fillStyle = "#ffcdd2";
     c.beginPath();
-    c.ellipse(4.2, -6.0 - bob, 1.8, 1.3, 0.2, 0, Math.PI * 2);
+    c.ellipse(hx + 1.0, hy + 3.2, 1.6, 1.2, 0.2, 0, Math.PI * 2);
     c.fill();
     c.stroke();
 
-    // Mũi hồng chấm nhỏ
-    c.fillStyle = "#ff6b81";
+    // Mũi hồng
+    c.fillStyle = PINK_NOSE;
     c.beginPath();
-    c.arc(9.8, -7.5 - bob, 0.8, 0, Math.PI * 2);
+    c.arc(hx + 5.2, hy + 1.0, 0.8, 0, Math.PI * 2);
     c.fill();
 
-    // Nụ cười vui vẻ
     if (isIcon) {
       c.strokeStyle = OUTLINE;
       c.lineWidth = 1.0;
       c.beginPath();
-      c.arc(8.0, -6.0 - bob, 1.2, 0.1, Math.PI - 0.2);
+      c.arc(hx + 4.0, hy + 2.2, 1.1, 0.1, Math.PI - 0.2);
       c.stroke();
     }
 
-    // Mắt to tròn đen láy
-    drawEyes(c, 5.8, -9.5 - bob, 1.7, 1.8, -9.5 - bob, 1.4, isSleeping, blink, "#241812", lowPower, isIcon);
-    drawCheeks(c, 6.2, -6.0 - bob, null, null, 2.4, 1.4);
+    drawEyes(c, hx + 2.5, hy - 1.0, 1.6, hx - 1.2, hy - 1.0, 1.3, isSleeping, blink, EYE_BLACK, lowPower, isIcon);
+    drawCheeks(c, hx + 3.0, hy + 2.0, hx - 2.2, hy + 2.0, 2.0, 1.2);
   }
 
   // Sóc nâu (squirrel)
   function drawSquirrel(c, ctx) {
     const { t, seed, isSleeping, isWalking, lowPower, isIcon } = ctx;
-    const mainCol = "#b5651d"; // Nâu hạt dẻ
+    const mainCol = "#b5651d";
     const bob = isWalking ? Math.abs(Math.sin(t * 14 + seed)) * 1.2 : 0;
     const tailBounce = Math.sin(t * (isWalking ? 12 : 3.5) + seed);
-    // Chân dung icon không chớp mắt (luôn mở to)
     const blink = !isSleeping && !isIcon && (((t * 1.5 + seed * 2.7 + 1.0) % 3.8) < 0.14);
-    const brSleep = isSleeping ? Math.sin(t * 2.0 + seed) * 0.5 : 0;
+    const brSleep = isSleeping ? Math.sin(t * 2.0 + seed) * 0.4 : 0;
 
-    // Khi ngủ: đuôi xù to phủ trùm lên lưng như chiếc chăn ấm
     if (isSleeping) {
       c.fillStyle = mainCol;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 1.3;
       c.beginPath();
-      c.ellipse(0, -5.5, 9.5, 5.5 + brSleep * 0.4, 0, 0, Math.PI * 2);
+      c.moveTo(5.0, -5.0 + brSleep);
+      c.quadraticCurveTo(1.0, -8.0 + brSleep, -5.0, -7.5 + brSleep);
+      c.quadraticCurveTo(-8.5, -7.0 + brSleep, -8.0, -3.0);
+      c.quadraticCurveTo(-3.0, -2.0, 3.5, -2.0);
+      c.closePath();
       c.fill();
       c.stroke();
-      // Đuôi phủ trùm lên lưng
+
       c.beginPath();
-      c.arc(-4, -9, 5.0, 0, Math.PI * 2);
-      c.arc(1, -9.5, 4.5, 0, Math.PI * 2);
+      c.arc(-4, -9, 4.5, 0, Math.PI * 2);
+      c.arc(1, -9.5, 4.0, 0, Math.PI * 2);
       c.fill();
       c.stroke();
-      // Đầu sóc
+
       c.beginPath();
-      c.arc(6.0, -5.5, 4.8, 0, Math.PI * 2);
+      c.arc(5.8, -5.5, 4.5, 0, Math.PI * 2);
       c.fill();
       c.stroke();
-      drawEyes(c, 7, -6, 1.4, 4, -6, 1.2, true, false, "#241812", lowPower, isIcon);
+
+      drawEyes(c, 7, -6, 1.4, 4, -6, 1.2, true, false, EYE_BLACK, lowPower, isIcon);
       drawCheeks(c, 6.5, -4.2, null, null, 1.8, 1.0);
       return;
     }
 
-    // ĐUÔI XÙ CONG VÚT SIÊU TO (uốn ngược lên trên lưng hình chữ S to bồng bềnh)
+    // ĐUÔI XÙ CONG VÚT SIÊU TO uốn lượn ngược lên lưng hình chữ S bồng bềnh
     c.fillStyle = mainCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.3;
     c.beginPath();
     c.arc(-7, -8 - bob, 4.5, 0, Math.PI * 2);
     c.arc(-13, -12 - bob, 5.5, 0, Math.PI * 2);
     c.arc(-11 + tailBounce * 1.5, -18 - bob, 6.0, 0, Math.PI * 2);
-    c.arc(-6 + tailBounce * 2.0, -22 - bob, 5.0, 0, Math.PI * 2); // Chóp xù to nhất trên đỉnh
+    c.arc(-6 + tailBounce * 2.0, -22 - bob, 5.0, 0, Math.PI * 2);
     c.fill();
     c.stroke();
 
-    // Chân sóc
-    c.fillRect(-4, -3.5, 2.6, 3.5);
-    c.fillRect(3.5, -3.5, 2.6, 3.5);
-    c.strokeStyle = OUTLINE;
-    c.strokeRect(-4, -3.5, 2.6, 3.5);
-    c.strokeRect(3.5, -3.5, 2.6, 3.5);
-
-    // Thân sóc (dáng ngồi ôm hạt dẻ)
-    c.fillStyle = mainCol;
+    // Dáng ngồi kiễng ôm ngực: Thân thon, lưng uốn, mông ngồi vững
     c.beginPath();
-    c.ellipse(-1, -7.5 - bob, 7.8, 6.5, 0, 0, Math.PI * 2);
+    pathTaperedLeg(c, -4.0, -4.5, -4.5, 0, 3.2, 2.0); // Chân sau gập ngồi
+    pathTaperedLeg(c, 3.5, -4.5, 3.8, 0, 2.4, 1.8);
+    c.fill();
+    c.stroke();
+
+    // Thân sóc
+    c.beginPath();
+    c.moveTo(5.2, -7.5 - bob);
+    c.quadraticCurveTo(4.0, -5.2 - bob, 2.5, -5.2 - bob);
+    c.quadraticCurveTo(-1.0, -6.0 - bob, -5.0, -5.5 - bob);
+    c.quadraticCurveTo(-8.0, -5.5 - bob, -8.2, -9.0 - bob);
+    c.quadraticCurveTo(-8.5, -12.5 - bob, -5.5, -12.0 - bob);
+    c.quadraticCurveTo(-1.0, -11.0 - bob, 3.0, -12.0 - bob);
+    c.quadraticCurveTo(4.8, -13.0 - bob, 6.2, -12.5 - bob);
+    c.quadraticCurveTo(6.5, -9.5 - bob, 5.2, -7.5 - bob);
+    c.closePath();
     c.fill();
     c.stroke();
 
     // Bụng kem
     c.fillStyle = "#fdf0df";
     c.beginPath();
-    c.ellipse(1.5, -6.5 - bob, 5.0, 4.2, 0, 0, Math.PI * 2);
+    c.ellipse(1.5, -6.8 - bob, 4.5, 3.0, 0, 0, Math.PI * 2);
     c.fill();
 
-    // Hai tay nhỏ ôm sát trước ngực
+    // Hai tay nhỏ ôm sát trước ngực như đang gặm hạt dẻ
     c.fillStyle = mainCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.1;
     c.beginPath();
-    c.ellipse(5.5, -7.5 - bob, 2.0, 1.4, -0.3, 0, Math.PI * 2);
+    c.ellipse(5.2, -7.5 - bob, 2.0, 1.4, -0.3, 0, Math.PI * 2);
     c.fill();
     c.stroke();
 
     // ĐẦU SÓC
-    const hx = 5.2, hy = -14.2 - bob * 0.7;
+    const hx = 6.0, hy = -15.0 - bob * 0.7;
 
-    // Tai sóc có chỏm lông nhọn nhẹ
+    // Tai có chỏm lông nhọn
     c.fillStyle = mainCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.2;
     c.beginPath();
     c.moveTo(hx - 2.5, hy - 4.5); c.lineTo(hx - 1.5, hy - 9.5); c.lineTo(hx + 0.5, hy - 5.5);
     c.moveTo(hx + 1.8, hy - 5.5); c.lineTo(hx + 3.2, hy - 10.0); c.lineTo(hx + 5.0, hy - 4.5);
     c.fill();
     c.stroke();
 
-    // Đầu tròn
-    c.fillStyle = mainCol;
     c.beginPath();
-    c.ellipse(hx, hy, 6.5, 6.0, 0, 0, Math.PI * 2);
+    c.ellipse(hx, hy, 6.2, 5.5, 0, 0, Math.PI * 2);
     c.fill();
     c.stroke();
 
-    // Mũi nhỏ
-    c.fillStyle = "#1a1a1a";
+    c.fillStyle = NOSE_BLACK;
     c.beginPath();
     c.arc(hx + 5.5, hy + 0.8, 1.0, 0, Math.PI * 2);
     c.fill();
 
-    // Nụ cười vui vẻ
     if (isIcon) {
       c.strokeStyle = OUTLINE;
       c.lineWidth = 1.0;
@@ -1081,8 +1173,7 @@ const Pets = (() => {
       c.stroke();
     }
 
-    // Mắt & má
-    drawEyes(c, hx + 3.0, hy - 0.8, 1.8, hx - 0.5, hy - 0.8, 1.5, isSleeping, blink, "#241812", lowPower, isIcon);
+    drawEyes(c, hx + 3.0, hy - 0.8, 1.8, hx - 0.5, hy - 0.8, 1.5, isSleeping, blink, EYE_BLACK, lowPower, isIcon);
     drawCheeks(c, hx + 2.5, hy + 2.0, hx - 1.5, hy + 2.0, 2.2, 1.2);
   }
 
@@ -1090,52 +1181,52 @@ const Pets = (() => {
   // NHÓM ĐẶC BIỆT: Nhím, Rắn, Cáo, Vịt, Rùa, Gấu trúc
   // --------------------------------------------------------------------------
 
-  // Nhím con (hedgehog)
+  // Nhím con (hedgehog): Thân hình GIỌT NƯỚC, mõm nhọn hoắt, thấy rõ 4 chân
   function drawHedgehog(c, ctx) {
     const { t, seed, isSleeping, isWalking, lowPower, isIcon } = ctx;
-    const bodyCol = "#faeedd"; // Mặt & da kem
-    const spineCol = "#795548"; // Gai lưng nâu
+    const bodyCol = "#faeedd";
+    const spineCol = "#795548";
     const bob = isWalking ? Math.abs(Math.sin(t * 14 + seed)) * 0.9 : 0;
-    // Chân dung icon không chớp mắt (luôn mở to)
+    const leg = isWalking ? Math.sin(t * 12 + seed) * 2 : 0;
     const blink = !isSleeping && !isIcon && (((t * 1.5 + seed * 2.7 + 1.0) % 3.8) < 0.14);
     const brSleep = isSleeping ? Math.sin(t * 2.0 + seed) * 0.4 : 0;
 
-    // Khi ngủ: cuộn tròn 100% thành quả cầu gai xù tròn vo
     if (isSleeping) {
       c.fillStyle = spineCol;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 1.3;
       c.beginPath();
-      c.arc(0, -6, 7.5 + brSleep * 0.4, 0, Math.PI * 2);
+      c.arc(0, -5.5, 7.5 + brSleep * 0.4, 0, Math.PI * 2);
       c.fill();
       c.stroke();
-      // Gai nhô ra quanh quả cầu
-      if (!lowPower) {
-        c.fillStyle = "#5d4037";
-        c.beginPath();
-        c.arc(-3, -11, 1.8, 0, Math.PI * 2);
-        c.arc(3, -11, 1.8, 0, Math.PI * 2);
-        c.arc(-6, -6, 1.8, 0, Math.PI * 2);
-        c.arc(6, -6, 1.8, 0, Math.PI * 2);
-        c.fill();
-      }
       return;
     }
 
-    // Chân ngắn lũn cũn
+    // 4 chân ngắn thuôn nâng thân lên khỏi mặt đất
     c.fillStyle = bodyCol;
-    c.fillRect(-4, -2.5, 2.4, 2.5);
-    c.fillRect(3, -2.5, 2.4, 2.5);
     c.strokeStyle = OUTLINE;
-    c.strokeRect(-4, -2.5, 2.4, 2.5);
-    c.strokeRect(3, -2.5, 2.4, 2.5);
-
-    // LƯNG GAI NÂU (vòm gai phủ kín từ mông lên đỉnh lưng)
-    c.fillStyle = spineCol;
+    c.lineWidth = 1.0;
     c.beginPath();
-    c.ellipse(-2, -8.5 - bob, 8.8, 6.8, -0.15, 0, Math.PI * 2);
+    pathTaperedLeg(c, 3.5, -3.5 - bob, 4.0 - leg, 0, 2.2, 1.6);
+    pathTaperedLeg(c, -4.5, -3.5 - bob, -5.0 + leg, 0, 2.4, 1.6);
     c.fill();
     c.stroke();
 
-    // Răng cưa gai nhọn nhô lên trên lưng nhím
+    // THÂN HÌNH GIỌT NƯỚC: Mông tròn nở nang phủ gai nâu, thuôn nhọn dần về chiếc mõm kem nhọn
+    c.fillStyle = spineCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.3;
+    c.beginPath();
+    c.moveTo(3.0, -11.0 - bob);
+    c.quadraticCurveTo(-1.0, -13.5 - bob, -5.5, -12.5 - bob); // Vòm gai lưng
+    c.quadraticCurveTo(-9.5, -11.5 - bob, -9.0, -7.5 - bob); // Đáy mông giọt nước
+    c.quadraticCurveTo(-8.5, -4.5 - bob, -4.5, -4.5 - bob);
+    c.quadraticCurveTo(0, -4.8 - bob, 3.5, -4.2 - bob);
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // Gai nhọn nhô lên trên lưng giọt nước
     if (!lowPower) {
       c.fillStyle = spineCol;
       c.beginPath();
@@ -1147,49 +1238,52 @@ const Pets = (() => {
       c.stroke();
     }
 
-    // Mặt nhô về phía trước hình tam giác bo tròn
+    // Mặt nhô về phía trước: MÕM NHỌN HOẮT hình nón giọt nước
     c.fillStyle = bodyCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.2;
     c.beginPath();
-    c.moveTo(2, -12 - bob);
-    c.quadraticCurveTo(6, -11 - bob, 9.5, -6.5 - bob);
-    c.lineTo(4, -3 - bob);
-    c.lineTo(0, -4 - bob);
+    c.moveTo(1.5, -10.5 - bob);
+    c.lineTo(10.5, -5.5 - bob); // Chóp mõm nhọn
+    c.lineTo(3.0, -3.5 - bob);
     c.closePath();
     c.fill();
     c.stroke();
 
-    // Mũi hạt tiêu đen bóng
-    c.fillStyle = "#1a1a1a";
+    // Chân gần
+    c.fillStyle = bodyCol;
     c.beginPath();
-    c.arc(10.2, -6.5 - bob, 1.3, 0, Math.PI * 2);
+    pathTaperedLeg(c, 4.5, -3.5 - bob, 5.0 + leg, 0, 2.2, 1.6);
+    pathTaperedLeg(c, -3.5, -3.5 - bob, -4.0 - leg, 0, 2.4, 1.6);
+    c.fill();
+    c.stroke();
+
+    // Mũi hạt tiêu đen bóng ở đỉnh mõm nhọn
+    c.fillStyle = NOSE_BLACK;
+    c.beginPath();
+    c.arc(10.8, -5.5 - bob, 1.2, 0, Math.PI * 2);
     c.fill();
 
-    // Nụ cười vui vẻ
     if (isIcon) {
       c.strokeStyle = OUTLINE;
       c.lineWidth = 1.0;
       c.beginPath();
-      c.arc(7.2, -5.2 - bob, 1.2, 0.1, Math.PI - 0.2);
+      c.arc(7.2, -4.8 - bob, 1.1, 0.1, Math.PI - 0.2);
       c.stroke();
     }
 
-    // Mắt đen tròn
-    drawEyes(c, 6.5, -8.2 - bob, 1.6, null, null, null, isSleeping, blink, "#241812", lowPower, isIcon);
-    drawCheeks(c, 6.2, -5.5 - bob, null, null, 1.8, 1.1);
+    drawEyes(c, 6.2, -7.5 - bob, 1.5, null, null, null, isSleeping, blink, EYE_BLACK, lowPower, isIcon);
+    drawCheeks(c, 6.0, -5.0 - bob, null, null, 1.6, 1.0);
   }
 
-  // Rắn xanh (snake)
+  // Rắn xanh (snake): Thân sóng uốn lượn chữ S, cổ thắt nhỏ ngóc đầu lên
   function drawSnake(c, ctx) {
     const { t, seed, isSleeping, isWalking, lowPower, isIcon } = ctx;
-    const mainCol = "#7ac74f"; // Xanh lá mạ tươi mát
-    const bellyCol = "#d4f199"; // Bụng vàng lục nhạt
-    // Chân dung icon không chớp mắt (luôn mở to)
+    const mainCol = "#7ac74f";
+    const bellyCol = "#d4f199";
     const blink = !isSleeping && !isIcon && (((t * 1.5 + seed * 2.7 + 1.0) % 3.8) < 0.14);
     const brSleep = isSleeping ? Math.sin(t * 2.0 + seed) * 0.4 : 0;
 
-    // Rắn dài ~32, cao ~10 theo đề bài
-
-    // Khi ngủ: cuộn xoắn ốc 2 vòng đồng tâm sát đất, đầu gối lên giữa thân
     if (isSleeping) {
       c.strokeStyle = mainCol;
       c.lineWidth = 4.8;
@@ -1201,19 +1295,18 @@ const Pets = (() => {
       c.lineWidth = 1.1;
       c.stroke();
 
-      // Đầu rắn ngủ
       c.fillStyle = mainCol;
       c.beginPath();
       c.arc(2, -4.5, 4.0, 0, Math.PI * 2);
       c.fill();
       c.stroke();
 
-      drawEyes(c, 3.5, -5, 1.4, null, null, null, true, false, "#241812", lowPower, isIcon);
+      drawEyes(c, 3.5, -5, 1.4, null, null, null, true, false, EYE_BLACK, lowPower, isIcon);
       drawCheeks(c, 3.0, -3.2, null, null, 1.6, 1.0);
       return;
     }
 
-    // THÂN RẮN UỐN LƯỢN CHỮ S (chuyển động sóng mềm mại)
+    // THÂN RẮN UỐN LƯỢN CHỮ S DÀI THON THOÁT
     const wave = isWalking ? Math.sin(t * 10 + seed) * 2.2 : Math.sin(t * 3.5 + seed) * 0.8;
 
     c.strokeStyle = mainCol;
@@ -1224,7 +1317,6 @@ const Pets = (() => {
     c.bezierCurveTo(3, -8 - wave, 8, -2 + wave, 11, -5.5);
     c.stroke();
 
-    // Viền thân nét nâu
     c.strokeStyle = OUTLINE;
     c.lineWidth = 1.1;
     c.stroke();
@@ -1238,31 +1330,30 @@ const Pets = (() => {
     c.bezierCurveTo(3, -6.5 - wave, 8, -0.5 + wave, 10, -4.5);
     c.stroke();
 
-    // ĐẦU RẮN TRÒN DỄ THƯƠNG (chibi snake!)
+    // ĐẦU RẮN NGÓC LÊN
     const hx = 12.0, hy = -6.5;
     c.fillStyle = mainCol;
-    c.beginPath();
-    c.ellipse(hx, hy, 4.8, 4.2, 0.1, 0, Math.PI * 2);
-    c.fill();
     c.strokeStyle = OUTLINE;
     c.lineWidth = 1.2;
+    c.beginPath();
+    c.ellipse(hx, hy, 4.8, 4.0, 0.1, 0, Math.PI * 2);
+    c.fill();
     c.stroke();
 
-    // LƯỠI CHẺ MÀU HỒNG ĐỎ THÈ RA THỤT VÀO THỈNH THOẢNG
+    // Lưỡi chẻ thè ra
     const tongueFlick = Math.sin(t * 6 + seed) > 0.45;
     if (tongueFlick && !isSleeping) {
-      c.strokeStyle = "#ff4757";
+      c.strokeStyle = TONGUE_RED;
       c.lineWidth = 1.2;
       c.beginPath();
       c.moveTo(hx + 4.5, hy);
       c.lineTo(hx + 8, hy);
-      c.lineTo(hx + 9.5, hy - 1.5); // Chẻ nhánh trên
+      c.lineTo(hx + 9.5, hy - 1.5);
       c.moveTo(hx + 8, hy);
-      c.lineTo(hx + 9.5, hy + 1.5); // Chẻ nhánh dưới
+      c.lineTo(hx + 9.5, hy + 1.5);
       c.stroke();
     }
 
-    // Nụ cười vui vẻ
     if (isIcon) {
       c.strokeStyle = OUTLINE;
       c.lineWidth = 1.0;
@@ -1271,126 +1362,159 @@ const Pets = (() => {
       c.stroke();
     }
 
-    // Mắt & má
-    drawEyes(c, hx + 1.8, hy - 1.2, 1.8, null, null, null, isSleeping, blink, "#241812", lowPower, isIcon);
+    drawEyes(c, hx + 1.8, hy - 1.2, 1.8, null, null, null, isSleeping, blink, EYE_BLACK, lowPower, isIcon);
     drawCheeks(c, hx + 1.2, hy + 1.5, null, null, 2.0, 1.2);
   }
 
-  // Cáo nhỏ (fox)
+  // Cáo nhỏ (fox): Dáng thon dài, ngực trắng nở, MÕM THON NHỌN, 4 chân mang tất đen
   function drawFox(c, ctx) {
     const { t, seed, isSleeping, isWalking, lowPower, isIcon } = ctx;
-    const mainCol = "#f08a3c"; // Cam rực rỡ
+    const mainCol = "#f08a3c";
     const bob = isWalking ? Math.abs(Math.sin(t * 14 + seed)) * 1.3 : 0;
-    const leg = isWalking ? Math.sin(t * 14 + seed) * 3 : 0;
+    const leg = isWalking ? Math.sin(t * 12 + seed) * 3 : 0;
     const tailWag = Math.sin(t * (isWalking ? 12 : 4) + seed);
-    // Chân dung icon không chớp mắt (luôn mở to)
     const blink = !isSleeping && !isIcon && (((t * 1.5 + seed * 2.7 + 1.0) % 3.8) < 0.14);
-    const brSleep = isSleeping ? Math.sin(t * 2.0 + seed) * 0.5 : 0;
+    const brSleep = isSleeping ? Math.sin(t * 2.0 + seed) * 0.4 : 0;
 
-    // Khi ngủ: cuộn đuôi bông chóp trắng trùm kín thân
     if (isSleeping) {
       c.fillStyle = mainCol;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 1.3;
       c.beginPath();
-      c.ellipse(0, -5.5, 10.5, 6 + brSleep * 0.4, 0, 0, Math.PI * 2);
+      c.moveTo(5.0, -5.0 + brSleep);
+      c.quadraticCurveTo(1.0, -8.5 + brSleep, -5.5, -8.0 + brSleep);
+      c.quadraticCurveTo(-9.5, -7.5 + brSleep, -8.8, -3.5);
+      c.quadraticCurveTo(-3.0, -2.5, 3.5, -2.5);
+      c.closePath();
       c.fill();
       c.stroke();
-      // Đuôi cuộn tròn với chóp trắng
+
       c.beginPath();
       c.arc(-3, -7, 5.5, 0, Math.PI * 2);
       c.fill();
       c.stroke();
-      c.fillStyle = "#ffffff";
+      c.fillStyle = WHITE;
       c.beginPath();
       c.arc(-6, -8, 2.8, 0, Math.PI * 2);
       c.fill();
       c.stroke();
-      // Đầu cáo
+
       c.fillStyle = mainCol;
       c.beginPath();
       c.arc(6.5, -6, 5.5, 0, Math.PI * 2);
       c.fill();
       c.stroke();
-      drawEyes(c, 7.5, -6.5, 1.5, 4.5, -6.5, 1.3, true, false, "#241812", lowPower, isIcon);
+
+      drawEyes(c, 7.5, -6.5, 1.5, 4.5, -6.5, 1.3, true, false, EYE_BLACK, lowPower, isIcon);
       drawCheeks(c, 7.0, -4.5, null, null, 1.8, 1.0);
       return;
     }
 
-    // 4 CHÂN CÁO "MANG TẤT" ĐEN ĐẶC TRƯNG (#222222)
+    // 4 CHÂN CÁO THON DÀI "MANG TẤT" ĐEN (#222222)
     c.fillStyle = "#222222";
-    c.fillRect(-8.5 - leg, -4.5, 2.8, 4.5);
-    c.fillRect(3.5 - leg, -4.5, 2.8, 4.5);
-    c.fillRect(-6.5 + leg, -4.5, 2.8, 4.5);
-    c.fillRect(5.2 + leg, -4.5, 2.8, 4.5);
     c.strokeStyle = OUTLINE;
     c.lineWidth = 1.1;
-    c.strokeRect(-8.5 - leg, -4.5, 2.8, 4.5);
-    c.strokeRect(3.5 - leg, -4.5, 2.8, 4.5);
-    c.strokeRect(-6.5 + leg, -4.5, 2.8, 4.5);
-    c.strokeRect(5.2 + leg, -4.5, 2.8, 4.5);
+    c.beginPath();
+    pathTaperedLeg(c, 3.5, -6.0 - bob, 3.8 - leg, 0, 2.6, 1.8); // Chân trước xa
+    pathTaperedLeg(c, -6.5, -6.0 - bob, -7.2 + leg, 0, 2.8, 1.8); // Chân sau xa
+    c.fill();
+    c.stroke();
 
     // ĐUÔI BÔNG TO XÙ VỚI CHÓP ĐUÔI MÀU TRẮNG TINH
     c.fillStyle = mainCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.3;
     c.beginPath();
     c.ellipse(-10 + tailWag * 1.5, -12 - bob, 5.5, 7.5, -0.4, 0, Math.PI * 2);
     c.fill();
     c.stroke();
-    // Chóp trắng của đuôi
-    c.fillStyle = "#ffffff";
+
+    c.fillStyle = WHITE;
     c.beginPath();
     c.ellipse(-12 + tailWag * 2.0, -16 - bob, 3.2, 4.0, -0.4, 0, Math.PI * 2);
     c.fill();
     c.stroke();
 
-    // Thân cáo
+    // THÂN CÁO: Thon dài thanh thoát, lưng uốn, ngực nhô, eo thắt
     c.fillStyle = mainCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.3;
     c.beginPath();
-    c.ellipse(-1, -8 - bob, 9.2, 6.2, 0, 0, Math.PI * 2);
+    c.moveTo(6.5, -8.5 - bob);
+    c.quadraticCurveTo(5.2, -6.0 - bob, 3.5, -6.0 - bob);
+    c.quadraticCurveTo(0, -7.2 - bob, -4.5, -6.5 - bob);
+    c.quadraticCurveTo(-8.0, -6.5 - bob, -8.5, -9.5 - bob);
+    c.quadraticCurveTo(-9.2, -12.5 - bob, -6.5, -12.2 - bob);
+    c.quadraticCurveTo(-1.0, -11.5 - bob, 3.5, -12.5 - bob);
+    c.quadraticCurveTo(5.5, -13.5 - bob, 7.5, -13.0 - bob);
+    c.quadraticCurveTo(7.5, -10.5 - bob, 6.5, -8.5 - bob);
+    c.closePath();
     c.fill();
     c.stroke();
 
     // Ngực trắng xòe rộng
-    c.fillStyle = "#ffffff";
+    c.fillStyle = WHITE;
     c.beginPath();
-    c.ellipse(3.5, -7 - bob, 4.5, 4.0, 0, 0, Math.PI * 2);
+    c.ellipse(3.8, -7.5 - bob, 4.2, 3.8, 0, 0, Math.PI * 2);
     c.fill();
 
-    // ĐẦU CÁO
-    const hx = 6.8, hy = -15 - bob * 0.7;
-
-    // Đôi tai to tam giác dựng đứng, chóp tai và sau tai MÀU ĐEN
+    // Chân gần (phía ngoài) mang tất đen
     c.fillStyle = "#222222";
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.1;
     c.beginPath();
-    c.moveTo(hx - 4.5, hy - 4.5); c.lineTo(hx - 3, hy - 13.0); c.lineTo(hx + 0.2, hy - 5.5);
-    c.moveTo(hx + 1.5, hy - 5.5); c.lineTo(hx + 4.5, hy - 13.5); c.lineTo(hx + 7.8, hy - 4.5);
-    c.fill();
-    c.stroke();
-    // Lòng tai cam
-    c.fillStyle = mainCol;
-    c.beginPath();
-    c.moveTo(hx + 2.2, hy - 5.5); c.lineTo(hx + 4.5, hy - 11.0); c.lineTo(hx + 6.8, hy - 5.0);
-    c.fill();
-
-    // Đầu cáo
-    c.fillStyle = mainCol;
-    c.beginPath();
-    c.ellipse(hx, hy, 7.2, 6.5, 0, 0, Math.PI * 2);
+    pathTaperedLeg(c, 5.0, -6.0 - bob, 5.5 + leg, 0, 2.8, 2.0);
+    pathTaperedLeg(c, -5.0, -6.0 - bob, -5.8 - leg, 0, 3.0, 2.0);
     c.fill();
     c.stroke();
 
-    // Má trắng phồng mềm
-    c.fillStyle = "#ffffff";
+    // ĐẦU CÁO & MÕM THON NHỌN
+    const hx = 7.5, hy = -16.5 - bob * 0.7;
+
+    // Tai to tam giác dựng đứng, chóp tai màu đen
+    c.fillStyle = "#222222";
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.2;
     c.beginPath();
-    c.ellipse(hx + 2.5, hy + 2.0, 4.0, 3.0, 0, 0, Math.PI * 2);
-    c.ellipse(hx - 1.5, hy + 2.0, 3.2, 2.5, 0, 0, Math.PI * 2);
+    c.moveTo(hx - 4.5, hy - 3.5); c.lineTo(hx - 3.0, hy - 11.5); c.lineTo(hx - 0.5, hy - 4.5);
+    c.moveTo(hx + 1.2, hy - 4.5); c.lineTo(hx + 4.5, hy - 12.0); c.lineTo(hx + 6.8, hy - 3.2);
+    c.fill();
+    c.stroke();
+
+    c.fillStyle = mainCol;
+    c.beginPath();
+    c.moveTo(hx + 2.2, hy - 4.5); c.lineTo(hx + 4.5, hy - 9.5); c.lineTo(hx + 5.8, hy - 3.8);
+    c.fill();
+
+    // Khối đầu & MÕM CÁO THON NHỌN
+    c.fillStyle = mainCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.3;
+    c.beginPath();
+    c.moveTo(hx - 4.5, hy - 3.5);
+    c.quadraticCurveTo(hx, hy - 5.8, hx + 4.2, hy - 3.5);
+    c.quadraticCurveTo(hx + 5.5, hy - 1.0, hx + 8.5, hy + 0.8); // Mõm cáo thon nhọn dài
+    c.quadraticCurveTo(hx + 9.2, hy + 2.8, hx + 5.5, hy + 3.8);
+    c.quadraticCurveTo(hx + 3.0, hy + 5.5, hx, hy + 5.0);
+    c.quadraticCurveTo(hx - 5.5, hy + 5.2, hx - 6.5, hy + 2.5);
+    c.quadraticCurveTo(hx - 7.5, hy - 0.5, hx - 4.5, hy - 3.5);
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // Má trắng cáo
+    c.fillStyle = WHITE;
+    c.beginPath();
+    c.ellipse(hx + 2.5, hy + 2.0, 3.8, 2.5, 0, 0, Math.PI * 2);
+    c.ellipse(hx - 1.5, hy + 2.0, 3.0, 2.0, 0, 0, Math.PI * 2);
     c.fill();
 
     // Mũi nhọn đen
-    c.fillStyle = "#1a1a1a";
+    c.fillStyle = NOSE_BLACK;
     c.beginPath();
-    c.arc(hx + 6.8, hy + 1.0, 1.2, 0, Math.PI * 2);
+    c.arc(hx + 8.5, hy + 0.8, 1.1, 0, Math.PI * 2);
     c.fill();
 
-    // Nụ cười vui vẻ
     if (isIcon) {
       c.strokeStyle = OUTLINE;
       c.lineWidth = 1.0;
@@ -1399,43 +1523,41 @@ const Pets = (() => {
       c.stroke();
     }
 
-    // Mắt & má
-    drawEyes(c, hx + 3.8, hy - 1.0, 1.8, hx - 0.2, hy - 1.0, 1.5, isSleeping, blink, "#241812", lowPower, isIcon);
+    drawEyes(c, hx + 3.8, hy - 1.0, 1.8, hx - 0.2, hy - 1.0, 1.5, isSleeping, blink, EYE_BLACK, lowPower, isIcon);
     drawCheeks(c, hx + 3.0, hy + 2.2, hx - 1.5, hy + 2.2, 2.0, 1.2);
   }
 
-  // Vịt con (duck)
+  // Vịt con (duck): Thân hình thuyền, ngực nở, CỔ VƯƠN CAO, ĐUÔI VỂNH NHỔNG, mỏ cam dẹt
   function drawDuck(c, ctx) {
     const { t, seed, isSleeping, isWalking, lowPower, isIcon } = ctx;
-    const mainCol = "#ffd93d"; // Vàng tươi ươm
-    const beakCol = "#ff7a00"; // Mỏ cam dẹt
+    const mainCol = "#ffd93d";
+    const beakCol = "#ff7a00";
     const bob = isWalking ? Math.abs(Math.sin(t * 14 + seed)) * 1.4 : 0;
     const waddle = isWalking ? Math.sin(t * 14 + seed) * 0.15 : 0;
-    // Chân dung icon không chớp mắt (luôn mở to)
     const blink = !isSleeping && !isIcon && (((t * 1.5 + seed * 2.7 + 1.0) % 3.8) < 0.14);
     const brSleep = isSleeping ? Math.sin(t * 2.0 + seed) * 0.4 : 0;
 
-    // Vịt con nhỏ hơn: cao ~16, dài ~18
-
-    // Khi ngủ: rúc mỏ vào cánh, thân tròn vo
     if (isSleeping) {
       c.fillStyle = mainCol;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 1.3;
       c.beginPath();
       c.ellipse(0, -5, 8.5, 5.5 + brSleep * 0.4, 0, 0, Math.PI * 2);
       c.fill();
       c.stroke();
-      // Đầu vịt
+
       c.beginPath();
       c.arc(4.5, -6.5, 4.5, 0, Math.PI * 2);
       c.fill();
       c.stroke();
-      // Mỏ cam gác lên ngực
+
       c.fillStyle = beakCol;
       c.beginPath();
       c.ellipse(7.5, -5.5, 2.8, 1.6, 0.1, 0, Math.PI * 2);
       c.fill();
       c.stroke();
-      drawEyes(c, 4.5, -7.0, 1.4, null, null, null, true, false, "#241812", lowPower, isIcon);
+
+      drawEyes(c, 4.5, -7.0, 1.4, null, null, null, true, false, EYE_BLACK, lowPower, isIcon);
       drawCheeks(c, 4.0, -5.0, null, null, 1.8, 1.0);
       return;
     }
@@ -1443,88 +1565,90 @@ const Pets = (() => {
     // Đôi chân màng cam bước lạch bạch
     const leg1 = isWalking ? Math.sin(t * 14 + seed) * 2.5 : 0;
     c.fillStyle = beakCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.0;
     c.fillRect(-2 - leg1, -2.5, 2.2, 2.5);
     c.fillRect(2 + leg1, -2.5, 2.2, 2.5);
+    c.strokeRect(-2 - leg1, -2.5, 2.2, 2.5);
+    c.strokeRect(2 + leg1, -2.5, 2.2, 2.5);
     // Bàn chân màng dẹt
-    c.fillRect(-3 - leg1, -0.8, 3.5, 1.0);
-    c.fillRect(1 + leg1, -0.8, 3.5, 1.0);
+    c.fillRect(-3.5 - leg1, -0.8, 4.0, 1.0);
+    c.fillRect(0.5 + leg1, -0.8, 4.0, 1.0);
 
-    // Thân tròn vo
+    // THÂN VỊT HÌNH THUYỀN VỚI ĐUÔI VỂNH NHỔNG CAO LÊN
     c.fillStyle = mainCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.3;
     c.beginPath();
-    c.ellipse(-1, -7.5 - bob, 8.0, 6.5, waddle, 0, Math.PI * 2);
-    c.fill();
-    c.stroke();
-
-    // Đuôi / phao câu vểnh nhổng lên phía sau
-    c.fillStyle = mainCol;
-    c.beginPath();
-    c.moveTo(-7, -8 - bob); c.lineTo(-10.5, -11 - bob); c.lineTo(-8, -6 - bob);
+    c.moveTo(5.5, -7.5 - bob); // Ngực nhô phía trước
+    c.quadraticCurveTo(4.0, -4.5 - bob, 2.0, -4.5 - bob); // Bụng
+    c.quadraticCurveTo(-2.0, -4.8 - bob, -6.5, -5.2 - bob);
+    c.lineTo(-10.5, -11.5 - bob); // ĐUÔI VỂNH NHỔNG CAO LÊN PHÍA SAU
+    c.lineTo(-7.0, -8.5 - bob);
+    c.quadraticCurveTo(-2.0, -8.5 - bob, 3.0, -10.5 - bob); // Sống lưng thon
+    c.quadraticCurveTo(4.5, -12.5 - bob, 5.0, -14.0 - bob); // CỔ VƯƠN CAO
+    c.quadraticCurveTo(6.8, -10.5 - bob, 5.5, -7.5 - bob);
     c.closePath();
     c.fill();
     c.stroke();
 
     // Cánh nhỏ ở hông
     c.beginPath();
-    c.ellipse(0, -7.5 - bob, 4.5, 3.2, 0.2, 0, Math.PI * 2);
+    c.ellipse(0, -7.5 - bob, 4.5, 3.2, 0.2 + waddle, 0, Math.PI * 2);
     c.fill();
     c.stroke();
 
-    // ĐẦU VỊT TRÒN
-    const hx = 4.5, hy = -13.5 - bob * 0.7;
+    // ĐẦU VỊT TRÒN TRÊN CỔ VƯƠN CAO
+    const hx = 5.2, hy = -15.0 - bob * 0.7;
 
-    // Chỏm lông tơ 3 cọng nhỏ trên đỉnh đầu
+    // Chỏm lông tơ 3 cọng trên đỉnh đầu
     c.strokeStyle = mainCol;
     c.lineWidth = 1.8;
     c.beginPath();
-    c.moveTo(hx, hy - 5.5); c.lineTo(hx - 1, hy - 8.5);
-    c.moveTo(hx + 1, hy - 5.5); c.lineTo(hx + 1.5, hy - 9.0);
+    c.moveTo(hx, hy - 5.2); c.lineTo(hx - 1, hy - 8.2);
+    c.moveTo(hx + 1, hy - 5.2); c.lineTo(hx + 1.5, hy - 8.8);
     c.stroke();
     c.strokeStyle = OUTLINE;
     c.lineWidth = 1.1;
     c.stroke();
 
-    // Đầu tròn vo
     c.fillStyle = mainCol;
     c.beginPath();
-    c.arc(hx, hy, 5.5, 0, Math.PI * 2);
+    c.arc(hx, hy, 5.2, 0, Math.PI * 2);
     c.fill();
     c.stroke();
 
-    // CHIẾC MỎ DẸT MÀU CAM TRÒN TRỊA DỄ THƯƠNG
+    // CHIẾC MỎ DẸT MÀU CAM NHÔ DÀI RA PHÍA TRƯỚC
     c.fillStyle = beakCol;
     c.beginPath();
-    c.ellipse(hx + 5.2, hy + 1.0, 3.8, 2.2, 0.05, 0, Math.PI * 2);
+    c.ellipse(hx + 5.5, hy + 1.0, 3.8, 2.2, 0.05, 0, Math.PI * 2);
     c.fill();
     c.stroke();
 
-    // Mắt to đen lay láy
-    drawEyes(c, hx + 2.5, hy - 1.2, 1.8, hx - 1.0, hy - 1.2, 1.4, isSleeping, blink, "#241812", lowPower, isIcon);
+    drawEyes(c, hx + 2.5, hy - 1.2, 1.8, hx - 1.0, hy - 1.2, 1.4, isSleeping, blink, EYE_BLACK, lowPower, isIcon);
     drawCheeks(c, hx + 1.8, hy + 2.0, null, null, 2.0, 1.2);
   }
 
-  // Rùa con (turtle)
+  // Rùa con (turtle): Mai vòm có gờ, CỔ & ĐẦU THÒ DÀI RA NGOÀI MAI, 4 chân bơi thò ra
   function drawTurtle(c, ctx) {
     const { t, seed, isSleeping, isWalking, lowPower, isIcon } = ctx;
-    const shellCol = "#488b49"; // Mai xanh rêu sẫm
-    const skinCol = "#6fbf73";  // Da xanh lá tươi
-    const markCol = "#a3e635";  // Hoa văn vàng chanh
+    const shellCol = "#488b49";
+    const skinCol = "#6fbf73";
+    const markCol = "#a3e635";
     const bob = isWalking ? Math.abs(Math.sin(t * 8 + seed)) * 0.6 : 0;
     const paddle = isWalking ? Math.sin(t * 8 + seed) * 2.0 : 0;
-    // Chân dung icon không chớp mắt (luôn mở to)
     const blink = !isSleeping && !isIcon && (((t * 1.5 + seed * 2.7 + 1.0) % 3.8) < 0.14);
     const brSleep = isSleeping ? Math.sin(t * 2.0 + seed) * 0.4 : 0;
 
-    // Rùa nhỏ: cao ~14, dài ~22
-
-    // Khi ngủ: rụt đầu và 4 chân sát vào mai
     if (isSleeping) {
       c.fillStyle = shellCol;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 1.3;
       c.beginPath();
       c.ellipse(0, -6, 9.5, 6.0 + brSleep * 0.3, 0, 0, Math.PI * 2);
       c.fill();
       c.stroke();
-      // Hoa văn mai
+
       if (!lowPower) {
         c.fillStyle = markCol;
         c.beginPath();
@@ -1532,39 +1656,44 @@ const Pets = (() => {
         c.arc(3, -6, 1.8, 0, Math.PI * 2);
         c.fill();
       }
-      // Đầu thò ra xíu ngủ
+
       c.fillStyle = skinCol;
       c.beginPath();
       c.arc(7.5, -4.5, 2.8, 0, Math.PI * 2);
       c.fill();
       c.stroke();
-      drawEyes(c, 8.2, -4.8, 1.2, null, null, null, true, false, "#241812", lowPower, isIcon);
+
+      drawEyes(c, 8.2, -4.8, 1.2, null, null, null, true, false, EYE_BLACK, lowPower, isIcon);
       return;
     }
 
-    // 4 chân bơi dẹt xanh lá
+    // 4 chân bơi dẹt xanh lá thò ra ngoài mai
     c.fillStyle = skinCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.1;
     c.beginPath();
     c.ellipse(-6 - paddle, -2.5, 3.2, 1.8, -0.2, 0, Math.PI * 2);
     c.ellipse(4 + paddle, -2.5, 3.5, 2.0, 0.2, 0, Math.PI * 2);
     c.fill();
     c.stroke();
 
-    // Đuôi ngắn nhỏ xíu
+    // Đuôi nhỏ nhọn thò ra sau mai
     c.beginPath();
-    c.moveTo(-9, -4.5 - bob); c.lineTo(-12, -4.0 - bob); c.lineTo(-9, -2.5 - bob);
+    c.moveTo(-9.5, -4.5 - bob); c.lineTo(-12.5, -4.0 - bob); c.lineTo(-9.5, -2.5 - bob);
     c.closePath();
     c.fill();
     c.stroke();
 
-    // VÒM MAI RÙA XANH RÊU VỚI VIỀN ĐỀU NÉT
+    // MAI RÙA VÒM CONG VỚI GỜ MÉP TÁCH BIỆT RÕ RÀNG
     c.fillStyle = shellCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.3;
     c.beginPath();
     c.ellipse(-1, -7.5 - bob, 9.5, 6.5, 0, 0, Math.PI * 2);
     c.fill();
     c.stroke();
 
-    // Hoa văn đốm / ô lục giác vàng chanh trên mai
+    // Hoa văn lục giác vàng chanh trên mai
     if (!lowPower) {
       c.fillStyle = markCol;
       c.beginPath();
@@ -1574,15 +1703,20 @@ const Pets = (() => {
       c.fill();
     }
 
-    // ĐẦU RÙA THÒ RA PHÍA TRƯỚC
-    const hx = 7.5, hy = -6.5 - bob;
+    // CỔ VÀ ĐẦU RÙA THÒ HẲN RA NGOÀI MAI VỀ PHÍA TRƯỚC
+    const hx = 8.5, hy = -6.5 - bob;
     c.fillStyle = skinCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.2;
     c.beginPath();
-    c.ellipse(hx, hy, 4.0, 3.6, 0, 0, Math.PI * 2);
+    c.moveTo(5.0, -8.0 - bob);
+    c.quadraticCurveTo(hx - 1.0, hy - 4.0, hx + 2.5, hy - 2.5); // Cổ thò ra ngoài
+    c.quadraticCurveTo(hx + 4.5, hy, hx + 3.0, hy + 2.5); // Đầu tròn
+    c.quadraticCurveTo(hx - 1.0, hy + 3.5, 5.0, -5.0 - bob);
+    c.closePath();
     c.fill();
     c.stroke();
 
-    // Nụ cười vui vẻ
     if (isIcon) {
       c.strokeStyle = OUTLINE;
       c.lineWidth = 1.0;
@@ -1591,124 +1725,148 @@ const Pets = (() => {
       c.stroke();
     }
 
-    // Mắt to hiền lành & má
-    drawEyes(c, hx + 1.8, hy - 1.0, 1.6, null, null, null, isSleeping, blink, "#241812", lowPower, isIcon);
+    drawEyes(c, hx + 1.8, hy - 1.0, 1.6, null, null, null, isSleeping, blink, EYE_BLACK, lowPower, isIcon);
     drawCheeks(c, hx + 1.0, hy + 1.5, null, null, 1.8, 1.1);
   }
 
-  // Gấu trúc nhỏ (panda)
+  // Gấu trúc nhỏ (panda): Thân dài có ngực/eo/mông, cổ ngắn nâng đầu to, mõm tròn nhô rõ
   function drawPanda(c, ctx) {
     const { t, seed, isSleeping, isWalking, lowPower, isIcon } = ctx;
-    const whiteCol = "#ffffff";
+    const whiteCol = WHITE;
     const blackCol = "#2b2b35";
     const bob = isWalking ? Math.abs(Math.sin(t * 14 + seed)) * 1.2 : 0;
-    const leg = isWalking ? Math.sin(t * 14 + seed) * 3 : 0;
-    // Chân dung icon không chớp mắt (luôn mở to)
+    const leg = isWalking ? Math.sin(t * 12 + seed) * 3 : 0;
     const blink = !isSleeping && !isIcon && (((t * 1.5 + seed * 2.7 + 1.0) % 3.8) < 0.14);
-    const brSleep = isSleeping ? Math.sin(t * 2.0 + seed) * 0.5 : 0;
+    const brSleep = isSleeping ? Math.sin(t * 2.0 + seed) * 0.4 : 0;
 
-    // Khi ngủ: viên tuyết trắng với đốm đen
     if (isSleeping) {
       c.fillStyle = whiteCol;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 1.3;
       c.beginPath();
-      c.ellipse(0, -5.5, 10.5, 6.2 + brSleep * 0.4, 0, 0, Math.PI * 2);
+      c.moveTo(5.0, -5.0 + brSleep);
+      c.quadraticCurveTo(1.0, -8.5 + brSleep, -5.5, -8.0 + brSleep);
+      c.quadraticCurveTo(-9.5, -7.5 + brSleep, -8.8, -3.5);
+      c.quadraticCurveTo(-3.0, -2.5, 3.5, -2.5);
+      c.closePath();
       c.fill();
       c.stroke();
-      // Đốm đen chân/vai
+
       c.fillStyle = blackCol;
       c.beginPath();
       c.ellipse(-3, -4.5, 4.0, 3.5, 0, 0, Math.PI * 2);
       c.fill();
-      // Đầu gấu trúc
+
       c.fillStyle = whiteCol;
       c.beginPath();
-      c.arc(6.5, -6.5, 5.8, 0, Math.PI * 2);
+      c.arc(6.5, -6.5, 5.5, 0, Math.PI * 2);
       c.fill();
       c.stroke();
-      // Tai đen
+
       c.fillStyle = blackCol;
       c.beginPath();
       c.arc(4.5, -11.5, 2.0, 0, Math.PI * 2);
       c.arc(9.0, -11.5, 2.0, 0, Math.PI * 2);
       c.fill();
       c.stroke();
-      // Mắt nhắm
-      drawEyes(c, 8, -6.8, 1.5, 5, -6.8, 1.3, true, false, "#241812", lowPower, isIcon);
+
+      drawEyes(c, 8, -6.8, 1.5, 5, -6.8, 1.3, true, false, EYE_BLACK, lowPower, isIcon);
       drawCheeks(c, 7.2, -4.5, null, null, 1.8, 1.0);
       return;
     }
 
     // 4 CHÂN ĐEN VÀ DẢI ĐEN VẮT QUA VAI
     c.fillStyle = blackCol;
-    c.fillRect(-8.5 - leg, -4.5, 3.2, 4.5);
-    c.fillRect(3.5 - leg, -4.5, 3.2, 4.5);
-    c.fillRect(-6.5 + leg, -4.5, 3.2, 4.5);
-    c.fillRect(5.2 + leg, -4.5, 3.2, 4.5);
     c.strokeStyle = OUTLINE;
     c.lineWidth = 1.1;
-    c.strokeRect(-8.5 - leg, -4.5, 3.2, 4.5);
-    c.strokeRect(3.5 - leg, -4.5, 3.2, 4.5);
-    c.strokeRect(-6.5 + leg, -4.5, 3.2, 4.5);
-    c.strokeRect(5.2 + leg, -4.5, 3.2, 4.5);
-
-    // Đuôi cụt đen nhỏ sau mông
-    c.fillStyle = blackCol;
     c.beginPath();
-    c.arc(-10.5, -8 - bob, 2.0, 0, Math.PI * 2);
+    pathTaperedLeg(c, 3.5, -6.0 - bob, 3.8 - leg, 0, 3.0, 2.2);
+    pathTaperedLeg(c, -6.5, -6.0 - bob, -7.2 + leg, 0, 3.2, 2.2);
     c.fill();
     c.stroke();
 
-    // Thân trắng tròn
-    c.fillStyle = whiteCol;
+    // Đuôi cụt đen nhỏ sau mông
     c.beginPath();
-    c.ellipse(-1, -8 - bob, 9.5, 6.8, 0, 0, Math.PI * 2);
+    c.arc(-9.5, -9.5 - bob, 2.0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+
+    // Thân gấu trúc: ngực nở, eo thon nhẹ, mông tròn
+    c.fillStyle = whiteCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.3;
+    c.beginPath();
+    c.moveTo(6.5, -8.5 - bob);
+    c.quadraticCurveTo(5.2, -6.0 - bob, 3.5, -6.0 - bob);
+    c.quadraticCurveTo(0, -7.0 - bob, -4.5, -6.5 - bob);
+    c.quadraticCurveTo(-8.0, -6.5 - bob, -8.5, -9.5 - bob);
+    c.quadraticCurveTo(-9.2, -12.5 - bob, -6.5, -12.2 - bob);
+    c.quadraticCurveTo(-1.0, -11.5 - bob, 3.5, -12.5 - bob);
+    c.quadraticCurveTo(5.5, -13.5 - bob, 7.5, -13.0 - bob);
+    c.quadraticCurveTo(7.5, -10.5 - bob, 6.5, -8.5 - bob);
+    c.closePath();
     c.fill();
     c.stroke();
 
     // Dải áo đen qua vai và ngực gấu trúc
     c.fillStyle = blackCol;
     c.beginPath();
-    c.ellipse(3, -7.5 - bob, 4.0, 6.2, 0.1, 0, Math.PI * 2);
+    c.ellipse(3.2, -8.0 - bob, 4.0, 5.8, 0.1, 0, Math.PI * 2);
     c.fill();
 
-    // ĐẦU GẤU TRÚC
-    const hx = 6.8, hy = -15 - bob * 0.7;
+    // Chân gần (phía ngoài)
+    c.beginPath();
+    pathTaperedLeg(c, 5.0, -6.0 - bob, 5.5 + leg, 0, 3.2, 2.4);
+    pathTaperedLeg(c, -5.0, -6.0 - bob, -5.8 - leg, 0, 3.4, 2.4);
+    c.fill();
+    c.stroke();
 
-    // HAI TAI ĐEN TRÒN VO Ở HAI BÊN ĐỈNH ĐẦU
+    // ĐẦU GẤU TRÚC: Cổ ngắn nâng đầu tròn to, mõm ngắn tròn nhô phía trước
+    const hx = 7.5, hy = -16.5 - bob * 0.7;
+
+    // Hai tai tròn đen ở đỉnh đầu
     c.fillStyle = blackCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.2;
     c.beginPath();
-    c.arc(hx - 3.5, hy - 5.5, 2.6, 0, Math.PI * 2);
-    c.arc(hx + 4.5, hy - 6.0, 2.6, 0, Math.PI * 2);
+    c.arc(hx - 3.8, hy - 5.5, 2.6, 0, Math.PI * 2);
+    c.arc(hx + 4.5, hy - 5.8, 2.6, 0, Math.PI * 2);
     c.fill();
     c.stroke();
 
-    // Khối đầu trắng tròn xoe
+    // Khối đầu trắng
     c.fillStyle = whiteCol;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 1.3;
     c.beginPath();
-    c.ellipse(hx, hy, 7.5, 6.8, 0, 0, Math.PI * 2);
+    c.moveTo(hx - 4.5, hy - 3.5);
+    c.quadraticCurveTo(hx, hy - 5.8, hx + 4.2, hy - 3.5);
+    c.quadraticCurveTo(hx + 5.5, hy - 1.0, hx + 7.5, hy + 1.2); // Mõm ngắn tròn nhô trước
+    c.quadraticCurveTo(hx + 7.8, hy + 3.2, hx + 5.2, hy + 4.0);
+    c.quadraticCurveTo(hx + 3.0, hy + 5.5, hx, hy + 5.0);
+    c.quadraticCurveTo(hx - 5.5, hy + 5.2, hx - 6.5, hy + 2.5);
+    c.quadraticCurveTo(hx - 7.5, hy - 0.5, hx - 4.5, hy - 3.5);
+    c.closePath();
     c.fill();
     c.stroke();
 
-    // HAI QUẦNG MẮT ĐEN HÌNH OVAN NGHIÊNG ĐẶC TRƯNG GẤU TRÚC
+    // Hai quầng mắt đen hình ovan nghiêng đặc trưng
     c.fillStyle = blackCol;
     c.beginPath();
     c.ellipse(hx + 3.5, hy - 0.8, 2.6, 3.2, 0.35, 0, Math.PI * 2);
     c.ellipse(hx - 1.2, hy - 0.8, 2.2, 2.8, -0.35, 0, Math.PI * 2);
     c.fill();
 
-    // Mắt có chấm sáng trắng bên trong quầng đen
-    drawEyes(c, hx + 3.8, hy - 1.0, 1.5, hx - 1.0, hy - 1.0, 1.3, isSleeping, blink, "#ffffff", lowPower, isIcon);
-
-    // Má hồng phấn xuyên qua lớp lông trắng
+    // Mắt có chấm sáng trắng long lanh
+    drawEyes(c, hx + 3.8, hy - 1.0, 1.5, hx - 1.0, hy - 1.0, 1.3, isSleeping, blink, WHITE, lowPower, isIcon);
     drawCheeks(c, hx + 3.2, hy + 2.4, hx - 1.5, hy + 2.4, 2.2, 1.2);
 
     // Mũi tam giác nhỏ bo tròn màu đen
     c.fillStyle = blackCol;
     c.beginPath();
-    c.arc(hx + 5.8, hy + 1.2, 1.1, 0, Math.PI * 2);
+    c.arc(hx + 6.8, hy + 1.2, 1.1, 0, Math.PI * 2);
     c.fill();
 
-    // Nụ cười vui vẻ
     if (isIcon) {
       c.strokeStyle = OUTLINE;
       c.lineWidth = 1.0;
@@ -1789,7 +1947,7 @@ const Pets = (() => {
     c.translate(o.x || 0, o.y || 0);
 
     // 1. LUÔN VẼ BÓNG ELIP MỜ DƯỚI CHÂN rgba(0,0,0,.22) TRÊN MẶT ĐẤT
-    c.fillStyle = "rgba(0,0,0,0.22)";
+    c.fillStyle = SHADOW_COL;
     c.beginPath();
     if (isSleeping) {
       c.ellipse(0, 0, 11, 3.8, 0, 0, Math.PI * 2);
@@ -1844,10 +2002,8 @@ const Pets = (() => {
     t = Number(t) || 0;
 
     // Phóng to cho vừa ~80% canvas và căn giữa
-    // Kích thước chuẩn các bé: rộng ~28-32, cao ~22-26 đơn vị
     const s = Math.min((w * 0.80) / 32, (h * 0.80) / 25);
     const cx = w / 2;
-    // Trọng tâm dọc ở khoảng y = -10.5 đơn vị, đặt chân ở cy
     const cy = h / 2 + 10.5 * s;
 
     c.save();
