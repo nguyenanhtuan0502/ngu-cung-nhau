@@ -5264,22 +5264,24 @@ function getAudiencePlayerHair(p) {
 }
 
 // Vẽ toàn bộ góc nhìn khán giả nhìn thẳng màn chiếu lớn
+let audDim = 0;                                                  // độ tối hiện tại của góc nhìn khán giả (chuyển dần)
 function drawCinemaAudienceView(t) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   const scr = getCinemaAudienceScr();
   const filmPlaying = !!room.tv.on;
+  const roomDark = !room.light;                                  // đèn phòng chiếu tắt (nút 💡 Đèn): phòng tối hẳn
   // Độ nhấp nháy nhẹ của ánh sáng màn chiếu khi phim đang phát
   const flicker = filmPlaying ? (0.95 + Math.sin(t * 7) * 0.03 + Math.sin(t * 13) * 0.02) : 1;
 
   // 1. TƯỜNG VÀ KHÔNG GIAN PHÒNG CHIẾU TỐI
   // Khi đang chiếu phim thì phòng tối hơn hẳn (lights off)
-  const wallBg = filmPlaying ? "#09080e" : "#14111c";
+  const wallBg = roomDark ? "#09080e" : "#14111c";
   ctx.fillStyle = wallBg;
   ctx.fillRect(0, 0, vw, vh);
 
   // Các tấm tiêu âm ốp tường dọc 2 bên
-  const panelCol = filmPlaying ? "#100d16" : "#1e1828";
+  const panelCol = roomDark ? "#100d16" : "#1e1828";
   for (let px = 8; px < scr.x - 24; px += 28) {
     ctx.fillStyle = panelCol;
     rr(ctx, px, hudTop + 10, 18, vh - hudTop - hudBot - 30, 4);
@@ -5293,7 +5295,7 @@ function drawCinemaAudienceView(t) {
 
   // Đèn mờ bậc thang / lối đi 2 bên mép phòng
   for (let ly = hudTop + 40; ly < vh - hudBot - 40; ly += 50) {
-    const lampAlpha = filmPlaying ? 0.25 : 0.65;
+    const lampAlpha = roomDark ? 0.25 : 0.65;
     ctx.fillStyle = `rgba(255,190,90,${lampAlpha})`;
     ctx.fillRect(4, ly, 3, 6);
     ctx.fillRect(vw - 7, ly, 3, 6);
@@ -5315,13 +5317,13 @@ function drawCinemaAudienceView(t) {
   const stageY = scr.y + scr.h;
   const stageH = vh - stageY;
   const stageGrad = ctx.createLinearGradient(0, stageY, 0, vh);
-  stageGrad.addColorStop(0, filmPlaying ? "#120a10" : "#24121a");
-  stageGrad.addColorStop(1, filmPlaying ? "#090508" : "#13090e");
+  stageGrad.addColorStop(0, roomDark ? "#120a10" : "#24121a");
+  stageGrad.addColorStop(1, roomDark ? "#090508" : "#13090e");
   ctx.fillStyle = stageGrad;
   ctx.fillRect(0, stageY, vw, stageH);
 
   // Vệt thảm đỏ sẫm trải chính giữa bục sàn
-  ctx.fillStyle = filmPlaying ? "rgba(70,12,24,.35)" : "rgba(100,20,35,.55)";
+  ctx.fillStyle = roomDark ? "rgba(70,12,24,.35)" : "rgba(100,20,35,.55)";
   ctx.fillRect(scr.x - 20, stageY, scr.w + 40, stageH);
 
   // 2. RÈM ĐỎ NHUNG 2 BÊN MÀN CHIẾU VÀ DIỀM RÈM PHÍA TRÊN
@@ -5331,7 +5333,7 @@ function drawCinemaAudienceView(t) {
 
   // Diềm rèm nhung lượn sóng phía trên màn chiếu (pelmet / valance)
   const valanceH = Math.max(12, Math.min(22, scr.h * 0.08));
-  ctx.fillStyle = filmPlaying ? "#360e18" : "#541424";
+  ctx.fillStyle = roomDark ? "#360e18" : "#541424";
   ctx.fillRect(scr.x - 12, scr.y - valanceH, scr.w + 24, valanceH + 3);
   ctx.fillStyle = "#c9a227";
   ctx.fillRect(scr.x - 12, scr.y + 1, scr.w + 24, 2);
@@ -5340,7 +5342,7 @@ function drawCinemaAudienceView(t) {
   for (let sx = scr.x - 12; sx < scr.x + scr.w + 12; sx += scallopStep) {
     ctx.arc(sx + scallopStep / 2, scr.y + 1, scallopStep / 2, 0, Math.PI);
   }
-  ctx.fillStyle = filmPlaying ? "#481220" : "#6c182d"; ctx.fill();
+  ctx.fillStyle = roomDark ? "#481220" : "#6c182d"; ctx.fill();
 
   // 3. MÀN CHIẾU LỚN VÀ NỘI DUNG MÀN HÌNH
   ctx.shadowColor = "rgba(0,0,0,0.85)";
@@ -5465,6 +5467,16 @@ function drawCinemaAudienceView(t) {
 
   // 7. TIỀN CẢNH: 2 HÀNG LƯNG GHẾ (SEAT BACKS) VÀ BÓNG NGƯỜI CHƠI (SILHOUETTES)
   drawAudienceSeatsAndPlayers(scr, t, filmPlaying, flicker);
+
+  // 8. LỚP TỐI THEO ĐÈN: tắt đèn thì tối dần cả phòng, chỉ chừa màn chiếu sáng
+  audDim += ((roomDark ? 0.62 : 0) - audDim) * 0.12;
+  if (audDim > 0.01) {
+    ctx.save();
+    ctx.fillStyle = `rgba(3,2,10,${audDim})`;
+    ctx.beginPath(); ctx.rect(0, 0, vw, vh); ctx.rect(scr.x, scr.y, scr.w, scr.h);
+    ctx.fill("evenodd");
+    ctx.restore();
+  }
 }
 
 // Vẽ rèm nhung đỏ xếp nếp ở 2 bên màn chiếu
