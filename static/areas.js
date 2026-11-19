@@ -2365,10 +2365,11 @@ const Areas = (() => {
   }
   function haySeat(i, t) {
     const b = BEDS[i], o = bedOwner(i), sit = o && o.lying;
-    if (sit) drawPlayer({...o, x: b.x + 28, y: b.y + 26, walking: false, up: false, sit: true}, t);
     ctx.fillStyle = "#e9c46a"; rr(ctx, b.x, b.y + 14, b.w || BED_W, 22, 5); ctx.fill();
     ctx.strokeStyle = "#c9a227"; ctx.lineWidth = 1; for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(b.x + 4, b.y + 18 + k * 5); ctx.lineTo(b.x + BED_W - 4, b.y + 18 + k * 5); ctx.stroke(); }
     ctx.fillStyle = "#9c6644"; ctx.fillRect(b.x + 14, b.y + 14, 3, 22); ctx.fillRect(b.x + BED_W - 17, b.y + 14, 3, 22);
+    // vẽ người SAU bó rơm: ngồi trên bó rơm, quay mặt ra (trước đây bị bó rơm che, chỉ thấy đầu)
+    if (sit) drawPlayer({...o, x: b.x + (b.w || BED_W) / 2, y: b.y + 32 + Math.sin(t * 2 + i) * .4, walking: false, up: false, sit: true}, t);
   }
   // Vẽ các hoạt ảnh hành động nông trại (trồng, tưới, thu hoạch) và thanh tiến trình
   function drawFarmActionAnimations(t) {
