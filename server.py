@@ -64,7 +64,7 @@ ENTRY = {
 TV_CHANNELS = 4
 MUSIC_TRACKS = 4
 EMOTES = {"❤️", "😂", "🥱", "👋", "🌙", "😴"}
-PET_TYPES = {"cat": "Mướp", "dog": "Cún", "bunny": "Bông", "none": ""}
+PET_TYPES = {**{p["id"]: p["def"] for p in economy.CAT["PET_SHOP"]}, "none": ""}   # loại thú cưng + tên mặc định (catalog.json)
 COLORS = {"#e76f51", "#f4a261", "#e9c46a", "#2a9d8f", "#4cc9f0",
           "#7b2cbf", "#f72585", "#90be6d"}
 

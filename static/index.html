@@ -1395,12 +1395,8 @@ const TV_CH = [
 const TRACKS = ["🎶 Ru ngủ", "☕ Lofi đêm", "🌧️ Tiếng mưa", "🌊 Sóng biển"];
 const EMOTES = ["❤️","😂","🥱","👋","🌙","😴"];
 const SPEED = 95;
-const PETS = {
-  cat:   {e: "🐱", label: "Mèo", def: "Mướp", color: "#f4a261"},
-  dog:   {e: "🐶", label: "Chó", def: "Cún",  color: "#c68b59"},
-  bunny: {e: "🐰", label: "Thỏ", def: "Bông", color: "#f3f0ea"},
-  none:  {e: "🚫", label: "Không", def: ""},
-};
+// Thú cưng lấy từ catalog.json (PET_SHOP): id, e, label, def (tên mặc định), color, group, free (chọn được ngay ở sảnh)
+const PETS = Object.fromEntries(CATALOG.PET_SHOP.map(p => [p.id, p]).concat([["none", {e: "🚫", label: "Không", def: ""}]]));
 const ROOM_PET = {name: "Mun", color: "#2b2b35"};
 const AV_TOP = 54;                           // từ chân tới trên đỉnh đầu nhân vật chibi (đặt tên, bong bóng chat, biểu cảm)
 
@@ -5963,6 +5959,9 @@ function updatePets(dt) {
   roomPet.sleeping = arrived && roomPet.mode === "sleep";
 }
 function drawPet(type, col, o, t, seed) {
+  if (typeof Pets !== "undefined" && Pets.has(type === "room" ? "cat_black" : type)) {   // thú cưng vẽ đẹp (static/pets.js)
+    Pets.draw(ctx, type === "room" ? "cat_black" : type, o, t, seed, type === "room"); return;
+  }
   const sp = type === "room" ? "cat" : type, dk = darken(col, sp === "bunny" ? .12 : .3);
   const eyeC = type === "room" ? "#ffd23f" : "#2a1d16";
   const jt = t - o.jumpAt, jump = jt >= 0 && jt < .35 ? Math.sin(jt / .35 * Math.PI) * 7 : 0;
@@ -6357,7 +6356,8 @@ function frame() {
     petNameInput.classList.toggle("hidden", k === "none");
     if (k !== "none") petNameInput.placeholder = `Tên thú cưng (mặc định: ${PETS[k].def})`;
   };
-  Object.entries(PETS).forEach(([k, v]) => {
+  // Ở sảnh chỉ hiện các bé miễn phí (+ bé đang nuôi); các giống khác nhận nuôi ở 🐾 Tiệm thú cưng (khu mua sắm)
+  Object.entries(PETS).filter(([k, v]) => k === "none" || v.free || k === myPet.type).forEach(([k, v]) => {
     const b = document.createElement("button");
     b.type = "button";
     b.dataset.k = k;
@@ -7008,6 +7008,7 @@ function frame() {
 })();
 
 </script>
+<script src="/static/pets.js"></script>   <!-- vẽ các giống thú cưng -->
 <script src="/static/hair.js"></script>
 <script src="/static/areas.js"></script>
 <script src="/static/zones.js"></script>

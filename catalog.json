@@ -1106,20 +1106,215 @@
   {
    "id": "cat",
    "e": "🐱",
-   "name": "Nhận nuôi mèo",
-   "price": 50
+   "name": "Nhận nuôi mèo mướp",
+   "label": "Mèo mướp",
+   "def": "Mướp",
+   "price": 50,
+   "color": "#f4a261",
+   "group": "Mèo",
+   "free": true
+  },
+  {
+   "id": "cat_black",
+   "e": "🐈‍⬛",
+   "name": "Nhận nuôi mèo mun",
+   "label": "Mèo mun",
+   "def": "Mun",
+   "price": 60,
+   "color": "#2b2b35",
+   "group": "Mèo"
+  },
+  {
+   "id": "cat_siamese",
+   "e": "🐱",
+   "name": "Nhận nuôi mèo Xiêm",
+   "label": "Mèo Xiêm",
+   "def": "Xiêm",
+   "price": 90,
+   "color": "#f1e3cf",
+   "group": "Mèo"
+  },
+  {
+   "id": "cat_calico",
+   "e": "🐱",
+   "name": "Nhận nuôi mèo tam thể",
+   "label": "Mèo tam thể",
+   "def": "Tam",
+   "price": 80,
+   "color": "#ffffff",
+   "group": "Mèo"
+  },
+  {
+   "id": "cat_persian",
+   "e": "🐱",
+   "name": "Nhận nuôi mèo Ba Tư",
+   "label": "Mèo Ba Tư",
+   "def": "Bông Tuyết",
+   "price": 120,
+   "color": "#fdf6ec",
+   "group": "Mèo"
   },
   {
    "id": "dog",
    "e": "🐶",
-   "name": "Nhận nuôi chó",
-   "price": 50
+   "name": "Nhận nuôi cún vàng",
+   "label": "Cún vàng",
+   "def": "Cún",
+   "price": 50,
+   "color": "#c68b59",
+   "group": "Chó",
+   "free": true
+  },
+  {
+   "id": "dog_shiba",
+   "e": "🐕",
+   "name": "Nhận nuôi chó Shiba",
+   "label": "Chó Shiba",
+   "def": "Shiba",
+   "price": 100,
+   "color": "#e0954f",
+   "group": "Chó"
+  },
+  {
+   "id": "dog_corgi",
+   "e": "🐕",
+   "name": "Nhận nuôi chó Corgi",
+   "label": "Chó Corgi",
+   "def": "Corgi",
+   "price": 110,
+   "color": "#e8a35c",
+   "group": "Chó"
+  },
+  {
+   "id": "dog_poodle",
+   "e": "🐩",
+   "name": "Nhận nuôi chó Poodle",
+   "label": "Chó Poodle",
+   "def": "Kẹo Bông",
+   "price": 120,
+   "color": "#fff4f0",
+   "group": "Chó"
+  },
+  {
+   "id": "dog_husky",
+   "e": "🐺",
+   "name": "Nhận nuôi chó Husky",
+   "label": "Chó Husky",
+   "def": "Husky",
+   "price": 130,
+   "color": "#9aa5b1",
+   "group": "Chó"
+  },
+  {
+   "id": "dog_dalmatian",
+   "e": "🐕",
+   "name": "Nhận nuôi chó đốm",
+   "label": "Chó đốm",
+   "def": "Đốm",
+   "price": 100,
+   "color": "#ffffff",
+   "group": "Chó"
   },
   {
    "id": "bunny",
    "e": "🐰",
-   "name": "Nhận nuôi thỏ",
-   "price": 50
+   "name": "Nhận nuôi thỏ trắng",
+   "label": "Thỏ trắng",
+   "def": "Bông",
+   "price": 50,
+   "color": "#f3f0ea",
+   "group": "Thỏ & gặm nhấm",
+   "free": true
+  },
+  {
+   "id": "bunny_lop",
+   "e": "🐰",
+   "name": "Nhận nuôi thỏ tai cụp",
+   "label": "Thỏ tai cụp",
+   "def": "Mochi",
+   "price": 80,
+   "color": "#c9a27e",
+   "group": "Thỏ & gặm nhấm"
+  },
+  {
+   "id": "hamster",
+   "e": "🐹",
+   "name": "Nhận nuôi chuột hamster",
+   "label": "Chuột hamster",
+   "def": "Bánh Bao",
+   "price": 60,
+   "color": "#f2c48d",
+   "group": "Thỏ & gặm nhấm"
+  },
+  {
+   "id": "squirrel",
+   "e": "🐿️",
+   "name": "Nhận nuôi sóc nâu",
+   "label": "Sóc nâu",
+   "def": "Hạt Dẻ",
+   "price": 90,
+   "color": "#b5651d",
+   "group": "Thỏ & gặm nhấm"
+  },
+  {
+   "id": "hedgehog",
+   "e": "🦔",
+   "name": "Nhận nuôi nhím con",
+   "label": "Nhím con",
+   "def": "Gai Gai",
+   "price": 90,
+   "color": "#8d6e63",
+   "group": "Đặc biệt"
+  },
+  {
+   "id": "snake",
+   "e": "🐍",
+   "name": "Nhận nuôi rắn xanh",
+   "label": "Rắn xanh",
+   "def": "Xanh Lá",
+   "price": 120,
+   "color": "#7ac74f",
+   "group": "Đặc biệt"
+  },
+  {
+   "id": "fox",
+   "e": "🦊",
+   "name": "Nhận nuôi cáo nhỏ",
+   "label": "Cáo nhỏ",
+   "def": "Cam Cam",
+   "price": 150,
+   "color": "#f08a3c",
+   "group": "Đặc biệt"
+  },
+  {
+   "id": "duck",
+   "e": "🐤",
+   "name": "Nhận nuôi vịt con",
+   "label": "Vịt con",
+   "def": "Vàng Ươm",
+   "price": 60,
+   "color": "#ffd93d",
+   "group": "Đặc biệt"
+  },
+  {
+   "id": "turtle",
+   "e": "🐢",
+   "name": "Nhận nuôi rùa con",
+   "label": "Rùa con",
+   "def": "Chậm Chạp",
+   "price": 80,
+   "color": "#6fbf73",
+   "group": "Đặc biệt"
+  },
+  {
+   "id": "panda",
+   "e": "🐼",
+   "name": "Nhận nuôi gấu trúc nhỏ",
+   "label": "Gấu trúc nhỏ",
+   "def": "Tròn Tròn",
+   "price": 200,
+   "color": "#ffffff",
+   "group": "Đặc biệt"
   }
  ],
  "PET_TREAT": {
