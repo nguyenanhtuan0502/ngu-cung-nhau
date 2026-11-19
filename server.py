@@ -19,7 +19,13 @@ import os
 import random
 import re
 import time
+import sys
 import uuid
+
+try:                                                # cửa sổ lệnh Windows không phải UTF-8: in chữ có dấu không làm sập server
+    sys.stdout.reconfigure(errors="replace"); sys.stderr.reconfigure(errors="replace")
+except Exception:
+    pass
 
 from aiohttp import WSMsgType, web
 
@@ -312,7 +318,28 @@ def online_counts():
             chans[info["area"]].append([info["ch"], n])
     for a in chans:
         chans[a].sort()
-    return {"counts": {a: counts[a] for a in AREAS if a not in PRIVATE}, "chans": chans}
+    return {"counts": {a: counts[a] for a in AREAS if a not in PRIVATE}, "chans": chans,
+            "total": sum(counts.values())}             # tổng người online toàn server (kể cả nhà riêng / nông trại)
+
+
+# ---------------- Bảng xếp hạng giàu có ----------------
+RICH = {"at": 0.0, "rows": []}     # danh sách (uid, tên, xu) đã sắp xếp, đọc lại từ CSDL tối đa mỗi 30 giây
+
+
+def rich_board(my_uid):
+    """Top 10 nhiều xu nhất + hạng của mình. Người đang online lấy số xu mới nhất trong bộ nhớ."""
+    if time.time() - RICH["at"] > 30:
+        rows = {uid: [name, int(d.get("coins") or 0)] for uid, name, d in store.all_data()
+                if isinstance(d.get("coins"), (int, float))}
+        RICH.update(at=time.time(), rows=rows)
+    rows = {uid: list(v) for uid, v in RICH["rows"].items()}
+    for uid, s in BY_UID.items():                   # người đang chơi: số xu và tên mới nhất
+        if isinstance(s.get("data"), dict):
+            rows[uid] = [(s.get("p") or {}).get("name") or rows.get(uid, [""])[0], int(s["data"].get("coins") or 0)]
+    ranked = sorted(rows.items(), key=lambda kv: -kv[1][1])
+    top = [{"name": v[0] or "Ẩn danh", "coins": v[1], "me": uid == my_uid} for uid, v in ranked[:10]]
+    me = next(({"rank": i + 1, "coins": v[1]} for i, (uid, v) in enumerate(ranked) if uid == my_uid), None)
+    return {"top": top, "me": me, "players": len(ranked)}
 
 
 async def online_loop():
@@ -869,6 +896,9 @@ async def ws_handler(request):
                 if text and now - last_chat > 0.7:
                     last_chat = now
                     await broadcast(room, {"t": "chat", "id": pid, "text": text})
+
+            elif t == "rank":                      # 🏆 bảng xếp hạng giàu có (chỉ gửi tên + số xu, không lộ uid)
+                await ws.send_json({"t": "rank", **rich_board(sess["uid"])})
 
             elif t == "pomo":
                 a = d.get("a")

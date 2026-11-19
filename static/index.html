@@ -76,6 +76,13 @@
   .emojis button{font-size:28px;background:var(--panel2);border-radius:14px;padding:8px 0}
   .vol{margin-top:14px;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:10px}
   .vol:not(:has(input)){display:block}                       /* .vol dùng cho đoạn chữ: không xếp cột */
+  #onlinePill{display:flex;align-items:center;gap:5px;font-weight:700}
+  #onlinePill .odot{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade80;animation:odot 2s ease-in-out infinite}
+  @keyframes odot{50%{opacity:.35}}
+  .rankRow{display:grid;grid-template-columns:34px 1fr auto;gap:8px;align-items:center;padding:7px 10px;border-radius:10px;margin:3px 0;background:rgba(255,255,255,.05)}
+  .rankRow.me{background:rgba(255,210,122,.16);outline:1px solid rgba(255,210,122,.45)}
+  .rankRow .rk{font-weight:800;text-align:center}
+  .rankRow b{color:var(--accent)}
   .vol input{flex:1;accent-color:var(--accent)}
 
   /* YouTube */
@@ -1147,6 +1154,7 @@
     <button class="pill icon hidden" id="wardPill" title="Tủ đồ">👗</button>
     <button class="pill" id="shareBtn" title="Mời bạn">🔗<span class="lbl"> Mời bạn</span></button>
     <button class="pill icon" id="fsBtn" title="Toàn màn hình">⛶</button>
+    <button class="pill" id="onlinePill" title="Số người đang online trong server (chạm xem bảng xếp hạng)"><i class="odot"></i><b id="onlineN">1</b><span class="lbl"> online</span></button>
   </div>
 </div>
 <!-- Thanh nhanh: nút tròn dọc mép phải, nút mũi tên ở đầu để thu gọn/mở rộng (phím B) -->
@@ -2355,13 +2363,25 @@ const Quick = (() => {
   return {toggle, badge, render, act, show() { el.classList.remove("hidden"); render(); poke(); }};
 })();
 
-// 🏆 Xếp hạng giàu có: làm ở V2.3–V2.4 (server tính tài sản)
+// Số người online toàn server (góc phải thanh trên)
+function showOnline(n) { if (typeof n === "number") $("#onlineN").textContent = n; }
+$("#onlinePill").onclick = () => openRanking();
+// 🏆 Xếp hạng giàu có: server tính từ số xu của mọi người chơi (người đang online lấy số mới nhất)
 function openRanking() {
-  openSheet("🏆 Bảng xếp hạng",
-    `<div class="wheelBig" style="font-size:56px">🏆</div>
-     <div class="pomoSub">Bảng xếp hạng giàu có đang được xây dựng (bản V2.3–V2.4).<br>Sẽ có Top giàu theo ngày/tuần/tháng, hạng của bạn ghim dưới cùng.</div>
-     <div class="statRow"><span>💰 Xu của bạn</span><span></span><b>${Life.S().coins}</b></div>`);
+  openSheet("🏆 Bảng xếp hạng giàu có", `<div class="pomoSub">Đang tải bảng xếp hạng…</div>`);
+  send({t: "rank"});
 }
+function showRanking(m) {
+  const medal = i => ["🥇", "🥈", "🥉"][i] || `${i + 1}`;
+  const row = (r, rk, me) => `<div class="rankRow ${me ? "me" : ""}"><span class="rk">${rk}</span><span>${esc(r.name)}${me ? " (bạn)" : ""}</span><b>${fmtCoins(r.coins)} 💰</b></div>`;
+  const top = m.top || [], meIn = top.some(r => r.me);
+  openSheet("🏆 Bảng xếp hạng giàu có",
+    `<div class="vol" style="margin:0 0 8px">Top 10 người nhiều xu nhất trong ${m.players || top.length} người chơi · 🟢 ${$("#onlineN").textContent} đang online</div>
+     ${top.length ? top.map((r, i) => row(r, medal(i), r.me)).join("") : `<div class="pomoSub">Chưa có ai trên bảng.</div>`}
+     ${m.me && !meIn ? `<div class="sec">Hạng của bạn</div>${row({name: myName, coins: m.me.coins}, m.me.rank, true)}` : ""}
+     <div class="vol" style="font-size:12px">Xếp theo số xu đang có, cập nhật khoảng mỗi 30 giây.</div>`);
+}
+function fmtCoins(n) { return Number(n || 0).toLocaleString("vi-VN"); }
 // 👥 Bạn bè: kết bạn, nhắn tin, tặng quà làm ở V2.5–V2.7. Tạm thời: danh sách người đang ở cùng khu
 function openPeople() {
   const list = here().filter(p => p.id !== myId);
@@ -2516,7 +2536,7 @@ function handle(m) {
       }
       const first = !joined;
       myId = m.id; joined = true; wantReconnect = false;
-      inst = m.inst; online = {counts: m.counts || {}, chans: m.chans || {}};
+      inst = m.inst; online = {counts: m.counts || {}, chans: m.chans || {}}; showOnline(m.total);
       if (inst.area === "sleep") { dormCode = inst.code; localStorage.setItem("nc_dorm", dormCode); }
       players.clear();
       m.state.players.forEach(addPlayer);
@@ -2543,7 +2563,8 @@ function handle(m) {
       updateUI();
       break;
     }
-    case "online": online = {counts: m.counts || {}, chans: m.chans || {}}; if (m.now) clockOff = m.now - Date.now() / 1000; break;
+    case "online": online = {counts: m.counts || {}, chans: m.chans || {}}; showOnline(m.total); if (m.now) clockOff = m.now - Date.now() / 1000; break;
+    case "rank": showRanking(m); break;
     case "eco": Life.onEco(m); break;              // server trả kết quả giao dịch / số dư mới
     case "kicked":
       kicked = true; joined = false;
