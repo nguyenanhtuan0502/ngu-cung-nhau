@@ -1892,6 +1892,14 @@ $("#ytUnlock").onclick = () => {
 };
 setInterval(() => { syncYT("tv"); syncYT("music"); }, 3000);
 setInterval(() => { if (joined) fetch("/ping", {cache: "no-store"}).catch(() => {}); }, 4 * 60 * 1000); // giữ server free không ngủ
+// Mẹo độ nét: YouTube chọn chất lượng theo KÍCH THƯỚC khung phát. Cho khung bên trong to đủ cỡ 1080p
+// (khoảng 1920 điểm ảnh thật) rồi thu nhỏ hình lại cho vừa màn, YouTube sẽ phát 1080p nếu mạng đủ khoẻ.
+function scaleTVHold(w, h) {
+  const hold = $("#tvHold"); if (!hold) return;
+  if (!w || !h) { Object.assign(hold.style, {width: "", height: "", transform: "", transformOrigin: ""}); return; }
+  const k = Math.max(1, Math.min(3, 1920 / (w * (window.devicePixelRatio || 1))));
+  Object.assign(hold.style, {width: w * k + "px", height: h * k + "px", transform: k > 1 ? `scale(${1 / k})` : "", transformOrigin: "0 0"});
+}
 function placeTV() {
   const f = $("#tvFrame");
   // Ở sảnh rạp phim thì ẩn hoàn toàn khung video YouTube
@@ -1905,6 +1913,7 @@ function placeTV() {
     f.style.left = scr.x + "px"; f.style.top = scr.y + "px";
     f.style.width = scr.w + "px"; f.style.height = scr.h + "px";
     f.classList.remove("big");
+    scaleTVHold(scr.w, scr.h);
     if (media.tv) f.classList.remove("hidden");
     return;
   }
@@ -1913,6 +1922,7 @@ function placeTV() {
   f.style.left = r.x + "px"; f.style.top = r.y + "px";
   f.style.width = r.w + "px"; f.style.height = r.h + "px";
   f.classList.toggle("big", tvBig && !theater);
+  if (tvBig && !theater) scaleTVHold(0, 0); else scaleTVHold(r.w, r.h);   // "Xem to" đã đủ lớn: để YouTube tự lo
   if (media.tv) f.classList.remove("hidden");
 }
 function placeTheater() {
@@ -5224,9 +5234,9 @@ function getCinemaAudienceScr() {
   const botPad = hudBot + (small ? 6 : 10);
   const availH = Math.max(120, vh - topPad - botPad);
   // Dành khoảng 24-28% chiều cao khả dụng ở dưới cho 2 hàng ghế khán giả
-  const seatH = Math.max(small ? 46 : 68, Math.min(160, availH * 0.25));
+  const seatH = Math.max(small ? 40 : 60, Math.min(140, availH * 0.2));
   const maxScrH = Math.max(90, availH - seatH);
-  const maxScrW = Math.min(vw * 0.84, 1500);
+  const maxScrW = Math.min(vw * 0.92, 1700);
 
   // Giữ tỉ lệ chuẩn 16:9 cho màn chiếu
   const aspect = 16 / 9;
