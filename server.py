@@ -1054,8 +1054,19 @@ async def asset_links(request):
     return web.FileResponse(p, headers={"Content-Type": "application/json"})
 
 
+@web.middleware
+async def revalidate_static(request, handler):
+    # Bản chạy thật: file trong /static/ được trình duyệt giữ lại nhưng PHẢI hỏi lại server mỗi lần mở trang
+    # (file không đổi thì server chỉ trả 304, rất nhẹ). Không có dòng này, sau khi deploy người chơi có thể
+    # còn chạy file js cũ một lúc và lệch với server mới.
+    resp = await handler(request)
+    if request.path.startswith("/static/") and "Cache-Control" not in resp.headers:
+        resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
 def make_app():
-    app = web.Application(middlewares=[no_cache] if DEV else [])
+    app = web.Application(middlewares=[no_cache] if DEV else [revalidate_static])
     app.router.add_get("/", index)
     app.router.add_get("/sw.js", sw_js)
     app.router.add_get("/.well-known/assetlinks.json", asset_links)
